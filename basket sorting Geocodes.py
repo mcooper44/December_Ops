@@ -8,6 +8,7 @@ csv_file_path = '2016Christmas.csv'
 
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
+
 box_mask = {'0': 1,
             '1' : 1,
             '2' : 1,
@@ -29,7 +30,6 @@ box_mask = {'0': 1,
             '18':4
             }
 
-
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points 
@@ -45,7 +45,7 @@ def haversine(lon1, lat1, lon2, lat2):
     km = 6367 * c
     return km
 
-def csv_to_hh_dict(csv_file_path):
+def use_csv(csv_file_path):
     '''
     opens a csv file of households and their key data points
     iterates through it and extracts {file id # : family size, geocodes
@@ -61,101 +61,149 @@ def csv_to_hh_dict(csv_file_path):
             geocodes = Geolocation(float(visit[11]),float(visit[12])) # because they are picked as strings
             hh_dictionary[file_id] = Client(family_size, geocodes)
     return hh_dictionary
-        
-def sort_method(households):
-    '''
-    takes the dictionary created by generate_familes and returns a list of sorted
-    households who are in proximity to eachother
-    we are just going to brute force this because why the fuck not!
-    go through the entire list and create a sorted list of all the distances
-    and then skim off as many of the shortest distance HH as will fill up to the
-    max # of boxes
-    '''
-    max_box_count = 8
-    route_counter = 1
-    routes = {} # labeled routes and teh families they contain
-    assigned = [] # container to add hh that have been assigned
-    #cycle_count = 0
-    for applicant in households: # for key in dictionary of households
-        h1geocodes = households[applicant].location
-        h1_lat, h1_long = households[applicant].location
-        applicant_route = [] # the working container that we will then add to the route dictionary
-        size = str(households[applicant].size) # turn the size into a string so we can...
-        boxes = box_mask[size] # start building the route with the household
-        
-        if applicant in assigned:
-            #print('we have done this one already')
-            pass
-        else:
-            #print('Applicant {} has not been added to a route yet'.format(applicant))
-            
-            assigned.append(applicant)
-            #print('we will add them to the list, which currently has {} households in it'.format(len(assigned)))
-            applicant_route.append(applicant) # start by adding the household we are starting with
-            
-            
-            
-            distance_hh_dictionary = defaultdict(list) # build a container to add {calculated distances: households} to
-                                                       # this will allow us to make a sorted list of the shortest distances and the HH
-                                                       # that are at that distance            
-            #print('We will start building a dictionary of distances and the HH that live at them')
-            # ITERATE THROUGH THE HOUSEHOLDS AND CALCULATE DISTANCES FROM THE CHOSEN STARTING HH
-            for HH in households.keys(): # iterate through the keys to find the distances of remaining households
-                #print('HH under consideration for addition to the route: {}'.format(HH))
-                   
-                if HH != applicant:
-                    if HH not in assigned:
-                        #print('this household has not been added a route')
-                        ident = HH # their file number
-                        h2_lat, h2_long = households[HH].location # their lat,long
-                        #print('they have a geocode of: {} and file ID of {}'.format((h2_lat, h2_long), ident))
-                        distance_between = haversine(h1_long, h1_lat, h2_long, h2_lat) # returns float distance in KM                        
-                        d_key = str(distance_between) # convert to string so we can use it as a dictionary key
-                        distance_hh_dictionary[d_key].append(ident) # update dictionary of distances: HH identifier
-                        #print('we have added them to the dictionary')
 
-            distances = sorted([float(k) for k in distance_hh_dictionary.keys()]) # sort a list of all the distances so we can skim the shortest off
-            #print('we have calculated {} distances'.format(len(distances)))
-            for ke in distances:
-                ske = str(ke)
-                #print('households: {} are at {} distance'.format(distance_hh_dictionary[ske], ke))
-                # so some distances will have a number of households, so lets print them out
+class Delivery_Routes():
+    '''
+    source_path = path to either a csv or a .db
+    keyword_flag = 'csv' or 'db' indicating type
+    
+    either opens, or from csv, creates, a database of [file, family size, [lat,long]] 
+    it can then set a route database file or add to an existing one 
+    
+    it can also retrieve information on routes and write them into a file for use
+    in other ways
+    '''
+
+    hh_dict = None
+    route_collection = None
+    route_db = None
+
+    def __init__(self, source_path, keyword_flag):
+        self.data_source = source_path
+        self.path_type = keyword_flag      
+
+    def open_source(self, data_source=None, path_type=None):
+        '''
+        opens a database or csv of [client_id, size, geocodes] as a source 
+        for the route sorting method
+        path type takes 'csv' or 'db' as keywords
+        '''
+        if path_type == 'csv':
+            csv_source = use_csv(data_source)
+            hh_dict = csv_source
+        if path_type == 'db':
+            pass
+        if not path_type:
+            print('no source data supplied')
+
+
+    def get_status(self, hh_structure=hh_dict):
+        '''
+        returns the status of the object.  Is it ready to parse points and return a route list?
+        '''
+        if not hh_structure:
+            print('not ready.  please add a data source')
+        else:
+            print('ready with {}'.format(type(hh_structure)))
+
+    def sort_method(self, households=hh_dict):
+        '''
+        takes the dictionary created by generate_familes and returns a list of sorted
+        households who are in proximity to eachother
+        we are just going to brute force this because why the fuck not!
+        go through the entire list and create a sorted list of all the distances
+        and then skim off as many of the shortest distance HH as will fill up to the
+        max # of boxes
+        '''
+        max_box_count = 8
+        route_counter = 1
+        routes = {} # labeled routes and teh families they contain
+        assigned = [] # container to add hh that have been assigned
+        #cycle_count = 0
+        for applicant in households: # for key in dictionary of households
+            h1geocodes = households[applicant].location
+            h1_lat, h1_long = households[applicant].location
+            applicant_route = [] # the working container that we will then add to the route dictionary
+            size = str(households[applicant].size) # turn the size into a string so we can...
+            boxes = box_mask[size] # start building the route with the household
             
-            # NOW WE WILL ITERATE THROUGH THE DISTANCES AND TRY AND PUT A ROUTE TOGETHER
-            for int_value in distances: # for distance in sorted listed of distances
+            if applicant in assigned:
+                #print('we have done this one already')
+                pass
+            else:
+                #print('Applicant {} has not been added to a route yet'.format(applicant))
                 
-                key = str(int_value) # convert the int to a string so we can use it in the distance : families at that distance dictionary
-                #print('looking at distance {} it contains {}'.format(key, distance_hh_dictionary[key]))
-                for fam in distance_hh_dictionary[key]: # for the individual or family in the list of households at this distance
+                assigned.append(applicant)
+                #print('we will add them to the list, which currently has {} households in it'.format(len(assigned)))
+                applicant_route.append(applicant) # start by adding the household we are starting with
+                
+                
+                
+                distance_hh_dictionary = defaultdict(list) # build a container to add {calculated distances: households} to
+                                                        # this will allow us to make a sorted list of the shortest distances and the HH
+                                                        # that are at that distance            
+                #print('We will start building a dictionary of distances and the HH that live at them')
+                # ITERATE THROUGH THE HOUSEHOLDS AND CALCULATE DISTANCES FROM THE CHOSEN STARTING HH
+                for HH in households.keys(): # iterate through the keys to find the distances of remaining households
+                    #print('HH under consideration for addition to the route: {}'.format(HH))
                     
-                    if fam not in assigned: # if we haven't sorted them into a route yet
-                        #print('looking at family {}'.format(fam))
-                        fam_size = str(applicants[fam].size) # determine family size
-                        #print('family {} has size {}'.format(fam, fam_size))
-                        box_num = box_mask[fam_size] # determine number of boxes
-                        #print('they will have {} boxes made up for them'.format(box_num))
-                        # do math to determine if we can add them to the route
-                        # then if there are still more families at this distance we need to pop the one we just added
-                        # and evaluate the next one and so on down the chain until we max out box count per route or exaust
-                        # remaining households
-                        if box_num + boxes <= max_box_count: # if we added this family to the pile and they didn't add too many boxes
-                            #print('adding them to the route will not add too many boxes, so lets add them')
-                            boxes += box_num
-                            #print('we are currently at {} boxes and have {} spaces remaining'.format(boxes, max_box_count - boxes))
-                            assigned.append(fam) # add them to the assigned list
-                            applicant_route.append(fam) # add them to the route
-        
-        if applicant_route:
-            print('we have iterated and made a route! It is {}'.format(applicant_route))
-            r_key = str(route_counter)
-            routes[r_key] = applicant_route
-            route_counter += 1
-            #cycle_count +=1        
-    return routes
+                    if HH != applicant:
+                        if HH not in assigned:
+                            #print('this household has not been added a route')
+                            ident = HH # their file number
+                            h2_lat, h2_long = households[HH].location # their lat,long
+                            #print('they have a geocode of: {} and file ID of {}'.format((h2_lat, h2_long), ident))
+                            distance_between = haversine(h1_long, h1_lat, h2_long, h2_lat) # returns float distance in KM                        
+                            d_key = str(distance_between) # convert to string so we can use it as a dictionary key
+                            distance_hh_dictionary[d_key].append(ident) # update dictionary of distances: HH identifier
+                            #print('we have added them to the dictionary')
+
+                distances = sorted([float(k) for k in distance_hh_dictionary.keys()]) # sort a list of all the distances so we can skim the shortest off
+                #print('we have calculated {} distances'.format(len(distances)))
+                for ke in distances:
+                    ske = str(ke)
+                    #print('households: {} are at {} distance'.format(distance_hh_dictionary[ske], ke))
+                    # so some distances will have a number of households, so lets print them out
+                
+                # NOW WE WILL ITERATE THROUGH THE DISTANCES AND TRY AND PUT A ROUTE TOGETHER
+                for int_value in distances: # for distance in sorted listed of distances
+                    
+                    key = str(int_value) # convert the int to a string so we can use it in the distance : families at that distance dictionary
+                    #print('looking at distance {} it contains {}'.format(key, distance_hh_dictionary[key]))
+                    for fam in distance_hh_dictionary[key]: # for the individual or family in the list of households at this distance
+                        
+                        if fam not in assigned: # if we haven't sorted them into a route yet
+                            #print('looking at family {}'.format(fam))
+                            fam_size = str(applicants[fam].size) # determine family size
+                            #print('family {} has size {}'.format(fam, fam_size))
+                            box_num = box_mask[fam_size] # determine number of boxes
+                            #print('they will have {} boxes made up for them'.format(box_num))
+                            # do math to determine if we can add them to the route
+                            # then if there are still more families at this distance we need to pop the one we just added
+                            # and evaluate the next one and so on down the chain until we max out box count per route or exaust
+                            # remaining households
+                            if box_num + boxes <= max_box_count: # if we added this family to the pile and they didn't add too many boxes
+                                #print('adding them to the route will not add too many boxes, so lets add them')
+                                boxes += box_num
+                                #print('we are currently at {} boxes and have {} spaces remaining'.format(boxes, max_box_count - boxes))
+                                assigned.append(fam) # add them to the assigned list
+                                applicant_route.append(fam) # add them to the route
+            
+            if applicant_route:
+                print('we have iterated and made a route! It is {}'.format(applicant_route))
+                r_key = str(route_counter)
+                routes[r_key] = applicant_route
+                route_counter += 1
+                #cycle_count +=1        
+        route_collection = routes
     
 
-applicants = csv_to_hh_dict(csv_file_path)
-test = sort_method(applicants)
+
+test_2018 = Delivery_Routes(None, None)
+test_2018.get_status()
+test_2018.open_source()
+
+
 '''
 for x in test.keys():
     print('route {} contains {}'.format(x, test[x]))
@@ -165,7 +213,8 @@ for x in applicants.keys():
     peeps = str(applicants[x].size)
     print('family {} contains {} people which is {} boxes'.format(x, applicants[x].size, box_mask[peeps]))
 '''
-for k in test.keys():
+
+''' for k in test.keys():
     total_b = 0
     locations = []
     distances = []
@@ -176,7 +225,7 @@ for k in test.keys():
         total_b += boxes_
         locations.append(local)
     print('{} has {} boxes and this range of locations {}'.format(k, total_b, locations))
-
+ '''
 
 
 
