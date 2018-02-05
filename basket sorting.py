@@ -103,7 +103,7 @@ def sort_method(households):
                     
                     if fam not in assigned: # if we haven't sorted them into a route yet
                         print('looking at family {}'.format(fam))
-                        fam_size = str(applicants[fam].size) # determine family size
+                        fam_size = str(households[fam].size) # determine family size
                         print('family {} has size {}'.format(fam, fam_size))
                         box_num = box_mask[fam_size] # determine number of boxes
                         print('they will have {} boxes made up for them'.format(box_num))
