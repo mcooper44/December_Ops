@@ -31,7 +31,7 @@ class test_codes():
 
     def generate_coordinates(self):
         '''
-        returns a list of coordinates N elements
+        adds a list of coordinates N elements long to self.test_codes_list
         N = coord_range
         '''
         sample_coordinates = []
@@ -43,3 +43,12 @@ class test_codes():
             sample_coordinates.append([x_value, y_value])       
         self.test_codes_list += sample_coordinates
 
+    def return_coordinates(self):
+        '''
+        returns the value of self.test_codes_list
+        '''
+        if any self.test_codes_list:
+            return self.test_codes_list
+        else:
+            print('No coordinates have been generated!\nReturning None.')
+            return None
