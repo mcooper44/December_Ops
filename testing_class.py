@@ -47,7 +47,7 @@ class test_codes():
         '''
         returns the value of self.test_codes_list
         '''
-        if any self.test_codes_list:
+        if self.test_codes_list:
             return self.test_codes_list
         else:
             print('No coordinates have been generated!\nReturning None.')
