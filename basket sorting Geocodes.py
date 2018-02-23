@@ -65,43 +65,40 @@ def use_csv(csv_file_path):
             hh_dictionary[file_id] = Client(family_size, geocodes)
     return hh_dictionary
 
+class Delivery_Household():
+    '''
+    a collection of datapoints needed to assemble a delivery route
+    '''
+    def __init__(self, file_id, hh_id, family_size, lat, lng):
+        self.main_app_ID = file_id
+        self.household_ID = hh_id
+        self.hh_size = family_size
+        self.latitude = float(lat)
+        self.longitude = float(lng)
+        self.geo_tuple = Geolocation(self.latitude, self.longitude)
+
 class Delivery_Routes():
     '''
-    Can parse csv or db data sources to make routes
-    Can open route db's and operate on the contents
-    either open and present or add to existing routes
-    '''
+    takes a collection of households and parses them into individual routes
 
-    hh_dict = None
+    '''
+    hh_dict = None # a dictionary of Delivery_Household() objects
     route_collection = None
     route_db = None
 
-    def __init__(self, source_path, keyword_flag):
-        self.data_source = source_path # path to where the source data can be found
-        self.path_type = keyword_flag # either 'csv' or 'db'     
+    def __init__(self, max_boxes, start_count):
+        self.max_boxes = max_boxes
+        self.start_count = start_count
 
-    def open_source(self, data_source=None, path_type=None):
-        '''
-        opens a database or csv of [client_id, size, geocodes] as a source 
-        for the route sorting method
-        path type takes 'csv' or 'db' as keywords
-        '''
-        if path_type == 'csv':
-            csv_source = use_csv(data_source) # open the csv and parse its contents
-            hh_dict = csv_source # structured HH data that we need to build a route
-        if path_type == 'db':
-            pass
-        if not path_type:
-            print('no data source supplied.')
 
     def get_status(self, hh_structure=hh_dict):
         '''
         returns the status of the object.  Is it ready to parse points and return a route list?
         '''
-        if not hh_structure:
+        if not Delivery_Routes.hh_dict:
             print('not ready.  please add a data source')
         else:
-            print('ready with {}'.format(type(hh_structure)))
+            print('ready with {}'.format(type(Delivery_Routes.hh_dict)))
 
     def sort_method(self, households=hh_dict):
         '''
@@ -112,13 +109,13 @@ class Delivery_Routes():
         and then skim off as many of the shortest distance HH as will fill up to the
         max # of boxes
         '''
-        max_box_count = 8
-        route_counter = 1
+        max_box_count = self.max_boxes
+        route_counter = self.start_count # this is where we start counting the routes
         routes = {} # labeled routes and the families they contain
         assigned = [] # container to add hh that have been assigned
         #cycle_count = 0
         for applicant in households: # for key in dictionary of households
-            h1geocodes = households[applicant].location
+            
             h1_lat, h1_long = households[applicant].location # a tuple of (lat, lng)
             applicant_route = [] # the working container that we will then add to the route dictionary
             size = str(households[applicant].size) # turn the size into a string so we can...
@@ -190,13 +187,41 @@ class Delivery_Routes():
                 routes[r_key] = applicant_route
                 route_counter += 1
                 #cycle_count +=1        
-        route_collection = routes
+        Delivery_Routes.route_collection = routes
     
+class Delivery_File_Ojbect():
+    '''
+    Can parse csv or db data sources to make routes by parsing the contents 
+    and populating the Delivery_Routes class dict with the key data points
+    '''
+    def __init__(self, source_path, keyword_flag, delivery_route_obj):
+        self.data_source = source_path # path to where the source data can be found
+        self.path_type = keyword_flag # either 'csv' or 'db'     
+        self.route = delivery_route_obj # an initialized Delivery_Routes class
 
+    def parse_source(self):
+        '''
+        opens a database or csv of [client_id, size, geocodes] as a source 
+        for the route sorting method
+        path type takes 'csv' or 'db' as keywords
+        '''
+        if self.path_type == 'csv':
+            with open(csv_file_path, newline='') as f:
+                visits = csv.reader(f)
+                next(visits, None) # skip headers
+                print('file open. starting the parse operation')
+                for visit in visits:
+                    file_id = str(visit[6])
+                    family_size = visit[7]
+                    household_id = visit[8]
+                    lt = visit[11] # lat
+                    lg = visit[12] # long
+                    # then add the key information to the .route object hh_dict
+                    self.route.hh_dict[file_id] = Delivery_Household(file_id, household_id, family_size, lt, lg)
 
-test_2018 = Delivery_Routes(None, None)
-test_2018.get_status()
-test_2018.open_source()
+        if self.path_type == 'db':
+            pass
+
 
 
 '''
