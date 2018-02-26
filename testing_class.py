@@ -6,10 +6,9 @@ def format_int_to_float(one_element_list):
     and because range() doesnt take floats for some reason
     this takes the result of random.samples in generate_coordinates
     and takes the first number and moves it left of the decimal
-    and the rest of the number onto the other side of the right
+    and the rest of the number onto the other side of the decimal
 
     '''
-    
     value = str(one_element_list[0])
     value_head = float(value[0])
     value_tale = float('.' + value[1:])
@@ -52,3 +51,25 @@ class test_codes():
         else:
             print('No coordinates have been generated!\nReturning None.')
             return None
+
+class Test_Households():
+    '''
+    generates randmonized household information as a list of lists 
+    '''
+    def __init__(self, sample_size):
+        self.number_of_households = sample_size
+        self.testing_list = None
+
+    def generate_list_of_households(self):
+        '''
+        creates randomized sets of household information
+
+        '''
+        file_id = random.sample(range(100000, 999999), self.number_of_households)
+        family_size = [random.randint(1,9) for x in range(self.number_of_households)]
+        family_id = random.sample(range(10000, 99999), self.number_of_households)
+
+        self.testing_list = list(zip(file_id, family_size, family_id))
+
+
+
