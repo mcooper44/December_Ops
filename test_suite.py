@@ -1,7 +1,7 @@
 import testing_class as tc 
 import basket_sorting_Geocodes as bsg 
 
-target_number = 1500 # this is the number of test households we want to create
+target_number = 400 # this is the number of test households we want to create
 
 test_cd = tc.Test_Codes(target_number) 
 test_hh = tc.Test_Households(target_number) 
@@ -22,7 +22,7 @@ for x in coords_hhlds:
 
     hh_dictionary[str(fid)] = bsg.Delivery_Household(fid, hhid, fs, lat, lng)
 
-print('there are {} keys in the dictionary'.format(len(hh_dictionary.keys()))
+print('there are {} keys in the dictionary'.format(len(hh_dictionary.keys())))
 
 test2018 = bsg.Delivery_Routes(7, 1) # initialize Delivery_Routes() object
 test2018.set_hh_data_structure(hh_dictionary) # give it the dictionary
