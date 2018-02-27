@@ -102,3 +102,4 @@ ENV/
 
 .vscode
 design_notes.txt
+test_suite.py

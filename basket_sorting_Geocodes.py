@@ -4,8 +4,6 @@ from collections import defaultdict
 from math import radians, cos, sin, asin, sqrt
 import csv
 
-csv_file_path = '2016Christmas.csv'
-
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
 
@@ -16,7 +14,7 @@ box_mask = {'0': 1,
             '4' : 1,
             '5': 2,
             '6' : 2,
-            '7' : 3,
+            '7' : 2,
             '8' : 3,
             '9' : 3,
             '10': 3,
@@ -45,29 +43,12 @@ def haversine(lon1, lat1, lon2, lat2):
     km = 6367 * c
     return km
 
-def use_csv(csv_file_path):
-    '''
-    opens a csv file of households and their key data points
-    iterates through it and extracts {file id # : family size, geocodes}
-    as a named tuple
-    Client = namedtuple('Client', 'size location')
-    location is a named tuple:
-    Geolocation = namedtuple('Geolocation', 'lat long')
-    '''
-    hh_dictionary = {}
-    with open(csv_file_path, newline='') as f:
-        visits = csv.reader(f)
-        next(visits, None) # skip headers
-        for visit in visits:
-            file_id = str(visit[6])
-            family_size = visit[7]
-            geocodes = Geolocation(float(visit[11]),float(visit[12])) # because they are picked as strings
-            hh_dictionary[file_id] = Client(family_size, geocodes)
-    return hh_dictionary
-
 class Delivery_Household():
     '''
     a collection of datapoints needed to assemble a delivery route
+    :TO DO:
+    Decisions need to be made regarding keying off applicant ID or HH_ID and 
+    what implications that may have for creating errors
     '''
     def __init__(self, file_id, hh_id, family_size, lat, lng):
         self.main_app_ID = file_id
@@ -81,26 +62,41 @@ class Delivery_Routes():
     '''
     takes a collection of households and parses them into individual routes
 
-    '''
-    hh_dict = None # a dictionary of Delivery_Household() objects
-    route_collection = None
+    '''    
+    route_collection = None # a dictionary of all the routes and the hh they contain 1: [12345,2341234,123412,62345]
     route_db = None
 
     def __init__(self, max_boxes, start_count):
         self.max_boxes = max_boxes
         self.start_count = start_count
+        self.hh_dict = None # a dictionary of Delivery_Household() objects
 
-
-    def get_status(self, hh_structure=hh_dict):
+    def get_status(self):
         '''
         returns the status of the object.  Is it ready to parse points and return a route list?
         '''
-        if not Delivery_Routes.hh_dict:
-            print('not ready.  please add a data source')
+        if not self.hh_dict:
+            print('not ready.  please add a data source to populate the dictionary')
         else:
-            print('ready with {}'.format(type(Delivery_Routes.hh_dict)))
+            print('ready with {}'.format(type(self.hh_dict)))
 
-    def sort_method(self, households=hh_dict):
+    def get_route_collection(self):
+        '''
+        returns the collection of routes held in the object
+        '''
+        if Delivery_Routes.route_collection:
+            return Delivery_Routes.route_collection
+        else:
+            print('the routes have not been created yet')
+
+    def set_hh_data_structure(self, data_structure):
+        '''
+        recieves a dictionary of file id keys: and Delivery_Household objects to use in generating routes
+        '''
+        self.hh_dict = data_structure
+        print('structure set with {} values'.format(len(self.hh_dict)))
+
+    def sort_method(self):
         '''
         takes the dictionary created by generate_familes and returns a list of sorted
         households who are in proximity to eachother
@@ -111,14 +107,15 @@ class Delivery_Routes():
         '''
         max_box_count = self.max_boxes
         route_counter = self.start_count # this is where we start counting the routes
+        households = self.hh_dict
         routes = {} # labeled routes and the families they contain
         assigned = [] # container to add hh that have been assigned
-        #cycle_count = 0
+        print('starting method')
         for applicant in households: # for key in dictionary of households
             
-            h1_lat, h1_long = households[applicant].location # a tuple of (lat, lng)
+            h1_lat, h1_long = households[applicant].geo_tuple # a tuple of (lat, lng)
             applicant_route = [] # the working container that we will then add to the route dictionary
-            size = str(households[applicant].size) # turn the size into a string so we can...
+            size = str(households[applicant].hh_size) # turn the size into a string so we can...
             boxes = box_mask[size] # start building the route with the household
             
             if applicant in assigned:
@@ -144,7 +141,7 @@ class Delivery_Routes():
                         if HH not in assigned: # and we have not already used them in a route
                             #print('this household has not been added a route')
                             ident = HH # their file number
-                            h2_lat, h2_long = households[HH].location # their lat,long
+                            h2_lat, h2_long = households[HH].geo_tuple # their lat,long
                             #print('they have a geocode of: {} and file ID of {}'.format((h2_lat, h2_long), ident))
                             # caculated the distance between the two households
                             distance_between = haversine(h1_long, h1_lat, h2_long, h2_lat) # returns float distance in KM                        
@@ -166,7 +163,7 @@ class Delivery_Routes():
                         
                         if fam not in assigned: # if we haven't sorted them into a route yet
                             #print('looking at family {}'.format(fam))
-                            fam_size = str(households[fam].size) # determine family size
+                            fam_size = str(households[fam].hh_size) # determine family size
                             #print('family {} has size {}'.format(fam, fam_size))
                             box_num = box_mask[fam_size] # determine number of boxes
                             #print('they will have {} boxes made up for them'.format(box_num))
@@ -189,83 +186,56 @@ class Delivery_Routes():
                 #cycle_count +=1        
         Delivery_Routes.route_collection = routes
     
-class Delivery_File_Ojbect():
+class Source_File_Object():
     '''
     Can parse csv or db data sources to make routes by parsing the contents 
-    and populating the Delivery_Routes class dict with the key data points
+    and populating the Delivery_Routes() class dict with the key data points
+    #####
+    NB:
+    This object will need to be rebuilt 
+    #####
     '''
-    def __init__(self, source_path, keyword_flag, delivery_route_obj):
+    def __init__(self, source_path, keyword_flag):
         self.data_source = source_path # path to where the source data can be found
-        self.path_type = keyword_flag # either 'csv' or 'db'     
-        self.route = delivery_route_obj # an initialized Delivery_Routes class
+        self.source_type = keyword_flag # either 'csv' or 'db'     
+        self.hh_data_structure = None
 
-    def parse_source(self):
+    def parse_source_into_delivery_hh(self):
         '''
         opens a database or csv of [client_id, size, geocodes] as a source 
         for the route sorting method
         path type takes 'csv' or 'db' as keywords
+        it then parses the source line by line into a dictionary of 
+        file_id : Delivery_Household() contained in a Delivery_Routes() object
+        this allows the Delivery_Routes() object to begin 
         '''
-        if self.path_type == 'csv':
-            with open(csv_file_path, newline='') as f:
+        hh_dict = {}
+        if self.source_type == 'csv':
+            with open(self.data_source, newline='') as f:
                 visits = csv.reader(f)
                 next(visits, None) # skip headers
                 print('file open. starting the parse operation')
                 for visit in visits:
-                    file_id = str(visit[6])
-                    family_size = visit[7]
-                    household_id = visit[8]
-                    lt = visit[11] # lat
-                    lg = visit[12] # long
+                    file_id = str(visit[0])
+                    family_size = visit[1]
+                    household_id = visit[2]
+                    lt = visit[3] # lat
+                    lg = visit[4] # long
                     # then add the key information to the .route object hh_dict
-                    self.route.hh_dict[file_id] = Delivery_Household(file_id, household_id, family_size, lt, lg)
+                    hh_dict[file_id] = Delivery_Household(file_id, household_id, family_size, lt, lg)
+        self.hh_data_structure = hh_dict
 
-        if self.path_type == 'db':
+        if self.source_type == 'db':            
             pass
 
-
-
-'''
-for x in test.keys():
-    print('route {} contains {}'.format(x, test[x]))
-
-
-for x in applicants.keys():
-    peeps = str(applicants[x].size)
-    print('family {} contains {} people which is {} boxes'.format(x, applicants[x].size, box_mask[peeps]))
-'''
-
-''' for k in test.keys():
-    total_b = 0
-    locations = []
-    distances = []
-    for fam_ in test[k]:
-        size_ = applicants[fam_].size
-        local = applicants[fam_].location
-        boxes_ = box_mask[str(size_)]
-        total_b += boxes_
-        locations.append(local)
-    print('{} has {} boxes and this range of locations {}'.format(k, total_b, locations))
- '''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def return_hh_data_structure(self):
+        '''
+        returns the dictionary of file_id keys: to Delivery_Household ojbects
+        and their associated data points
+        '''
+        if self.hh_data_structure:
+            return self.hh_data_structure
+        else:
+            print('the dictionary has not been initialized')
 
 
