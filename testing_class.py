@@ -14,6 +14,7 @@ def format_int_to_float(one_element_list):
     value_tale = float('.' + value[1:])
     return value_head + value_tale
 
+<<<<<<< HEAD
 class test_codes():
     '''
     this class generates test codes for the routing functions
@@ -26,6 +27,20 @@ class test_codes():
         self.lat = ref_lat
         self.lng = ref_long
         self.number_of_coords = coord_range
+=======
+class Test_Codes():
+    '''
+    this class generates test codes for the routing functions
+    it starts with lat and long for the middle of Hudson's Bay
+    sample_size = number of coordinates to generate
+    ref_lat = the latitude to start with
+    ref_long = the longditude to start with
+    '''
+    def __init__(self, sample_size, ref_lat = 59.0, ref_long = -84.0):
+        self.lat = ref_lat
+        self.lng = ref_long
+        self.number_of_coords = sample_size
+>>>>>>> OOP_December
         self.test_codes_list = []
 
     def generate_coordinates(self):
@@ -34,7 +49,11 @@ class test_codes():
         N = coord_range
         '''
         sample_coordinates = []
+<<<<<<< HEAD
         for x in range(self.number_of_coords):
+=======
+        for _ in range(self.number_of_coords):
+>>>>>>> OOP_December
             x_additive = random.sample(range(100000, 300000), 1)
             y_additive = random.sample(range(100000, 300000), 1)
             x_value = self.lat + format_int_to_float(x_additive)
@@ -58,11 +77,16 @@ class Test_Households():
     '''
     def __init__(self, sample_size):
         self.number_of_households = sample_size
+<<<<<<< HEAD
         self.testing_list = None
+=======
+        self.test_households_list = None
+>>>>>>> OOP_December
 
     def generate_list_of_households(self):
         '''
         creates randomized sets of household information
+<<<<<<< HEAD
 
         '''
         file_id = random.sample(range(100000, 999999), self.number_of_households)
@@ -70,6 +94,26 @@ class Test_Households():
         family_id = random.sample(range(10000, 99999), self.number_of_households)
 
         self.testing_list = list(zip(file_id, family_size, family_id))
+=======
+        [[file id, family size, hh id], [x, y, z] ...]
+        a new list is created every time this method is run, overwriting the last
+        '''
+        file_id = random.sample(range(100000, 999999), self.number_of_households)
+        family_size = [random.randint(1,6) for x in range(self.number_of_households)]
+        family_id = random.sample(range(10000, 99999), self.number_of_households)
+
+        self.test_households_list = list(zip(file_id, family_id, family_size))
+
+    def return_households_list(self):
+        '''
+        returns the generated list of household data
+        '''
+        if self.test_households_list:
+            return self.test_households_list
+        else:
+            print('no list has been generated')
+
+>>>>>>> OOP_December
 
 
 
