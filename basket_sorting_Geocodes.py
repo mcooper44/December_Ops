@@ -174,7 +174,7 @@ class Delivery_Routes():
         self.route_db = db_name
         self.conn = sqlite3.connect(db_name)
         self.cur = self.conn.cursor()
-        self.cur.execute('''CREATE TABLE routes(file_id INT PRIMARY KEY, route_number INT,
+        self.cur.execute('''CREATE TABLE routes (file_id INT PRIMARY KEY, route_number INT,
                        route_letter TEXT)''')
         self.conn.commit()
         self.conn.close()
@@ -197,14 +197,14 @@ class Delivery_Routes():
         
         for r_number in self.route_collection.keys():
             fids = self.route_collection[r_number]
-            letter_map = list(map(fids, r_letters)) # [(fid1, 'A'), (fid2, 'B')]
+            letter_map = list(zip(fids, r_letters)) # [(fid1, 'A'), (fid2, 'B')]
 
             for fid_lttr in letter_map:
                 db_tple = (fid_lttr[0], # file ID
                            r_number,     # route number
                            fid_lttr[1])   # route letter
                 self.cur.execute("INSERT INTO routes VALUES (?, ?, ?)", db_tple)
-                self.cur.commit()   
+                self.conn.commit()   
         self.conn.close()
 
 class Source_File_Object():

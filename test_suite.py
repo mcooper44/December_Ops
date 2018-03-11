@@ -28,6 +28,8 @@ test2018 = bsg.Delivery_Routes(7, 1) # initialize Delivery_Routes() object
 test2018.set_hh_data_structure(hh_dictionary) # give it the dictionary
 test2018.get_status() # check status 
 test2018.sort_method() # sort the routes
+#test2018.create_route_db('2018_stest.db')
+test2018.log_route_in_db('2018_stest.db')
 test2018set = test2018.get_route_collection() # pull the routes out 
 
 # print the routes
