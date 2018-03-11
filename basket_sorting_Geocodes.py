@@ -197,7 +197,7 @@ class Delivery_Routes():
         
         for r_number in self.route_collection.keys():
             fids = self.route_collection[r_number]
-            letter_map = list(zip(fids, r_letters)) # [(fid1, 'A'), (fid2, 'B')]
+            letter_map = zip(fids, r_letters) # [(fid1, 'A'), (fid2, 'B')]
 
             for fid_lttr in letter_map:
                 db_tple = (fid_lttr[0], # file ID
