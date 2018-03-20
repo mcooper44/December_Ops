@@ -105,3 +105,4 @@ design_notes.txt
 *.db
 names
 *.txt
+config.py
