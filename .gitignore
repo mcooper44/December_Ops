@@ -102,6 +102,6 @@ ENV/
 
 .vscode
 design_notes.txt
-.db
+*.db
 names
 *.txt
