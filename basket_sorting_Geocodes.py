@@ -4,7 +4,11 @@ from collections import defaultdict
 from math import radians, cos, sin, asin, sqrt
 import csv
 import sqlite3
+import logging
+import datetime
 
+logging.basicConfig(filename='route_sorting.log',level=logging.INFO)
+logging.info('Running new session {}'.format(datetime.datetime.now()))
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
 
@@ -159,7 +163,10 @@ class Delivery_Routes():
                             if box_num + boxes <= max_box_count: # if we added this family to the pile and they didn't add too many boxes
                                 boxes += box_num
                                 assigned.append(fam) # add them to the assigned list
-                                applicant_route.append(fam) # add them to the route            
+                                applicant_route.append(fam) # add them to the route
+                                # log the info for verification later household 1, route number, family added to route, distance from H1
+                                logging.info('{} {} {} {}'.format(applicant, route_counter, fam, key))
+            
             if applicant_route:
                 print('we have iterated and made a route! It is {}'.format(applicant_route))
                 r_key = str(route_counter)
