@@ -1,6 +1,22 @@
-import parse_functions
-import tuple_collection
+import db_parse_functions as parse_functions
+import db_tuple_collection as tuple_collection
 import csv
+from collections import Counter, defaultdict
+
+class Field_Names():
+    '''
+    Provides a way to configure the field name indexes for the file and avoids having to 
+    make changes to the order of export and change lots of numbers in the different objects
+    '''
+    def __init__(self, config_file):
+        self.config_file= config_file # path to the config file
+        self.ID = dict() # a dictionary of field name : index number as int()
+
+    def init_index_dict(self):
+        with open(self.config_file) as f:
+            name_ID_reader = csv.reader(f)
+            for row in name_ID_reader:
+                self.ID[row[0]] = int(row[1])
 
 class Person():
     '''
@@ -18,8 +34,8 @@ class Person():
         self.person_Gender = person_summary[6] # HH Mem X - Gender
         self.person_Ethnicity = person_summary[7] # HH Mem X - Ethno
         self.person_Idenifies_As = person_summary[8] # HH Mem X - Disable etc.
-        self.person_Relationship_tag = person_summary[10] # HH Mem X - spouse etc.
-        self.person_HH_membership = person_summary[42] # Household ID
+        self.person_HH_membership = [] # a list of HH they have been a part of
+        self.HH_identities = defaultdict(list)
         Person.all_persons_set.add(int(self.person_ID))
 
     def person_description_string(self):
@@ -81,13 +97,25 @@ class Person():
         bool_ethno_profile = tuple_collection.person_ethno_profile(visi_minor, first_nat, metis, inuit, nat_applic, undisco)
         return bool_ethno_profile
     
-    def return_relationship_identity(self):
+    def add_HH_visit(self, HHID):
         '''
-        a function that will attempt to determine the relationship this person has to other people in the household
-        and return a tuple of (relationship_identity, ID_of_person_they_have_that_relationships_with)  
-        i.e. (spouse, 123456) perhaps in relationship to a household?
+        registers that this person has visited as part of a HH
         '''
-        pass
+        self.person_HH_membership.append(HHID)
+    
+    def return_count_of_HH_visits(self):
+        '''
+        returns a Counter of how many visits this Person has made in one or more
+        Households
+        '''
+        return Counter(self.person_HH_membership)
+    
+    def return_relationships(self):
+        '''
+        returns all of the different relationship roles that this person has 
+        been tagged with
+        '''
+        return self.HH_identities.values()
 
 class Household():
     '''
@@ -98,47 +126,73 @@ class Household():
     referrals provided and ethnicities
     '''
     
-    def __init__(self, Household_ID, Household_Main_Applicant, Household_Members):
+    def __init__(self, Household_ID):
         self.Household_ID = Household_ID
-        self.Household_Main_Applicant = Household_Main_Applicant
-        self.Household_Members = Household_Members # list of file ID's
-        self.Household_Relationships = None # TO DO: this will be some sort of datastructure 
-        
+        self.Visits = {} # a dictionary of visit objects keyed off of the seq. visit_id
+        self.Member_Roles = defaultdict(list) # TO DO: this will be some sort of datastructure Adults : [], Children : [] etc.
+        self.Member_Set = set()
         
 
+    def add_visit(self,HH_Visit_Number_Sequence_ID, Visit_Object):
+        '''
+        register a visit in the dictionary keyed to the sequential ID
+        '''
+        self.Visits[HH_Visit_Number_Sequence_ID] = Visit_Object
+
+    def add_members(self, fmember_ID_list):
+        '''
+        adds family members to the set of all members
+        '''
+        for person in fmember_ID_list:
+            self.Member_Set.add(person)
+    
+    def add_HH_role(self, relationship_object):
+        '''
+        captures the different roles that individuals play in the household
+        as the households change over time and members enter, leave or are born
+        into households
+        the relationship_object should be a dictionary created of Person_ID : 'role'
+        '''
+        for person_id_num in relationship_object.keys():
+            relationship = relationship_object[person_id_num]
+            self.Member_Roles[relationship].append(person_id_num)
+        
 class Visit_Line_Object():
     '''
     takes a line from the csv export 
-    a visit contains a household, visit date and hamper type
-    it has a number of methods to 
-    aggregate household data
-    create or add information to households
+    a visit is made up of people, organinzed in a household
+    a visit happens on a specific date and describes key services
+
+    The visit line object should extract this information and provides methods
+    for structuring it, so that person, HH and Visit objects can be created
 
     '''    
     visit_range_household_IDs= set() # set of all the HH ID's as integers
 
-    def __init__(self, visit_line):
-        self.visit_Date = visit_line[0] # Visit Date
-        self.main_applicant_ID = visit_line[1] # Main Applicant ID
-        self.main_applicant_Fname = visit_line[4] # Main Applicant First Name
-        self.main_applicant_Lname = visit_line[3] # Main Applicant Last Name
-        self.main_applicant_DOB = visit_line[5] # Main Applicant Date of Birth
-        self.main_applicant_Age = visit_line[6] # Main Applicant Age
-        self.main_applicant_Gender = visit_line[7] # Main Applicant Gender
-        self.main_applicant_Phone = visit_line[9].split(',') # Main Applicant Phone Numbers
-        self.main_applicant_Ident_Status = visit_line[10:13] # Marital status, Ethnicities, Self-identifies as
-        self.household_primary_SOI = visit_line[14] # Client Primary Source of Income
-        self.visit_Address = visit_line[38]
-        self.visit_City = visit_line[39]
-        self.visit_Postal_Code = visit_line[40]
-        self.visit_Household_ID = int(visit_line[42]) # Household ID - the unique file number used to identify households
-        self.visit_household_Size = visit_line[43] # The Number of people included in the visit
-        self.visit_household_Diet = parse_functions.diet_parser(visit_line[45]) # Dietary Conditions in a readable form
-        self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(visit_line[46])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
-        self.visit_Referral = visit_line[50] # Referrals Provided
-        self.visit_Family_Slice = visit_line[51:]
+    def __init__(self, visit_line, fnamedict): # line, dict of field name indexes
+        self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
+        self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
+        self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
+        self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
+        self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+        self.main_applicant_Age = visit_line[fnamedict['Client Age']] # Main Applicant Age
+        self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
+        self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
+        self.main_applicant_Ident_Status = visit_line[10:13]
+        self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
+        self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
+        self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']] # Client Primary Source of Income
+        self.visit_Address = visit_line[fnamedict['Address']]
+        self.visit_City = visit_line[fnamedict['City']]
+        self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
+        self.visit_Household_ID = int(visit_line[fnamedict['Household ID']]) # Household ID - the unique file number used to identify households
+        self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
+        self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
+        self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
+        self.visit_Referral = visit_line[fnamedict['Referrals Provided']] # Referrals Provided
+        self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
         self.HH_main_applicant_profile = None
-        self.HH_family_members_profile = None       
+        self.HH_family_members_profile = None  
     
     def get_main_applicant(self):
         '''
@@ -150,19 +204,16 @@ class Visit_Line_Object():
                 self.main_applicant_DOB,
                 self.main_applicant_Age,
                 self.main_applicant_Gender,
-                self.main_applicant_Ident_Status[1],
-                self.main_applicant_Ident_Status[2],
-                'main applicant',
-                self.visit_Household_ID)
+                self.main_applicant_Ethnicity,
+                self.main_applicant_Self_Identity)
             
-    def get_family_members_list(self):
+    def get_family_members(self):
         '''
         return a list of 
         family members sliced into tuples formatted to create Person() objects        
         
         '''
-        tuple_list_of_family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice, 
-                                                                                               self.visit_Household_ID)
+        tuple_list_of_family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice)
         
         return tuple_list_of_family_members
 
@@ -232,16 +283,14 @@ class Export_File():
         '''
         visit_count = self.visit_counter # start counting visits at 1 by default
         if self.file_object:
-            for _line in self.file_object:
-                visit_object = Visit_Line_Object(_line)
-                # do stuff with the Visit() like use it to build the datastructure
-                _main = visit_object.get_main_applicant()
-                _family = visit_object.get_family_members_list()
-                _family_ids = [x[0] for x in _family]
-                relationships = tuple([x[10] for x in _family])
-                _hh_type = visit_object.get_household_type(relationships)
+            for visit_line in self.file_object:
+                # extract people in visit
+                # create person objects for them
+                # extract HH_ID
+                # make a Household object
+                # assign a visit to that Household
+                pass
 
-                
                 
         else:
             print('The file {} has not been opened yet.'.format(self.path))
@@ -275,4 +324,11 @@ class Export_File():
             print('there is no summary.  Use the set_summary_of_visits method to generate one.')
             return None
 
+
+if __name__ == "__main__":
+    fnames = Field_Names('header_config.csv')
+    fnames.init_index_dict()
+    L2F_2017 = Export_File('Dummy_File.csv')
+    L2F_2017.open_file()
+    L2F_2017.parse_visits()
 

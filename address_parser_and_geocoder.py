@@ -10,7 +10,6 @@ import string
 import sqlite3
 import config	
 
-
 #api key
 myapikey = config.api_key
 
@@ -42,9 +41,6 @@ gift_req_agency = 5 # should return an agency or sponsor
 
 
 address_errors = []
-
-
-
 
 # databases
 #points_db = TinyDB('points.json')

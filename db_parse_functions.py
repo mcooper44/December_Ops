@@ -42,7 +42,7 @@ def extract_families_into_list_slices(l,n):
         yield l[i:i +n]
 
 
-def create_list_of_family_members_as_tuples(family_range_frm_visit, hh_identity_num, len_of_family_sub_slice=11):
+def create_list_of_family_members_as_tuples(family_range_frm_visit, len_of_family_sub_slice=11):
     '''    
     family_range_frm_visit = list slice of family member details
     This functions filters the family and returns a list of tuples that
@@ -60,7 +60,7 @@ def create_list_of_family_members_as_tuples(family_range_frm_visit, hh_identity_
         #print(family_member)
         if it_is_a_full_slice(family_member): # if it is a full list then proceed 
             # us a tool to filter out and format the family member info in the order of a Person()
-            family_slice_lambda = lambda x : (x[0], x[3], x[2], x[4], x[5], x[6], x[7], x[8], x[10], hh_identity_num)
+            family_slice_lambda = lambda x : (x[0], x[3], x[2], x[4], x[5], x[6], x[7], x[8])
             # and add it to the container in the order of a Person()           
             list_of_family_member_tuples.append(family_slice_lambda(family_member))
     # finally return the list of family member tuples.  They can now be turned into person

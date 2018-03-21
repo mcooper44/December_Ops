@@ -1,0 +1,216 @@
+Visit Date,0
+Client ID,1
+Client Status,2
+Client Last Name,3
+Client First Name,4
+Client Date of Birth,5
+Client Age,6
+Client Gender,7
+Client Email Addresses,8
+Client Phone Numbers,9
+Client Marital Status,10
+Client Ethnicities,11
+Client Self-Identifies As,12
+Client Post Secondary Student,13
+Client Primary Income Source,14
+Client Child Support,15
+Client Child Tax Benefit,16
+Client Children's Aid,17
+Client Canadian Pension Plan (CPP),18
+Client Employment Insurance (EI),19
+Client Employed: Full-Time,20
+Client Employed: Part-Time,21
+Client Family Support,22
+Client Immigration,23
+Client No Income,24
+Client Old Age Security (OAS),25
+Client Ontario Works (OW),26
+Client Other,27
+Client Private Disability,28
+Client Private Pension,29
+Client Ontario Disability Support Program (ODSP),30
+Client Scholarships,31
+Client Self Employed,32
+Client Spouse/Family Support,33
+Client Student Loans,34
+Client Temporary Work,35
+Client Universal Child Benefit,36
+Client WSIB,37
+Address,38
+City,39
+Postal Code,40
+Housing Type,41
+Household ID,42
+Household Size,43
+Household Languages,44
+Dietary Considerations,45
+Quantity,46
+Visit Reasons,47
+Food Provided,48
+Items Provided,49
+Referrals Provided,50
+HH Mem 1- ID,51
+HH Mem 1- Status,52
+HH Mem 1- Last Name,53
+HH Mem 1- First Name,54
+HH Mem 1- Date of Birth,55
+HH Mem 1- Age,56
+HH Mem 1- Gender,57
+HH Mem 1- Ethnicities,58
+HH Mem 1- Self-Identifies As,59
+HH Mem 1- Post Secondary Student,60
+HH Mem 1- Relationship,61
+HH Mem 2- ID,62
+HH Mem 2- Status,63
+HH Mem 2- Last Name,64
+HH Mem 2- First Name,65
+HH Mem 2- Date of Birth,66
+HH Mem 2- Age,67
+HH Mem 2- Gender,68
+HH Mem 2- Ethnicities,69
+HH Mem 2- Self-Identifies As,70
+HH Mem 2- Post Secondary Student,71
+HH Mem 2- Relationship,72
+HH Mem 3- ID,73
+HH Mem 3- Status,74
+HH Mem 3- Last Name,75
+HH Mem 3- First Name,76
+HH Mem 3- Date of Birth,77
+HH Mem 3- Age,78
+HH Mem 3- Gender,79
+HH Mem 3- Ethnicities,80
+HH Mem 3- Self-Identifies As,81
+HH Mem 3- Post Secondary Student,82
+HH Mem 3- Relationship,83
+HH Mem 4- ID,84
+HH Mem 4- Status,85
+HH Mem 4- Last Name,86
+HH Mem 4- First Name,87
+HH Mem 4- Date of Birth,88
+HH Mem 4- Age,89
+HH Mem 4- Gender,90
+HH Mem 4- Ethnicities,91
+HH Mem 4- Self-Identifies As,92
+HH Mem 4- Post Secondary Student,93
+HH Mem 4- Relationship,94
+HH Mem 5- ID,95
+HH Mem 5- Status,96
+HH Mem 5- Last Name,97
+HH Mem 5- First Name,98
+HH Mem 5- Date of Birth,99
+HH Mem 5- Age,100
+HH Mem 5- Gender,101
+HH Mem 5- Ethnicities,102
+HH Mem 5- Self-Identifies As,103
+HH Mem 5- Post Secondary Student,104
+HH Mem 5- Relationship,105
+HH Mem 6- ID,106
+HH Mem 6- Status,107
+HH Mem 6- Last Name,108
+HH Mem 6- First Name,109
+HH Mem 6- Date of Birth,110
+HH Mem 6- Age,111
+HH Mem 6- Gender,112
+HH Mem 6- Ethnicities,113
+HH Mem 6- Self-Identifies As,114
+HH Mem 6- Post Secondary Student,115
+HH Mem 6- Relationship,116
+HH Mem 7- ID,117
+HH Mem 7- Status,118
+HH Mem 7- Last Name,119
+HH Mem 7- First Name,120
+HH Mem 7- Date of Birth,121
+HH Mem 7- Age,122
+HH Mem 7- Gender,123
+HH Mem 7- Ethnicities,124
+HH Mem 7- Self-Identifies As,125
+HH Mem 7- Post Secondary Student,126
+HH Mem 7- Relationship,127
+HH Mem 8- ID,128
+HH Mem 8- Status,129
+HH Mem 8- Last Name,130
+HH Mem 8- First Name,131
+HH Mem 8- Date of Birth,132
+HH Mem 8- Age,133
+HH Mem 8- Gender,134
+HH Mem 8- Ethnicities,135
+HH Mem 8- Self-Identifies As,136
+HH Mem 8- Post Secondary Student,137
+HH Mem 8- Relationship,138
+HH Mem 9- ID,139
+HH Mem 9- Status,140
+HH Mem 9- Last Name,141
+HH Mem 9- First Name,142
+HH Mem 9- Date of Birth,143
+HH Mem 9- Age,144
+HH Mem 9- Gender,145
+HH Mem 9- Ethnicities,146
+HH Mem 9- Self-Identifies As,147
+HH Mem 9- Post Secondary Student,148
+HH Mem 9- Relationship,149
+HH Mem 10- ID,150
+HH Mem 10- Status,151
+HH Mem 10- Last Name,152
+HH Mem 10- First Name,153
+HH Mem 10- Date of Birth,154
+HH Mem 10- Age,155
+HH Mem 10- Gender,156
+HH Mem 10- Ethnicities,157
+HH Mem 10- Self-Identifies As,158
+HH Mem 10- Post Secondary Student,159
+HH Mem 10- Relationship,160
+HH Mem 11- ID,161
+HH Mem 11- Status,162
+HH Mem 11- Last Name,163
+HH Mem 11- First Name,164
+HH Mem 11- Date of Birth,165
+HH Mem 11- Age,166
+HH Mem 11- Gender,167
+HH Mem 11- Ethnicities,168
+HH Mem 11- Self-Identifies As,169
+HH Mem 11- Post Secondary Student,170
+HH Mem 11- Relationship,171
+HH Mem 12- ID,172
+HH Mem 12- Status,173
+HH Mem 12- Last Name,174
+HH Mem 12- First Name,175
+HH Mem 12- Date of Birth,176
+HH Mem 12- Age,177
+HH Mem 12- Gender,178
+HH Mem 12- Ethnicities,179
+HH Mem 12- Self-Identifies As,180
+HH Mem 12- Post Secondary Student,181
+HH Mem 12- Relationship,182
+HH Mem 13- ID,183
+HH Mem 13- Status,184
+HH Mem 13- Last Name,185
+HH Mem 13- First Name,186
+HH Mem 13- Date of Birth,187
+HH Mem 13- Age,188
+HH Mem 13- Gender,189
+HH Mem 13- Ethnicities,190
+HH Mem 13- Self-Identifies As,191
+HH Mem 13- Post Secondary Student,192
+HH Mem 13- Relationship,193
+HH Mem 14- ID,194
+HH Mem 14- Status,195
+HH Mem 14- Last Name,196
+HH Mem 14- First Name,197
+HH Mem 14- Date of Birth,198
+HH Mem 14- Age,199
+HH Mem 14- Gender,200
+HH Mem 14- Ethnicities,201
+HH Mem 14- Self-Identifies As,202
+HH Mem 14- Post Secondary Student,203
+HH Mem 14- Relationship,204
+HH Mem 15- ID,205
+HH Mem 15- Status,206
+HH Mem 15- Last Name,207
+HH Mem 15- First Name,208
+HH Mem 15- Date of Birth,209
+HH Mem 15- Age,210
+HH Mem 15- Gender,211
+HH Mem 15- Ethnicities,212
+HH Mem 15- Self-Identifies As,213
+HH Mem 15- Post Secondary Student,214
+HH Mem 15- Relationship,215
