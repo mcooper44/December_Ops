@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 import csv
@@ -9,10 +8,12 @@ import usaddress
 import string
 import sqlite3
 import config	
-
+import logging
 
 #api key
 myapikey = config.api_key
+
+logging.basicConfig(file_name='address_parse.log',level=logging.INFO)
 
 #containers
 Point = namedtuple('Point', 'housenumber street city lat lng county accuracy status') # setup a container type for null returns
@@ -47,8 +48,6 @@ address_errors = []
 
 
 # databases
-#points_db = TinyDB('points.json')
-#visits_db = TinyDB('christmas_visits.json')
 address_db = 'addresses.sqlite'
 
 #files
@@ -57,8 +56,6 @@ file_to_output = 'xmax caseload to geocode.csv'
 
 
 # ## Address Parsing
-
-
 
 def street_number_parser(number_string):
     '''
@@ -105,7 +102,6 @@ def address_builder(parsed_string):
             built_string = built_string + parsed_string['PlaceName'] + ' ' + parsed_string['StateName']
         
     return built_string.strip()  # strip out the leading white space
-
 
 def full_address_parser(addr):
     '''
@@ -159,9 +155,6 @@ def coroutine_decorator(func):
         return cr
     return wrap
 
-
-
-
 def geolookupfunction(address):
     """
     this function takes an address from the map_address() function and passes it
@@ -175,30 +168,25 @@ def geolookupfunction(address):
             address_string = str(address)
             print('attempting to ping google api with {}'.format(address_string))
             result = geocoder.google(address_string,key=myapikey)
-            
             if result is not None:
                 if result != 'ZERO_RESULTS':
                     print('ping a success with status: {}'.format(result.status))
                     return result
                 else:
+                    logging.info('ZERO_RESULTS {}'.format(address)
                     return null_list
             else:
                 print('no result, returning null_list.  Status is: {}'.format(result.status))
+                logging.info('Result is None with {} on {}'.format(result.status, address))
                 return null_list
         except Exception as boo:
-            print('GEOLOOKUPFUNCTION FAILURE:  ', boo)
-            raise
+            logging.info('Exception {} raised'.format(boo))
             return null_list
-        
     else:
         print('Error: there was no address')
         return null_list
 
-
-
 # ## Hamper Class and file data parsing
-
-
 
 def diet_parser(diet_string):
     '''
@@ -222,7 +210,6 @@ def street_from_buzz(address_string):
     l2f export
     '''
     split_line = address_string.partition(',')
-    print(split_line[0])
     return split_line[0]
 
 class Hamper(object):
@@ -262,7 +249,6 @@ class Hamper(object):
         '''              
         paddress = self.parsed_l2f_address
         return '{}, {}, Ontario, Canada'.format(paddress.return_value, self.city)
-        # return str(paddress.return_value + ', ' + self.city + ', ' + 'Ontario, Canada')
 
     def out_put(self):
         '''
@@ -274,7 +260,6 @@ class Hamper(object):
         parsed_tuple = self.parsed_l2f_address
         returned_plus_city = [self.address, self.city]
         out_put_string = req_details + client_details + returned_plus_city
-        #print(out_put_string)
         return out_put_string                      
 
     def coded_in_db(self):
@@ -295,7 +280,6 @@ class Hamper(object):
         # check to see if we can parse down the address
         if parsed_tuple.flag: # flag = True, therefore, we have parsed the address and can procede
             returned_plus_city = "{}, {}".format(parsed_tuple.return_value, self.city)
-            # print('returned_plus_city = {}'.format(returned_plus_city))
             
             # see if we have coded it before
             conn = sqlite3.connect(address_db) # connect to address database
@@ -305,15 +289,11 @@ class Hamper(object):
             
             id_exists = c.fetchone()
             
-            print('asked database if {} and it says: {}'.format(returned_plus_city, id_exists))
-            
             if id_exists:
                 print('found database entry - retrieving geopoints')
-
                 # capture the geopoints logged in the database
                 l_l = ggeo_points(id_exists[5], id_exists[6])
                 self.google_points = [l_l.lat, l_l.long] # set the geopoints so they can be accessed
-                #print('google points = {}'.format(self.google_points))
                 
                 conn.close()
                 return_val = False # yes, we have coded it in the database, so return False
@@ -341,7 +321,6 @@ class Hamper(object):
             conn = sqlite3.connect(address_db) # connect to address database
             c = conn.cursor() # cursor object
             c.execute("INSERT INTO Errors (client_id, o_street, o_city, error_string) VALUES (?,?,?,?)",i_values)
-            #print('wrote to Errors')
             conn.commit()
             conn.close()
             # we have logged it as an error so return False 
@@ -381,18 +360,12 @@ class Hamper(object):
         #print('wrote to Errors with google api error')
         conn.commit()
         conn.close()
-
     
     def g_points(self):
         '''
         returns the geocodes extracted from the database
         '''        
         return self.google_points
-        
-        
-
-
-
 
 @coroutine_decorator
 def router():
@@ -489,7 +462,6 @@ try:
         print('input file open')
         next(address_file, None) # skip headers
         for address in address_file:
-            #print(address)
             router.send(address)
 except Exception as error:
     print('Error opening file:  {}'.format(error))
@@ -497,16 +469,8 @@ except Exception as error:
 router.close()
 print('router function closed')
         
-
-
-
-
-
 for x in address_errors:
     print('{}'.format(x))
-
-
-
 
 print(len(address_errors))
 
