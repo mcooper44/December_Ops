@@ -13,6 +13,11 @@ class Field_Names():
         self.ID = dict() # a dictionary of field name : index number as int()
 
     def init_index_dict(self):
+        '''
+        this method creates a dictionary using the config_file that can be used to extract
+        data points from the line and provides an easier way to keep track of where the
+        varioius fields are
+        '''
         with open(self.config_file) as f:
             name_ID_reader = csv.reader(f)
             for row in name_ID_reader:
@@ -21,9 +26,9 @@ class Field_Names():
 class Person():
     '''
     A person is a part of a household, they have a profile of personal information
-    and a relationship to a main applicant
+    and a relationship to a main applicants and an implied relationship to other 
+    household members
     '''    
-    all_persons_set = set() # a set of all id's as integers
 
     def __init__(self, person_summary):
         self.person_ID = person_summary[0] # HH Mem X - ID
@@ -35,8 +40,7 @@ class Person():
         self.person_Ethnicity = person_summary[7] # HH Mem X - Ethno
         self.person_Idenifies_As = person_summary[8] # HH Mem X - Disable etc.
         self.person_HH_membership = [] # a list of HH they have been a part of
-        self.HH_identities = defaultdict(list)
-        Person.all_persons_set.add(int(self.person_ID))
+        self.HH_Identities = defaultdict(list) # a dictionary of HHIDs and the relationship tag they have in that HH
 
     def person_description_string(self):
         '''
@@ -103,6 +107,12 @@ class Person():
         '''
         self.person_HH_membership.append(HHID)
     
+    def add_HH_relationship(self, HHID, relationship)
+        '''
+        registers are HHID and a list of relationships they have been tagged with while a member of that HHID
+        '''
+        self.Household_Identities[HHID].append(relationship)
+
     def return_count_of_HH_visits(self):
         '''
         returns a Counter of how many visits this Person has made in one or more
@@ -167,7 +177,6 @@ class Visit_Line_Object():
     for structuring it, so that person, HH and Visit objects can be created
 
     '''    
-    visit_range_household_IDs= set() # set of all the HH ID's as integers
 
     def __init__(self, visit_line, fnamedict): # line, dict of field name indexes
         self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
@@ -178,7 +187,6 @@ class Visit_Line_Object():
         self.main_applicant_Age = visit_line[fnamedict['Client Age']] # Main Applicant Age
         self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
         self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
-        self.main_applicant_Ident_Status = visit_line[10:13]
         self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
         self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
         self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']] # Client Primary Source of Income
@@ -192,8 +200,15 @@ class Visit_Line_Object():
         self.visit_Referral = visit_line[fnamedict['Referrals Provided']] # Referrals Provided
         self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
         self.HH_main_applicant_profile = None
-        self.HH_family_members_profile = None  
-    
+        self.HH_family_members_profile = None      
+
+    def get_address(self):
+        '''
+        returns the address for the visit formatted as a tuple address, city, postal code
+        '''
+        return (self.visit_Address, self.visit_City, self.visit_Postal_Code)
+
+
     def get_main_applicant(self):
         '''
         returns a tuple of information in the order necessary to setup a Person()
@@ -240,8 +255,15 @@ class Visit():
     Contains data related to a visit : 
     a date, a main applicant, family_members, household_id, a type
     '''
-    pass
-    
+   def __init__(self, vnumber, date, main_applicant, family_members, householdID):
+       self.vnumber = vnumber
+       self.vdate = date
+       self.main_applicant = main_applicant
+       self.family_members = family_members
+       self.householdID = householdID
+
+
+
 class Export_File():
     '''
     a file object for the L2F export. This will be the single method for interacting 
@@ -253,6 +275,10 @@ class Export_File():
         feeds the data into the database
 
     '''   
+    Person_Table = dict()
+    Household_Table = dict()
+    Visit_Table = dict()
+    
     def __init__(self, file_path, start_counter_at = 1):
         self.path = file_path
         self.file_object = None
