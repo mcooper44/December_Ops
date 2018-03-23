@@ -6,9 +6,9 @@ def hamper_type_parser(days_of_food):
     typically 1 = baby hamper + no food, and 3 = full food hamper
     '''
     if days_of_food == 1:    
-        return 'Baby Hamper'
+        return False
     else:
-        return 'Food Hamper'
+        return True
 
 def diet_parser(diet_string):
     '''

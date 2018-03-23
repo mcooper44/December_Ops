@@ -16,7 +16,11 @@ class Field_Names():
         '''
         this method creates a dictionary using the config_file that can be used to extract
         data points from the line and provides an easier way to keep track of where the
-        varioius fields are
+        varioius fields are.
+        the config file should be a csv of: 
+        field name, 0
+        field name, 1
+        field name, 2...
         '''
         with open(self.config_file) as f:
             name_ID_reader = csv.reader(f)
@@ -107,11 +111,11 @@ class Person():
         '''
         self.person_HH_membership.append(HHID)
     
-    def add_HH_relationship(self, HHID, relationship)
+    def add_HH_relationship(self, HHID, relationship):
         '''
         registers are HHID and a list of relationships they have been tagged with while a member of that HHID
         '''
-        self.Household_Identities[HHID].append(relationship)
+        self.HH_Identities[HHID].append(relationship)
 
     def return_count_of_HH_visits(self):
         '''
@@ -125,7 +129,7 @@ class Person():
         returns all of the different relationship roles that this person has 
         been tagged with
         '''
-        return self.HH_identities.values()
+        return self.HH_Identities.values()
 
 class Household():
     '''
@@ -193,7 +197,7 @@ class Visit_Line_Object():
         self.visit_Address = visit_line[fnamedict['Address']]
         self.visit_City = visit_line[fnamedict['City']]
         self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
-        self.visit_Household_ID = int(visit_line[fnamedict['Household ID']]) # Household ID - the unique file number used to identify households
+        self.visit_Household_ID = str(visit_line[fnamedict['Household ID']]) # Household ID - the unique file number used to identify households
         self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
         self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
@@ -208,12 +212,32 @@ class Visit_Line_Object():
         '''
         return (self.visit_Address, self.visit_City, self.visit_Postal_Code)
 
+    def get_hh_id_number(self):
+        '''
+        returns hh id field number
+        '''
+        return self.visit_Household_ID
+
+    def get_visit_date(self):
+        '''
+        returns the visit date
+        '''
+        return self.visit_Date
+
+    def has_family(self):
+        '''
+        returns boolian value indicating False for single people, True for families
+        '''
+        if self.visit_household_Size == 1:
+            return False
+        else:
+            return True
 
     def get_main_applicant(self):
         '''
         returns a tuple of information in the order necessary to setup a Person()
         '''
-        return (self.main_applicant_ID, 
+        return  (self.main_applicant_ID, 
                 self.main_applicant_Lname, 
                 self.main_applicant_Fname,
                 self.main_applicant_DOB,
@@ -232,12 +256,12 @@ class Visit_Line_Object():
         
         return tuple_list_of_family_members
 
-    def get_hamper_type(self):
+    def is_hamper(self):
         '''
-        returns the type of hamper - Baby or Food
+        returns the type of hamper - Baby (False) or Food (True)
         when the class is initialized, a helper function figures this out
         '''
-        return self.visit_food_hamper_type
+        return self.visit_food_hamper_type # True or False
 
     def get_household_type(self, relationship_collection):
         '''
@@ -255,14 +279,13 @@ class Visit():
     Contains data related to a visit : 
     a date, a main applicant, family_members, household_id, a type
     '''
-   def __init__(self, vnumber, date, main_applicant, family_members, householdID):
+    def __init__(self, vnumber, date, main_applicant, family_members, householdID, address):
        self.vnumber = vnumber
        self.vdate = date
        self.main_applicant = main_applicant
        self.family_members = family_members
        self.householdID = householdID
-
-
+       self.address = address
 
 class Export_File():
     '''
@@ -279,10 +302,11 @@ class Export_File():
     Household_Table = dict()
     Visit_Table = dict()
     
-    def __init__(self, file_path, start_counter_at = 1):
+    def __init__(self, file_path, header_names, start_counter_at = 1):
         self.path = file_path
         self.file_object = None
-        self.visit_counter = start_counter_at
+        self.headers = header_names
+        self.line_counter = start_counter_at
         self.visit_structure = None # some sort of container yet to be determined
         self.summary_profile_object = None                
     
@@ -307,7 +331,6 @@ class Export_File():
         and sub objects
         adds things to the visit_structure Export_File Class variable
         '''
-        visit_count = self.visit_counter # start counting visits at 1 by default
         if self.file_object:
             for visit_line in self.file_object:
                 # extract people in visit
@@ -315,7 +338,48 @@ class Export_File():
                 # extract HH_ID
                 # make a Household object
                 # assign a visit to that Household
-                pass
+                line_number = str(self.line_counter)
+                line_object = Visit_Line_Object(visit_line, self.headers)
+                vdate = line_object.get_visit_date()
+                mapp = None
+                famapp = None
+                people_in_visit = [] # list of tuples
+                household_id_number = None
+                visit_address = None
+                people_in_visit_id_list = []
+                household_object = None
+                visit_object = None
+                
+                if line_object.is_hamper():
+                    mapp = line_object.get_main_applicant
+                    people_in_visit.append(mapp)                     
+                    visit_address = line_object.get_address()
+                    household_id_number = line_object.get_hh_id_number()
+                if line_object.has_family():
+                    famapp = line_object.get_family_members()
+                    people_in_visit.extend(famapp)
+
+                for individual in people_in_visit:
+                    file_id_number = str(individual[0])
+                    people_in_visit_id_list.append(file_id_number)
+                    if file_id_number not in Export_File.Person_Table.keys():
+                        Export_File.Person_Table[file_id_number] = Person(individual)
+                        # need some code to map out relationships                                        
+
+                    Export_File.Person_Table[file_id_number].add_HH_visit(household_id_number)
+
+                if household_id_number not in Export_File.Household_Table.keys():
+                    household_object = Household(household_id_number)
+                    Export_File.Household_Table[household_id_number] = household_object
+                
+                if line_number not in Export_File.Visit_Table.keys():
+                    visit_object = Visit(line_number, vdate, mapp, famapp, household_id_number, visit_address)
+                    Export_File.Visit_Table[line_number] = visit_object
+
+                household_object.add_members(people_in_visit_id_list)
+                household_object.add_visit(line_number, visit_object)
+
+                self.line_counter +=1               
 
                 
         else:
@@ -354,7 +418,7 @@ class Export_File():
 if __name__ == "__main__":
     fnames = Field_Names('header_config.csv')
     fnames.init_index_dict()
-    L2F_2017 = Export_File('Dummy_File.csv')
+    L2F_2017 = Export_File('Dummy_File.csv',fnames)
     L2F_2017.open_file()
     L2F_2017.parse_visits()
 
