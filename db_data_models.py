@@ -277,7 +277,7 @@ class Visit_Line_Object():
 class Visit():
     '''
     Contains data related to a visit : 
-    a date, a main applicant, family_members, household_id, a type
+    a date, a main applicant, family_members, household_id, address
     '''
     def __init__(self, vnumber, date, main_applicant, family_members, householdID, address):
        self.vnumber = vnumber
@@ -286,6 +286,37 @@ class Visit():
        self.family_members = family_members
        self.householdID = householdID
        self.address = address
+
+    def get_address(self):
+        '''
+        returns the tuple of (street address, city, pcode)
+        '''
+        return self.address
+
+    def get_city(self):
+        '''
+        returns the city only from the address tuple collection
+        '''
+        return self.address[1]
+    
+    def get_postalcode(self):
+        return self.address[2]
+
+    def get_visit_month(self):
+        pass
+
+    def get_family_size(self):
+        '''
+        returns the family size as an int based on adding len(familymembers) + 1 
+        '''
+        return len(self.family_members) + 1
+    
+    def get_people_served(self):
+        '''
+        returns a tuple of the file ids of the people served
+        '''
+        pass
+
 
 class Export_File():
     '''
