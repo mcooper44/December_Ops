@@ -36,13 +36,13 @@ class Person():
 
     def __init__(self, person_summary):
         self.person_ID = person_summary[0] # HH Mem X - ID
-        self.person_Fname = person_summary[3] # HH Mem X - Fname 
-        self.person_Lname = person_summary[2] # HH Mem X - Lname
-        self.person_DOB = person_summary[4] # HH Mem X - Date of Birth
-        self.person_Age = person_summary[5] # HH Mem X - Age
-        self.person_Gender = person_summary[6] # HH Mem X - Gender
-        self.person_Ethnicity = person_summary[7] # HH Mem X - Ethno
-        self.person_Idenifies_As = person_summary[8] # HH Mem X - Disable etc.
+        self.person_Fname = person_summary[2] # HH Mem X - Fname 
+        self.person_Lname = person_summary[1] # HH Mem X - Lname
+        self.person_DOB = person_summary[3] # HH Mem X - Date of Birth
+        self.person_Age = person_summary[4] # HH Mem X - Age
+        self.person_Gender = person_summary[5] # HH Mem X - Gender
+        self.person_Ethnicity = person_summary[6] # HH Mem X - Ethno
+        self.person_Idenifies_As = person_summary[7] # HH Mem X - Disable etc.
         self.person_HH_membership = [] # a list of HH they have been a part of
         self.HH_Identities = defaultdict(list) # a dictionary of HHIDs and the relationship tag they have in that HH
 
@@ -55,7 +55,13 @@ class Person():
                                                                                            self.person_DOB,
                                                                                            self.person_Gender)
         return i_am_string
-  
+    
+    def __str__(self):
+        return '{} {} {}'.format(self.person_ID, self.person_Fname, self.person_Lname)
+
+    def __repr__(self):
+        return 'Person: {} {} {}'.format(self.person_ID, self.person_Fname, self.person_Lname)
+
     def Get_Self_Ident_Profile_Tuple(self):
         '''
         returns a named tuple with boolian values for each of the different categories coded in the database
@@ -170,7 +176,13 @@ class Household():
         for person_id_num in relationship_object.keys():
             relationship = relationship_object[person_id_num]
             self.Member_Roles[relationship].append(person_id_num)
-        
+
+    def __str__(self):
+        return '{} has {} members and {} visits'.format(self.Household_ID, len(self.Member_Set), len(self.Visits))
+
+    def __repr__(self):
+        return 'Household {} has the following members {}'.format(self.Household_ID, self.Member_Set)
+
 class Visit_Line_Object():
     '''
     takes a line from the csv export 
@@ -317,6 +329,11 @@ class Visit():
         '''
         pass
 
+    def __str__(self):
+        return '{} had main applicant {}'.format(self.vnumber, self.main_applicant)
+
+    def __repr__(self):
+        return 'Visit #{} Had applicant: {}'.format(self.vnumber, self.main_applicant)
 
 class Export_File():
     '''
@@ -346,15 +363,11 @@ class Export_File():
         opens the csv file and sets the file_object variable 
         to be the file minus headers
         '''
-        try:
-            with open(self.path, newline='') as csv_file:
-                visit_reader = csv.reader(csv_file)
-                next(visit_reader, None) # skip headers
-                print('File Open.')
-                self.file_object = visit_reader               
-
-        except:
-            print('...Error in opening csv file...')
+        csv_file = open(self.path, newline='')
+        visit_reader = csv.reader(csv_file)
+        next(visit_reader, None) # skip headers
+        print('File Open.')
+        self.file_object = visit_reader               
 
     def parse_visits(self):
         '''
@@ -382,7 +395,7 @@ class Export_File():
                 visit_object = None
                 
                 if line_object.is_hamper():
-                    mapp = line_object.get_main_applicant
+                    mapp = line_object.get_main_applicant()
                     people_in_visit.append(mapp)                     
                     visit_address = line_object.get_address()
                     household_id_number = line_object.get_hh_id_number()
@@ -449,7 +462,9 @@ class Export_File():
 if __name__ == "__main__":
     fnames = Field_Names('header_config.csv')
     fnames.init_index_dict()
-    L2F_2017 = Export_File('Dummy_File.csv',fnames)
+    L2F_2017 = Export_File('test_export.csv',fnames.ID)
     L2F_2017.open_file()
     L2F_2017.parse_visits()
-
+    print(L2F_2017.Person_Table)
+    print(L2F_2017.Household_Table)
+    print(L2F_2017.Visit_Table)
