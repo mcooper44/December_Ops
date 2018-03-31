@@ -354,7 +354,7 @@ class Export_File():
         self.path = file_path
         self.file_object = None
         self.headers = header_names
-        self.line_counter = start_counter_at
+        self.line_counter = start_counter_at # the index for the visits 1 = visit one
         self.visit_structure = None # some sort of container yet to be determined
         self.summary_profile_object = None                
     
