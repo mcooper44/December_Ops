@@ -74,23 +74,16 @@ def full_address_parser(addr):
             if address_type == 'Street Address':
                 # parse the address with the other helper functions
                 p_add = address_builder(tagged_address)
-                # print('ORIGINAL: {}   PARSED: {}'.format(addr, p_add))
                 return usaparsed_street_address(True, addr, p_add)
             else:                
-                #print('parsing error 1')
-                #print('address_type Error: STRING INPUT WAS {}'.format(addr))
                 # log address format error and flag for manual follow up
                 return usaparsed_street_address(False, addr, 'address_type Error')
                 address_errors.append(addr)
         except usaddress.RepeatedLabelError as e:
-            #print('parsing error 2')
-            #print('RepeatedLabelError: PARSED: {} ORIGINAL: {}'.format(e.parsed_string, e.original_string))
             # log address format error and flag for manual follow up            
             return usaparsed_street_address(False, addr, 'RepeatedLabelError')
             address_errors.append(addr)
         except KeyError:
-            #print('parsing error 3')
-            #print('KeyError: {} STRING INPUT WAS {}'.format(address_type, addr))
             # log address format error - could not parse properly
             return usaparsed_street_address(False, addr, 'KeyError')
             address_errors.append(addr)
@@ -99,6 +92,14 @@ def full_address_parser(addr):
         #print('parsing error 4')
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
+
+
+def street_from_buzz(address_string):
+    '''
+    helper function for clipping the junk line out of the address string.
+    '''
+    split_line = address_string.partition(',')
+    return split_line[0]
 
 def returnGeocoderResult(address,myapikey):
     """
@@ -112,12 +113,12 @@ def returnGeocoderResult(address,myapikey):
         if result is not None:
             if result.status == 'OK':
                 return result
-            elif result.status == 'OVER_QUERY_LIMIT'
-                logging.info('{} yeilded {}'.format(address,result.status)
+            elif result.status == 'OVER_QUERY_LIMIT':
+                logging.info('{} yeilded {}'.format(address,result.status))
                 return False
             else:
-                print('no result, returning null_list.  Status is: {}'.format(result.status))
                 logging.info('Result is None with {} on {}'.format(result.status, address))
+                return None
         else:
             return None
     except Exception as boo:
@@ -135,7 +136,12 @@ class AddressParser():
         self.parsed = {}
 
     def parse(self, address):
-        if address not in self.parsed:
+        '''
+        give it an address with extraneous details and it will give you
+        a string of 'unit number street' or False
+        '''
+        key_list = list(self.errors.keys()) + list(self.parsed.keys())
+        if address not in key_list:
             # need to insert database management stuff here
             worked, in_put, out_put  = full_address_parser(address)
             if worked:
@@ -144,6 +150,11 @@ class AddressParser():
             else:
                 self.errors[in_put] = out_put
                 return False
+        else:
+            if address in self.errors:
+                return False
+            else:
+                return self.parsed[address]
     
     def is_not_error(self, address):
         # need to insert some database ping here
@@ -154,20 +165,25 @@ class AddressParser():
 
 
 class Coordinates():
-    def __init__(self, api_key):
-        self.api_key = api_key
+    def __init__(self):
+        self.api_key = myapikey
         self.can_proceed = True
         self.at = {}
+        self.calls = 0
 
     def lookup(self, address):
         '''
-        looks up an address and returns a tuple
+        looks up an address and returns a named tuple
         of address string, house_number, street, lat, lng
         using the returnGeocoderResult function
+        if the function returns False - we are at the limit
+        if the function returns None some non fatal error 
+        has been returned by google - better luck next time?
         '''
         address_tpl = namedtuple('address_tpl', 'g_address_str,house_number,street,city,lat,lng')
         if self.can_proceed:
             response = returnGeocoderResult(address, self.api_key)
+            self.calls += 1
             if response.ok:
                 lat, lng = response.lat, response.lng
                 g_address_str = response.address
@@ -180,12 +196,13 @@ class Coordinates():
                         city,
                         lat,
                         lng)
-            if response == False:
+            if response == False: # returnGeocoderResult returns False when limit reached
                 self.can_proceed = False
                 return response
             else:
-                # insert log call here
                 return None
+        else:
+            raise Exception('Over_Query_Limit')
    
     def add_coordinates(self, address, address_tuple):
         '''
@@ -205,31 +222,29 @@ class Coordinates():
         else: 
             return False 
     
-    def has_been_coded(self, address_db):
-        pass
+    def __str__(self):
+        return 'Coordinate Object. can_proceed  = {} after {} calls'.format(self.can_proceed, self.calls)
 
-def street_from_buzz(address_string):
-    '''
-    helper function for clipping the junk line out of the address string.
-    '''
-    split_line = address_string.partition(',')
-    return split_line[0]
 
-if name == __main__:
+if __name__ == '__main__':
     coordinate_manager = Coordinates()
     address_parser = AddressParser() 
     # open file ...
     # parse visit line
+    line_obj = [('301 Front Street West', 'Toronto','Ontario'), ('100 Regina Street South', 'Waterloo','Ontario' )]
     for line in line_obj:
-        address, city, _ = line.get_address()
+        #address, city, _ = line.get_address()
+        address, city, _ = line
         decon_address = address_parser.parse(address)
         if decon_address is not False:
             address_for_api = '{} {} Ontario, Canada'.format(decon_address, city)
-            coding_result = coordinate_manager.lookup(address_for_api)
+            coding_result = coordinate_manager.lookup(address_for_api,myapikey)
             if coding_result:
                 # we have a successful result - log it in teh database
-            
+                pass   
             if coding_result == None:
+                pass
                 # we are not at the limit - some error occured.  try again?
             if coding_result == False:
+                pass
                 # we are at the limit - cool down 
