@@ -223,12 +223,49 @@ class Coordinates():
             return False 
     
     def __str__(self):
-        return 'Coordinate Object. can_proceed  = {} after {} calls'.format(self.can_proceed, self.calls)
+        return 'Coordinate Object. can_proceed  = {} and has made {} calls'.format(self.can_proceed, self.calls)
 
+class SQLdatabase():
+    def __init__(self):
+        self.conn = None
+        self.cursor = None
+        self.name = None
+        
+    def connect_to(self, name, create = False):
+        if name:
+            self.name = name
+        try:
+            self.conn = sqlite3.connect(name)
+            self.cursor = self.conn.cursor()
+            if create:
+                self.cursor.execute("""CREATE TABLE IF NOT EXISTS address (source_street text,
+                                                                         source_city text,
+                                                                         google_full_str text,
+                                                                         google_house_num text,
+                                                                         google_street text,
+                                                                         google_city text,
+                                                                         lat text,
+                                                                         lng text)""")
+                self.conn.commit()
+        except Error as e:
+            print(e)
+            
+
+    def insert_into_db(self, values):
+        if not self.name:
+            print('establish connection first')
+            return False
+        self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?)', values)
+        self.conn.commit()
+        
+    def close_db(self):
+        self.conn.close()
 
 if __name__ == '__main__':
     coordinate_manager = Coordinates()
-    address_parser = AddressParser() 
+    address_parser = AddressParser()
+    dbase = SQLdatabase()
+    dbase.connect_to('atest.db')
     # open file ...
     # parse visit line
     line_obj = [('301 Front Street West', 'Toronto','Ontario'), ('100 Regina Street South', 'Waterloo','Ontario' )]
@@ -241,10 +278,19 @@ if __name__ == '__main__':
             coding_result = coordinate_manager.lookup(address_for_api,myapikey)
             if coding_result:
                 # we have a successful result - log it in teh database
-                pass   
+                dbase_input = (address, 
+                               city, 
+                               coding_result.g_address_str,
+                               coding_result.house_number,
+                               coding_result.street,
+                               ccoding_result.city,
+                               coding_result.lat,
+                               coding_result.lng)
+                dbase.insert_into_db(dbase_input)   
             if coding_result == None:
                 pass
                 # we are not at the limit - some error occured.  try again?
             if coding_result == False:
                 pass
-                # we are at the limit - cool down 
+                # we are at the limit - cool down
+    dbase.close_db()
