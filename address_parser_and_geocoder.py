@@ -5,15 +5,19 @@ from collections import namedtuple
 import usaddress
 import string
 import sqlite3
-import config	
 import logging
+import config	# secret api key source
+
 
 #api key
 myapikey = config.api_key
 
-logging.basicConfig(file_name='address_parse.log',level=logging.INFO)
+# error logging is handled by functions that carry out parsing and geocoding
+# they pass False or None on to the objects using them and are handled by
+# the objects
+logging.basicConfig(filename='address_parse_coding.log',level=logging.INFO)
 
-# ## Address Parsing
+## Address Parsing
 
 def street_number_parser(number_string):
     '''
@@ -34,6 +38,7 @@ def address_builder(parsed_string):
     takes the ordered dictionary object (parsed_string) created by the usaddress.tag method 
     and builds a string out of the relevant tagged elements, stripping out the address number
     from the 123-44 Main Street formatted addresses using the street_number_parser() function
+    refer to https://usaddress.readthedocs.io/en/latest/ for full definitions of all the tags
     '''
     parse_keys = parsed_string.keys()
     built_string = ''  
@@ -42,21 +47,21 @@ def address_builder(parsed_string):
         street_number = street_number_parser(parsed_string['AddressNumber'])
         built_string = built_string + street_number + ' '
         #print(built_string)    
-    if 'StreetNamePreDirectional' in parse_keys:
+    if 'StreetNamePreDirectional' in parse_keys: # a direction before a street name
         street_number = street_number_parser(parsed_string['StreetNamePreDirectional'])
         built_string = built_string + street_number + ' '
         #print(built_string)
     if 'StreetName' in parse_keys:
         built_string = built_string + parsed_string['StreetName'] + ' '
         #print(built_string)
-    if 'StreetNamePostType' in parse_keys:
+    if 'StreetNamePostType' in parse_keys: # a street type that comes after a street name, e.g. ‘Avenue’
         built_string = built_string + parsed_string['StreetNamePostType'] + ' '
         #print(built_string)
-    if 'StreetNamePostDirectional' in parse_keys:
+    if 'StreetNamePostDirectional' in parse_keys: # a direction after a street name, e.g. ‘North’
         built_string = built_string + parsed_string['StreetNamePostDirectional']
         #print(built_string)
     if 'StateName' in parse_keys:
-        if 'PlaceName' in parse_keys:
+        if 'PlaceName' in parse_keys: # City
             built_string = built_string + parsed_string['PlaceName'] + ' ' + parsed_string['StateName']
         
     return built_string.strip()  # strip out the leading white space
@@ -77,22 +82,21 @@ def full_address_parser(addr):
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
+                logging.info('Could not derive Street Address from {}'.format(addr))
                 return usaparsed_street_address(False, addr, 'address_type Error')
-                address_errors.append(addr)
-        except usaddress.RepeatedLabelError as e:
-            # log address format error and flag for manual follow up            
+                
+        except usaddress.RepeatedLabelError:
+            # log address format error and flag for manual follow up
+            logging.info('RepeatedLabelError from {}'.format(addr))            
             return usaparsed_street_address(False, addr, 'RepeatedLabelError')
-            address_errors.append(addr)
         except KeyError:
-            # log address format error - could not parse properly
-            return usaparsed_street_address(False, addr, 'KeyError')
-            address_errors.append(addr)
+            logging.info('KeyError from {}'.format(addr))
+            return usaparsed_street_address(False, addr, 'KeyError')            
             
     else:
-        #print('parsing error 4')
+        logging.info('Blank Field Error from {}'.format(addr))
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
-
 
 def street_from_buzz(address_string):
     '''
@@ -163,7 +167,6 @@ class AddressParser():
         else:
             return False
 
-
 class Coordinates():
     def __init__(self):
         self.api_key = myapikey
@@ -184,6 +187,11 @@ class Coordinates():
         if self.can_proceed:
             response = returnGeocoderResult(address, self.api_key)
             self.calls += 1
+            if response == False: # returnGeocoderResult returns False when limit reached
+                self.can_proceed = False
+                return response
+            if response == None:
+                return None
             if response.ok:
                 lat, lng = response.lat, response.lng
                 g_address_str = response.address
@@ -196,11 +204,9 @@ class Coordinates():
                         city,
                         lat,
                         lng)
-            if response == False: # returnGeocoderResult returns False when limit reached
-                self.can_proceed = False
-                return response
             else:
-                return None
+                # huh. that's odd. Recieved something other than valid object, False or None
+                raise Exception('Error in lookup method of Coordinates Class')
         else:
             raise Exception('Over_Query_Limit')
    
@@ -244,53 +250,79 @@ class SQLdatabase():
                                                                          google_house_num text,
                                                                          google_street text,
                                                                          google_city text,
-                                                                         lat text,
-                                                                         lng text)""")
+                                                                         lat real,
+                                                                         lng real)""")
                 self.conn.commit()
-        except Error as e:
-            print(e)
-            
-
+        except:
+            print('error with database connection')
+         
     def insert_into_db(self, values):
         if not self.name:
             print('establish connection first')
             return False
         self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?)', values)
         self.conn.commit()
-        
+
+    def is_in_db(self, parsed_address, source_city):
+        '''
+        this method checks to see if an address has been logged in the database already.
+        https://stackoverflow.com/questions/25387537/sqlite3-operationalerror-near-syntax-error
+        sql always kills me on this and it takes me forever to find and recomprehend Martins answer
+        :(
+        '''
+
+        self.cursor.execute("SELECT * FROM address WHERE source_street=? AND source_city=?",(parsed_address,source_city,))
+        db_ping = self.cursor.fetchone()        
+        if db_ping:
+            return True
+        else:
+            return False
+
     def close_db(self):
+        '''
+        closes the database
+        '''
         self.conn.close()
 
 if __name__ == '__main__':
-    coordinate_manager = Coordinates()
-    address_parser = AddressParser()
-    dbase = SQLdatabase()
+    coordinate_manager = Coordinates() # I lookup and manage coordinate data
+    address_parser = AddressParser() # I strip out extraneous junk from address strings
+    dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('atest.db')
     # open file ...
     # parse visit line
-    line_obj = [('301 Front Street West', 'Toronto','Ontario'), ('100 Regina Street South', 'Waterloo','Ontario' )]
+    line_obj = [('555-301 Front Street West', 'Toronto','Ontario'),
+                ('222-100 Regina Street South', 'Waterloo','Ontario'),
+                ('888-301 Front Street West', 'Toronto','Ontario'),
+                ('mr. James TIBERIUS Kirk', 'Starship Enterprise', 'TV'),
+                ('555 Jupiter Road','The Planet Mars', 'Outerspace')]
     for line in line_obj:
         #address, city, _ = line.get_address()
-        address, city, _ = line
-        decon_address = address_parser.parse(address)
+        address, city, _ = line # 555-301 Front Street West, Toronto
+        decon_address = address_parser.parse(address) # returns '301 Front Street West'
         if decon_address is not False:
-            address_for_api = '{} {} Ontario, Canada'.format(decon_address, city)
-            coding_result = coordinate_manager.lookup(address_for_api,myapikey)
-            if coding_result:
-                # we have a successful result - log it in teh database
-                dbase_input = (address, 
-                               city, 
-                               coding_result.g_address_str,
-                               coding_result.house_number,
-                               coding_result.street,
-                               ccoding_result.city,
-                               coding_result.lat,
-                               coding_result.lng)
-                dbase.insert_into_db(dbase_input)   
-            if coding_result == None:
-                pass
-                # we are not at the limit - some error occured.  try again?
-            if coding_result == False:
-                pass
-                # we are at the limit - cool down
+            if dbase.is_in_db(decon_address, city) == False:
+                address_for_api = '{} {} Ontario, Canada'.format(decon_address, city)
+                coding_result = coordinate_manager.lookup(address_for_api)
+                if coding_result:
+                    # we have a successful result - log it in teh database
+                    dbase_input = (decon_address, 
+                                city, 
+                                coding_result.g_address_str,
+                                coding_result.house_number,
+                                coding_result.street,
+                                coding_result.city,
+                                coding_result.lat,
+                                coding_result.lng)
+                    dbase.insert_into_db(dbase_input) 
+                if coding_result == None:
+                    pass
+                    print('error in geocoding. check logs for {}'.format(decon_address))
+                if coding_result == False:
+                    pass
+                    # we are at the limit - cool down
+            else:
+                print('already coded {}!'.format(decon_address))
+        else:            
+            print('error in parsing address. check logs for {} at {}'.format(address_parser.errors[address],address))
     dbase.close_db()

@@ -335,7 +335,7 @@ class Visit():
     def __repr__(self):
         return 'Visit #{} Had applicant: {}'.format(self.vnumber, self.main_applicant)
 
-class Export_File():
+class Export_File_Parser():
     '''
     a file object for the L2F export. This will be the single method for interacting 
     with the export and getting the information we need out of it
@@ -352,7 +352,7 @@ class Export_File():
     
     def __init__(self, file_path, header_names, start_counter_at = 1):
         self.path = file_path
-        self.file_object = None
+        self.file_object = None # csv reader object set by open_file method
         self.headers = header_names
         self.line_counter = start_counter_at # the index for the visits 1 = visit one
         self.visit_structure = None # some sort of container yet to be determined
@@ -406,19 +406,19 @@ class Export_File():
                 for individual in people_in_visit:
                     file_id_number = str(individual[0])
                     people_in_visit_id_list.append(file_id_number)
-                    if file_id_number not in Export_File.Person_Table.keys():
-                        Export_File.Person_Table[file_id_number] = Person(individual)
+                    if file_id_number not in Export_File_Parser.Person_Table.keys():
+                        Export_File_Parser.Person_Table[file_id_number] = Person(individual)
                         # need some code to map out relationships                                        
 
-                    Export_File.Person_Table[file_id_number].add_HH_visit(household_id_number)
+                    Export_File_Parser.Person_Table[file_id_number].add_HH_visit(household_id_number)
 
-                if household_id_number not in Export_File.Household_Table.keys():
+                if household_id_number not in Export_File_Parser.Household_Table.keys():
                     household_object = Household(household_id_number)
-                    Export_File.Household_Table[household_id_number] = household_object
+                    Export_File_Parser.Household_Table[household_id_number] = household_object
                 
-                if line_number not in Export_File.Visit_Table.keys():
+                if line_number not in Export_File_Parser.Visit_Table.keys():
                     visit_object = Visit(line_number, vdate, mapp, famapp, household_id_number, visit_address)
-                    Export_File.Visit_Table[line_number] = visit_object
+                    Export_File_Parser.Visit_Table[line_number] = visit_object
 
                 household_object.add_members(people_in_visit_id_list)
                 household_object.add_visit(line_number, visit_object)
@@ -428,13 +428,6 @@ class Export_File():
                 
         else:
             print('The file {} has not been opened yet.'.format(self.path))
-
-    def log_visits_to_DB(self):
-        '''
-        This function will log the visit to the database.
-        Perhaps this should get moved somewhere else?
-        '''
-        pass
 
     def set_summary_of_visits(self):
         '''
@@ -460,11 +453,11 @@ class Export_File():
 
 
 if __name__ == "__main__":
-    fnames = Field_Names('header_config.csv')
-    fnames.init_index_dict()
-    L2F_2017 = Export_File('test_export.csv',fnames.ID)
-    L2F_2017.open_file()
-    L2F_2017.parse_visits()
+    fnames = Field_Names('header_config.csv') # open header config file
+    fnames.init_index_dict() # build the dictionary of header name : index
+    L2F_2017 = Export_File_Parser('test_export.csv',fnames.ID) 
+    L2F_2017.open_file() # open the file
+    L2F_2017.parse_visits() # parse the visits into the different objects
     print(L2F_2017.Person_Table)
     print(L2F_2017.Household_Table)
     print(L2F_2017.Visit_Table)
