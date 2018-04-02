@@ -7,6 +7,7 @@ import string
 import sqlite3
 import logging
 import config	# secret api key source
+import db_data_models as dbdm 
 
 
 #api key
@@ -192,7 +193,7 @@ class Coordinates():
                 return response
             if response == None:
                 return None
-            if response.ok:
+            if response.ok: # Either True or False
                 lat, lng = response.lat, response.lng
                 g_address_str = response.address
                 city = response.city
@@ -289,16 +290,16 @@ if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('atest.db')
-    # open file ...
-    # parse visit line
-    line_obj = [('555-301 Front Street West', 'Toronto','Ontario'),
-                ('222-100 Regina Street South', 'Waterloo','Ontario'),
-                ('888-301 Front Street West', 'Toronto','Ontario'),
-                ('mr. James TIBERIUS Kirk', 'Starship Enterprise', 'TV'),
-                ('555 Jupiter Road','The Planet Mars', 'Outerspace')]
-    for line in line_obj:
-        #address, city, _ = line.get_address()
-        address, city, _ = line # 555-301 Front Street West, Toronto
+    
+    fnames = dbdm.Field_Names('header_config.csv') # I am header names
+    fnames.init_index_dict() 
+    export_file = dbdm.Export_File_Parser('test_export.csv',fnames.ID) # I open a csv
+    export_file.open_file()
+
+    for line in export_file.file_object: # I am a csv object
+        line_object = dbdm.Visit_Line_Object(line,fnames.ID)
+        address, city, _ = line_object.get_address()
+        
         decon_address = address_parser.parse(address) # returns '301 Front Street West'
         if decon_address is not False:
             if dbase.is_in_db(decon_address, city) == False:
