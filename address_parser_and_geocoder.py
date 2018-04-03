@@ -7,7 +7,7 @@ import string
 import sqlite3
 import logging
 import config	# secret api key source
-import db_data_models as dbdm 
+import db_data_models as dbdm # classes for dealing with L2F exports
 
 
 #api key
@@ -40,12 +40,16 @@ def address_builder(parsed_string):
     and builds a string out of the relevant tagged elements, stripping out the address number
     from the 123-44 Main Street formatted addresses using the street_number_parser() function
     refer to for full definitions of all the tags
+    
     '''
     parse_keys = parsed_string.keys()
-    built_string = ''  
-    
+    built_string = str()  
+    flags = {'MultiUnit': False, 'Direction': False}
     if 'AddressNumber' in parse_keys:
-        street_number = street_number_parser(parsed_string['AddressNumber'])
+        source_value = parsed_string['AddressNumber']
+        street_number = street_number_parser(source_value)
+        if len(source_value) > street_number:
+            flags['MultiUnit'] = True
         built_string = '{} {}'.format(built_string, street_number)
         
     if 'StreetNamePreDirectional' in parse_keys: # a direction before a street name e.g. North Waterloo Street
@@ -58,13 +62,15 @@ def address_builder(parsed_string):
         built_string = '{} {}'.format(built_string, parsed_string['StreetNamePostType'])
         
     if 'StreetNamePostDirectional' in parse_keys: # a direction after a street name, e.g. ‘North’
-        built_string = '{} {}'.format(built_string, parsed_string['StreetNamePostDirectional'])
+        source_string = parsed_string['StreetNamePostDirectional']
+        flags['Direction'] = True
+        built_string = '{} {}'.format(built_string, source_string)
         
     if 'StateName' in parse_keys:
         if 'PlaceName' in parse_keys: # City
             built_string = '{} {}, {}'.format(built_string, parsed_string['PlaceName'], parsed_string['StateName'])
         
-    return built_string.strip()  # strip out the leading white space
+    return (built_string.strip(), flags)  # strip out the leading white space
 
 def full_address_parser(addr):
     '''
