@@ -39,31 +39,30 @@ def address_builder(parsed_string):
     takes the ordered dictionary object (parsed_string) created by the usaddress.tag method 
     and builds a string out of the relevant tagged elements, stripping out the address number
     from the 123-44 Main Street formatted addresses using the street_number_parser() function
-    refer to https://usaddress.readthedocs.io/en/latest/ for full definitions of all the tags
+    refer to for full definitions of all the tags
     '''
     parse_keys = parsed_string.keys()
     built_string = ''  
     
     if 'AddressNumber' in parse_keys:
         street_number = street_number_parser(parsed_string['AddressNumber'])
-        built_string = built_string + street_number + ' '
-        #print(built_string)    
-    if 'StreetNamePreDirectional' in parse_keys: # a direction before a street name
-        street_number = street_number_parser(parsed_string['StreetNamePreDirectional'])
-        built_string = built_string + street_number + ' '
-        #print(built_string)
+        built_string = '{} {}'.format(built_string, street_number)
+        
+    if 'StreetNamePreDirectional' in parse_keys: # a direction before a street name e.g. North Waterloo Street
+        built_string = '{} {}'.format(built_string, parsed_string['StreetNamePreDirectional'])
+        
     if 'StreetName' in parse_keys:
-        built_string = built_string + parsed_string['StreetName'] + ' '
-        #print(built_string)
+        built_string = '{} {}'.format(built_string, parsed_string['StreetName'])
+        
     if 'StreetNamePostType' in parse_keys: # a street type that comes after a street name, e.g. ‘Avenue’
-        built_string = built_string + parsed_string['StreetNamePostType'] + ' '
-        #print(built_string)
+        built_string = '{} {}'.format(built_string, parsed_string['StreetNamePostType'])
+        
     if 'StreetNamePostDirectional' in parse_keys: # a direction after a street name, e.g. ‘North’
-        built_string = built_string + parsed_string['StreetNamePostDirectional']
-        #print(built_string)
+        built_string = '{} {}'.format(built_string, parsed_string['StreetNamePostDirectional'])
+        
     if 'StateName' in parse_keys:
         if 'PlaceName' in parse_keys: # City
-            built_string = built_string + parsed_string['PlaceName'] + ' ' + parsed_string['StateName']
+            built_string = '{} {}, {}'.format(built_string, parsed_string['PlaceName'], parsed_string['StateName'])
         
     return built_string.strip()  # strip out the leading white space
 
@@ -71,6 +70,7 @@ def full_address_parser(addr):
     '''
     takes a street address e.g. 123 Main Street and attempts to break it into 
     the relevant chunks
+    usaddress.tag() returns a tuple of (OrderedDict, str) with the str being a designator of typex
     returns a tuple (True, original address, parsed address) or (False, original address, error code)       
     '''
     usaparsed_street_address = namedtuple('usaparsed_street_address','flag original return_value')
