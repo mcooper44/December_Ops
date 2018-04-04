@@ -40,16 +40,20 @@ def address_builder(parsed_string):
     and builds a string out of the relevant tagged elements, stripping out the address number
     from the 123-44 Main Street formatted addresses using the street_number_parser() function
     refer to for full definitions of all the tags
-    
+    the flags var is for helping to flag addresses that have a direction or multiunits
+    this is important because it allows us to identify addresses that are missing key
+    features for down stream delivery
+    as such, we return a tuple of the parsed address and the flags variable
     '''
     parse_keys = parsed_string.keys()
     built_string = str()  
-    flags = {'MultiUnit': False, 'Direction': False}
+    flags = {'MultiUnit': False, 'Direction': False} # for diffing key aspects of addresses
     if 'AddressNumber' in parse_keys:
         source_value = parsed_string['AddressNumber']
         street_number = street_number_parser(source_value)
-        if len(source_value) > street_number:
-            flags['MultiUnit'] = True
+        
+        if len(str(source_value)) > len(str(street_number)): # if we need to parse out some extra junk
+            flags['MultiUnit'] = True # flag this address as a multiunit building
         built_string = '{} {}'.format(built_string, street_number)
         
     if 'StreetNamePreDirectional' in parse_keys: # a direction before a street name e.g. North Waterloo Street
@@ -70,7 +74,8 @@ def address_builder(parsed_string):
         if 'PlaceName' in parse_keys: # City
             built_string = '{} {}, {}'.format(built_string, parsed_string['PlaceName'], parsed_string['StateName'])
         
-    return (built_string.strip(), flags)  # strip out the leading white space
+    final_string = built_string.strip()    
+    return (final_string, flags)  # strip out the leading white space, return the flags
 
 def full_address_parser(addr):
     '''
@@ -85,7 +90,7 @@ def full_address_parser(addr):
             tagged_address, address_type = usaddress.tag(addr)
             if address_type == 'Street Address':
                 # parse the address with the other helper functions
-                p_add = address_builder(tagged_address)
+                p_add = address_builder(tagged_address) # tuple of (parsed address, flags)
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
@@ -153,11 +158,11 @@ class AddressParser():
         '''
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
         if address not in key_list:
-            # need to insert database management stuff here
+            
             worked, in_put, out_put  = full_address_parser(address)
-            if worked:
+            if worked:                
                 self.parsed[in_put] = out_put
-                return out_put
+                return out_put # a tuple of address, flags
             else:
                 self.errors[in_put] = out_put
                 return False
@@ -245,6 +250,9 @@ class SQLdatabase():
         self.name = None
         
     def connect_to(self, name, create = False):
+        '''
+        establish a connection and cursor and if necessary create the address table
+        '''
         if name:
             self.name = name
         try:
@@ -258,7 +266,9 @@ class SQLdatabase():
                                                                          google_street text,
                                                                          google_city text,
                                                                          lat real,
-                                                                         lng real)""")
+                                                                         lng real,
+                                                                         unit_flag boolean,
+                                                                         dir_flag boolean)""")
                 self.conn.commit()
         except:
             print('error with database connection')
@@ -267,7 +277,7 @@ class SQLdatabase():
         if not self.name:
             print('establish connection first')
             return False
-        self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?)', values)
+        self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?,?,?)', values)
         self.conn.commit()
 
     def is_in_db(self, parsed_address, source_city):
@@ -285,6 +295,27 @@ class SQLdatabase():
         else:
             return False
 
+    def get_coordinates(self, input_address, input_city):
+        
+        self.cursor.execute("SELECT lat, lng FROM address WHERE source_street=? AND source_city=?",(input_address, input_city,))
+        result = self.cursor.fetchone()
+        if result:
+            return result
+        else:
+            return False
+
+    def pull_flags_at(self, lat, lng):
+        '''
+        returns all the source addresses and their flags at a given lat,lng
+        this will allow us to identify partial addresses to follow up on
+        '''
+        self.cursor.execute("SELECT source_street, source_city, unit_flag, dir_flag FROM address WHERE lat=? AND lng =?",(lat,lng,))
+        flag_query = self.cursor.fetchall()
+        if flag_query:
+            return flag_query
+        else:
+            return False
+
     def close_db(self):
         '''
         closes the database
@@ -295,7 +326,7 @@ if __name__ == '__main__':
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-    dbase.connect_to('atest.db')
+    dbase.connect_to('atest.db', create=False)
     
     fnames = dbdm.Field_Names('header_config.csv') # I am header names
     fnames.init_index_dict() 
@@ -306,30 +337,35 @@ if __name__ == '__main__':
         line_object = dbdm.Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         
-        decon_address = address_parser.parse(address) # returns '301 Front Street West'
+        decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
         if decon_address is not False:
-            if dbase.is_in_db(decon_address, city) == False:
-                address_for_api = '{} {} Ontario, Canada'.format(decon_address, city)
-                coding_result = coordinate_manager.lookup(address_for_api)
+            simplified_address, flags = decon_address
+            if dbase.is_in_db(simplified_address, city) == False:
+                address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
+                coding_result = coordinate_manager.lookup(address_for_api) # returns False, None or tuple
                 if coding_result:
                     # we have a successful result - log it in teh database
-                    dbase_input = (decon_address, 
+                    flagged_unit = flags['MultiUnit'] # True or False
+                    flagged_dir = flags['Direction'] # True or False
+                    dbase_input = (simplified_address, 
                                 city, 
                                 coding_result.g_address_str,
                                 coding_result.house_number,
                                 coding_result.street,
                                 coding_result.city,
                                 coding_result.lat,
-                                coding_result.lng)
+                                coding_result.lng,
+                                flagged_unit,
+                                flagged_dir)
                     dbase.insert_into_db(dbase_input) 
                 if coding_result == None:
                     pass
-                    print('error in geocoding. check logs for {}'.format(decon_address))
+                    print('error in geocoding. check logs for {}'.format(simplified_address))
                 if coding_result == False:
                     pass
                     # we are at the limit - cool down
             else:
-                print('already coded {}!'.format(decon_address))
+                print('already coded {}!'.format(simplified_address))
         else:            
             print('error in parsing address. check logs for {} at {}'.format(address_parser.errors[address],address))
     dbase.close_db()

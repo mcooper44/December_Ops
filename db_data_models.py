@@ -191,10 +191,13 @@ class Visit_Line_Object():
 
     The visit line object should extract this information and provides methods
     for structuring it, so that person, HH and Visit objects can be created
+    
+    it also has a flag to indicate if there are xmas features to extract
+    and provides methods to do so if needed #TO DO
 
     '''    
 
-    def __init__(self, visit_line, fnamedict): # line, dict of field name indexes
+    def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
         self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
@@ -217,6 +220,13 @@ class Visit_Line_Object():
         self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
         self.HH_main_applicant_profile = None
         self.HH_family_members_profile = None      
+
+        if december_flag:
+            self.xmas_ID = visit_line[fnamedict['Request ID']]
+            self.xmas_food_provided = visit_line[fnamedict['Foods Provided']]
+            self.xmas_items_provided = visit_line[fnamedict['Items Provided']]
+            self.xmas_notes = visit_line[fnamedict['Notes Recorded']]
+            self.xmas_application_site = visit_line[fnamedict['Requesting Agency']]
 
     def get_address(self):
         '''
@@ -257,7 +267,13 @@ class Visit_Line_Object():
                 self.main_applicant_Gender,
                 self.main_applicant_Ethnicity,
                 self.main_applicant_Self_Identity)
-            
+
+    def get_applicant_ID(self):
+        '''
+        returns main applicant ID
+        '''
+        return self.main_applicant_ID
+
     def get_family_members(self):
         '''
         return a list of 
