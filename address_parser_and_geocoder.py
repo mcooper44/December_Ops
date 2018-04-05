@@ -1,7 +1,7 @@
 import csv
 import geocoder
 import time
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import usaddress
 import string
 import sqlite3
@@ -185,11 +185,21 @@ class AddressParser():
             return False
 
 class Coordinates():
+    '''
+    An object for looking up and storing geocoded address information
+    '''
     def __init__(self):
         self.api_key = myapikey
         self.can_proceed = True
-        self.at = {}
         self.calls = 0
+        self.coordinates =  defaultdict(dict)
+        self.dict_template = {'Errors': {'Name_Type': False,
+                                         'Dir_Type': False, 
+                                         'City_Error': False, 
+                                         'Eval_Flag': False,
+                                         'MultiUnit': False}, 
+                              'Address_Strings': set(), 
+                              'Households': set()}
 
     def lookup(self, address):
         '''
@@ -227,23 +237,34 @@ class Coordinates():
         else:
             raise Exception('Over_Query_Limit')
    
-    def add_coordinates(self, address, address_tuple):
+    def add_coordinates(self, lat, lng):
         '''
-        takes a named tuple and adds it to the self.at dict with an 
-        address string as the key
+        adds a coordinate to the tree structure we are using to store data about the coordinate
         '''
-        self.at[address] = address_tuple
+        if not self.coordinates[lat][lng]:
+            self.coordinates[lat][lng] = self.dict_template
+    
+    def update_error(self, lat, lng, error_type):
+        '''
+        update an error in the coordinate tree. Defaults are:
+        'Name_Type': False, # ave, street
+        'Dir_Type': False,  # north, south
+        'City_Error': False, # One address is Kitchener, another Toronto
+        'Eval_Flag': False # a mismatch of name or dir type has occured
+        '''
+        self.coordinates[lat][lng]['Errors'][error_type] = True
 
-    def return_address(self, address):
+    def add_address(self, lat, lng, address):
         '''
-        returns the values parsed from the google json response
-        stored in the self.at dictionary
-        otherwise it returns False if it has not been stored there
+        add/update an address in the coordinate tree
+        '''       
+        self.coordinates[lat][lng]['Address_Strings'].add(address)
+    
+    def add_household(self, lat, lng, household):
         '''
-        if address in self.at:
-            return self.at[address]
-        else: 
-            return False 
+        add a household to the coordinate tree
+        '''
+        self.coordinates[lat][lng]['Households'].add(household)        
     
     def __str__(self):
         return 'Coordinate Object. can_proceed  = {} and has made {} calls'.format(self.can_proceed, self.calls)
