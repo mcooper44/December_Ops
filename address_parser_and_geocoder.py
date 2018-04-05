@@ -47,13 +47,14 @@ def address_builder(parsed_string):
     '''
     parse_keys = parsed_string.keys()
     built_string = str()  
-    flags = {'MultiUnit': False, 'Direction': False} # for diffing key aspects of addresses
+    flags = {'MultiUnit': False, 'Direction': False, 'PostType': False} # for diffing key aspects of addresses
     if 'AddressNumber' in parse_keys:
         source_value = parsed_string['AddressNumber']
         street_number = street_number_parser(source_value)
         
-        if len(str(source_value)) > len(str(street_number)): # if we need to parse out some extra junk
+        if len(str(source_value)) > len(str(street_number)): # if we needed to parse out some extra junk
             flags['MultiUnit'] = True # flag this address as a multiunit building
+        
         built_string = '{} {}'.format(built_string, street_number)
         
     if 'StreetNamePreDirectional' in parse_keys: # a direction before a street name e.g. North Waterloo Street
@@ -63,14 +64,18 @@ def address_builder(parsed_string):
         built_string = '{} {}'.format(built_string, parsed_string['StreetName'])
         
     if 'StreetNamePostType' in parse_keys: # a street type that comes after a street name, e.g. ‘Avenue’
+        flags['PostType'] = True
         built_string = '{} {}'.format(built_string, parsed_string['StreetNamePostType'])
         
-    if 'StreetNamePostDirectional' in parse_keys: # a direction after a street name, e.g. ‘North’
-        source_string = parsed_string['StreetNamePostDirectional']
+    if 'StreetNamePostDirectional' in parse_keys: # a direction after a street name, e.g. ‘North’        
         flags['Direction'] = True
-        built_string = '{} {}'.format(built_string, source_string)
-        
+        built_string = '{} {}'.format(built_string, parsed_string['StreetNamePostDirectional'])
+
+    if 'PlaceName' in parse_keys: # City
+        built_string = '{} {}'.format(built_string, parsed_string['PlaceName'])
+
     if 'StateName' in parse_keys:
+        built_string = '{}, {}'.format(built_string, parsed_string['StateName'])
         if 'PlaceName' in parse_keys: # City
             built_string = '{} {}, {}'.format(built_string, parsed_string['PlaceName'], parsed_string['StateName'])
         
@@ -268,7 +273,8 @@ class SQLdatabase():
                                                                          lat real,
                                                                          lng real,
                                                                          unit_flag boolean,
-                                                                         dir_flag boolean)""")
+                                                                         dir_flag boolean,
+                                                                         post_type boolean)""")
                 self.conn.commit()
         except:
             print('error with database connection')
@@ -277,7 +283,7 @@ class SQLdatabase():
         if not self.name:
             print('establish connection first')
             return False
-        self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?,?,?)', values)
+        self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?,?,?,?)', values)
         self.conn.commit()
 
     def is_in_db(self, parsed_address, source_city):
@@ -309,7 +315,7 @@ class SQLdatabase():
         returns all the source addresses and their flags at a given lat,lng
         this will allow us to identify partial addresses to follow up on
         '''
-        self.cursor.execute("SELECT source_street, source_city, unit_flag, dir_flag FROM address WHERE lat=? AND lng =?",(lat,lng,))
+        self.cursor.execute("SELECT source_street, source_city, unit_flag, dir_flag, post_type FROM address WHERE lat=? AND lng =?",(lat,lng,))
         flag_query = self.cursor.fetchall()
         if flag_query:
             return flag_query
@@ -326,7 +332,7 @@ if __name__ == '__main__':
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-    dbase.connect_to('atest.db', create=False)
+    dbase.connect_to('atest.db', create=True)
     
     fnames = dbdm.Field_Names('header_config.csv') # I am header names
     fnames.init_index_dict() 
@@ -347,6 +353,7 @@ if __name__ == '__main__':
                     # we have a successful result - log it in teh database
                     flagged_unit = flags['MultiUnit'] # True or False
                     flagged_dir = flags['Direction'] # True or False
+                    flagged_post_type = flags['PostType']
                     dbase_input = (simplified_address, 
                                 city, 
                                 coding_result.g_address_str,
@@ -356,7 +363,8 @@ if __name__ == '__main__':
                                 coding_result.lat,
                                 coding_result.lng,
                                 flagged_unit,
-                                flagged_dir)
+                                flagged_dir,
+                                flagged_post_type)
                     dbase.insert_into_db(dbase_input) 
                 if coding_result == None:
                     pass
