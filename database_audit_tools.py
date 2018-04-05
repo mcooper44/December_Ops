@@ -97,7 +97,7 @@ def evaluate_post_types(source_types, db_types):
     source_types = the address we wish to compare against an address from the database
     db_types = the result of passing an address from the database to to parse_post_types
 
-    returns a ...
+    returns a tuple of boolean values (street name error, direction error, mismatch flag error)
     '''
     source_nt_tpl, source_dt_tpl, s_e_flag = source_types
     db_nt_tpl, db_dt_tpl, db_e_flag = db_types
@@ -115,27 +115,29 @@ def evaluate_post_types(source_types, db_types):
 
     return (sn_error, dt_error, fl_error)
 
+
+
+
 if __name__ == '__main__':
-    address_parser = AddressParser() # I strip out extraneous junk from address strings
+    address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
     
-    dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
+    dbase = SQLdatabase() # I have methods to access a database and return geocode/address info
     dbase.connect_to('atest.db', create=True)
     
     fnames = Field_Names('header_config.csv') # I am header names
     fnames.init_index_dict() 
     
-    export_file = Export_File_Parser('test_export.csv',fnames.ID) # I open a csv
+    export_file = Export_File_Parser('test_export.csv',fnames.ID) # I open a csv export from a cloud database
     export_file.open_file()
 
-    for line in export_file.file_object: # I am a csv object        
-        # logged_errors = {'Out_Of_Bounds': False, 'Unit_Dir': False, 'Post_Error_Type': False}
-        
+    for line in export_file.file_object: # for line in the csv file object       
+               
         line_object = Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         applicant = line_object.get_applicant_ID()
 
         cities_served = ('kitchener', 'waterloo')
-        # check boundary issues
+        # check boundary error issues
         if city.lower() not in cities_served:
             print('Flag {} for out of bounds'.format(applicant))
 
@@ -166,7 +168,7 @@ if __name__ == '__main__':
                     
                     post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
                     
-                    if any(post_type_evaluation):
+                    if any(post_type_evaluation): # if any of the flags were mismatched
                         one, two, three = post_type_evaluation
                         print('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
                         logging.info('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
