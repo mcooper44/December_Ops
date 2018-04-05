@@ -43,7 +43,7 @@ def parse_post_types(address):
                 tag_value = tags['StreetNamePostDirectional']
                 if tag_value[0].lower() in directions.keys():
                     if tag_value.lower() in directions[tag_value[0]]:
-                        streetnameptype = True
+                        streetnamepdir = True
                 else:
                     eval_flag = True
         
@@ -55,14 +55,11 @@ def parse_post_types(address):
     return (streetnameptype, streetnamepdir, eval_flag)
 
 
-
-
-
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-    dbase.connect_to('atest.db', create=False)
+    dbase.connect_to('atest.db', create=True)
     
     fnames = Field_Names('header_config.csv') # I am header names
     fnames.init_index_dict() 
@@ -78,11 +75,12 @@ if __name__ == '__main__':
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags) or False
         if decon_address:
             parsed_address, flags = decon_address
+            source_post_types = parse_post_type(parsed_address)
             coords_from_db = dbase.get_coordinates(parsed_address, city)
             if coords_from_db:
                 lat, lng = coords_from_db
                 flags_from_db = dbase.pull_flags_at(lat, lng)
-                
+                # create a reference to compare the flagged addresses from the database with                
                 source_units_flag, source_dirs_flag = flags['MultiUnit'], flags['Direction']
                 reference_object = (parsed_address, city, source_units_flag, source_dirs_flag)
 
@@ -97,6 +95,12 @@ if __name__ == '__main__':
                     else:
                         print('Everything is fine with {}'.format(applicant))
                         print('{} equals {}'.format(reference_object,returned_tuple))
+
+                    address_from_dbase = returned_tuple[0]
+                    post_types_from_dbase = parse_post_type(address_from_dbase)
+                    if source_post_types != post_types_from_database:
+                        print('{} has mismatched post types'.format(applicant))
+
             else:                
                 raise Exception('Not_Logged_In_Database_{}'.format(applicant))
         else:            
