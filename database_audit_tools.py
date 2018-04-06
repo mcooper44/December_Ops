@@ -11,7 +11,7 @@
 # are equavalent when they are geocoded.
 #####################################################################################
 
-from address_parser_and_geocoder import AddressParser, SQLdatabase
+from address_parser_and_geocoder import AddressParser, SQLdatabase, Coordinates
 from db_data_models import Field_Names, Export_File_Parser, Visit_Line_Object
 import usaddress
 import logging
@@ -30,9 +30,9 @@ def parse_post_types(address):
     sufficient.
     '''
     
-    street_types = {'a': ('avenue', 'ave', 'ave est', 'av'),
-                  'b': ('boulevard','blvd','bend', 'boul'),
-                  'c': ('Ct', 'crt','crest','crescent','cres','cr','court','circle', 'crcl', 'cir', 'cl'),
+    street_types = {'a': ('avenue', 'ave', 'av'),
+                  'b': ('boulevard','blvd','bend', 'boul', 'blvrd'),
+                  'c': ('ct', 'crt','crest','crescent','cres','cr','court','circle', 'crcl', 'cir', 'cl'),
                   'd': ('drive', 'dr', 'drv'),
                   'f': ('field', 'feild'),
                   'g': ('green'),
@@ -51,8 +51,8 @@ def parse_post_types(address):
     streetnameptype = False # ave st etc. are present
     streetnamepdir = False # north south east etc. are present
     eval_flag = False # is there a mismatch?
-    street_key = None # what is the first letter of street?
-    dir_key = None # what is the first letter of north?
+    street_key = None # what is the first letter of street type?
+    dir_key = None # what is the first letter of the direction tag e.g. north?
     
     tagged_address = usaddress.tag(address)
     
@@ -115,12 +115,20 @@ def evaluate_post_types(source_types, db_types):
 
     return (sn_error, dt_error, fl_error)
 
+def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
 
+    for tpl_to_check_against in lst_of_tpls_to_check_against:
+        if tpl_to_check != tpl_to_check_against:        
+            return False
+        else:
+            return True
 
 
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
     
+    coordinate_manager = Coordinates()
+
     dbase = SQLdatabase() # I have methods to access a database and return geocode/address info
     dbase.connect_to('atest.db', create=True)
     
@@ -130,7 +138,7 @@ if __name__ == '__main__':
     export_file = Export_File_Parser('test_export.csv',fnames.ID) # I open a csv export from a cloud database
     export_file.open_file()
 
-    for line in export_file.file_object: # for line in the csv file object       
+    for line in export_file: # for line in the csv file object yielded via the __iter__ method   
                
         line_object = Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
@@ -148,14 +156,15 @@ if __name__ == '__main__':
             coords_from_db = dbase.get_coordinates(parsed_address, city)
             if coords_from_db:
                 lat, lng = coords_from_db
-                flags_from_db = dbase.pull_flags_at(lat, lng) # 
+                flags_from_db = dbase.pull_flags_at(lat, lng) # list of tuples from the database
                 # create a reference to compare the flagged addresses from the database with                
                 source_units_flag, source_dirs_flag, source_post_flag = flags['MultiUnit'], flags['Direction'], flags['PostType']
                 reference_object = (parsed_address, city, source_units_flag, source_dirs_flag, source_post_flag)
                 
-                for returned_tuple in flags_from_db:                    
+                # ENCAPSULATE THIS IN THE FLAG CHECKER FUNCTION!
+                for returned_tuple in flags_from_db:                 
 
-                    if reference_object != returned_tuple:
+                    if not flag_checker(reference_object, returned_tuple):
                         # check Unit or Direction Errors
                         _, _, db_uf, db_df, db_pf = returned_tuple
                         logging.info('{} has these flags: Unit Flag {} Direction Flag {} Post Type Flag {}'.format(applicant, db_uf, db_df, db_pf))

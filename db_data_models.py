@@ -374,6 +374,10 @@ class Export_File_Parser():
         self.visit_structure = None # some sort of container yet to be determined
         self.summary_profile_object = None                
     
+    def __iter__(self):
+        for line in self.file_object:
+            yield line
+
     def open_file(self):
         '''
         opens the csv file and sets the file_object variable 

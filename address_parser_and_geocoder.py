@@ -8,14 +8,14 @@ import sqlite3
 import logging
 import config	# secret api key source
 import db_data_models as dbdm # classes for dealing with L2F exports
-
+from database_audit_tools import parse_post_types, evaluate_post_types, flag_checker
 
 #api key
 myapikey = config.api_key
 
 # error logging is handled by functions that carry out parsing and geocoding
-# they pass False or None on to the objects using them and are handled by
-# the objects
+# they pass False or None on to the objects using them and are handled by the objects
+
 logging.basicConfig(filename='address_parse_coding.log',level=logging.INFO)
 
 ## Address Parsing
@@ -270,6 +270,7 @@ class Coordinates():
         return 'Coordinate Object. can_proceed  = {} and has made {} calls'.format(self.can_proceed, self.calls)
 
 class SQLdatabase():
+    # reference https://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace
     def __init__(self):
         self.conn = None
         self.cursor = None
@@ -292,20 +293,27 @@ class SQLdatabase():
                                                                          google_street text,
                                                                          google_city text,
                                                                          lat real,
-                                                                         lng real,
-                                                                         unit_flag boolean,
-                                                                         dir_flag boolean,
-                                                                         post_type boolean)""")
+                                                                         lng real)""")
+                self.conn.commit()
+                self.cursor.execute("""CREATE TABLE IF NOT EXISTS error_flags (lat real,
+                                                                               lng real,
+                                                                               city text,
+                                                                               unit_flag boolean,
+                                                                               dir_flag boolean,
+                                                                               post_type boolean)""")
                 self.conn.commit()
         except:
             print('error with database connection')
          
-    def insert_into_db(self, values):
+    def insert_into_db(self, table, values):
         if not self.name:
             print('establish connection first')
             return False
-        self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?,?,?,?)', values)
-        self.conn.commit()
+        if table == 'address':
+            self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?)', values)
+            self.conn.commit()
+        if table == 'error_flags':
+            self.cursor.execute('INSERT INTO error_flags VALUES (?,?,?,?,?,?)', values)
 
     def is_in_db(self, parsed_address, source_city):
         '''
@@ -360,7 +368,7 @@ if __name__ == '__main__':
     export_file = dbdm.Export_File_Parser('test_export.csv',fnames.ID) # I open a csv
     export_file.open_file()
 
-    for line in export_file.file_object: # I am a csv object
+    for line in export_file: # I am a csv object
         line_object = dbdm.Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         
@@ -375,7 +383,8 @@ if __name__ == '__main__':
                     flagged_unit = flags['MultiUnit'] # True or False
                     flagged_dir = flags['Direction'] # True or False
                     flagged_post_type = flags['PostType']
-                    dbase_input = (simplified_address, 
+
+                    address_dbase_input = (simplified_address, 
                                 city, 
                                 coding_result.g_address_str,
                                 coding_result.house_number,
@@ -386,7 +395,10 @@ if __name__ == '__main__':
                                 flagged_unit,
                                 flagged_dir,
                                 flagged_post_type)
-                    dbase.insert_into_db(dbase_input) 
+                    dbase.insert_into_db('address', address_dbase_input)
+
+                    errorflag_dbase_input = None # update this!!!!!!!!!!!!
+
                 if coding_result == None:
                     pass
                     print('error in geocoding. check logs for {}'.format(simplified_address))
