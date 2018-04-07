@@ -116,13 +116,50 @@ def evaluate_post_types(source_types, db_types):
     return (sn_error, dt_error, fl_error)
 
 def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
+    '''
+    looks for missing unit, direction or post type on the source
+    this function recycles flag_match and returns False and flag 
+    toggles or True
+    '''
+    missing_unit = False
+    missing_dir = False
+    missing_pt = False
 
     for tpl_to_check_against in lst_of_tpls_to_check_against:
-        if tpl_to_check != tpl_to_check_against:        
-            return False
-        else:
-            return True
+        if tpl_to_check != tpl_to_check_against:
+            flag_match = evaluate_post_types(tpl_to_check[2:],
+                                             tpl_to_check_against[2:])
+            mu, md, mpt = flag_match
+            if mu:
+                missing_unit = mu
+            if md:
+                missing_dir = md
+            if mpt:
+                missing_pt = mpt
+    udp_flags = (missing_unit, missing_dir, missing_pt)
+    if any(udp_flags):
+        return  (False, udp_flags)
+    else:
+        return (True, _)
 
+def boundary_checker(city):
+    in_bounds = ['kitchener', 'waterloo']
+    lcity = city.lower()
+    if lcity in in_bounds:
+        return True
+    else:
+        return False
+
+def write_to_logs(applicant, flags, flag_type='boundary'):
+    if flag_type == 'bound':
+        print('Flag {} for out of bounds'.format(applicant))
+    if flag_type == 'udp':
+        u, d, p = flags
+        print('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle:
+              {}'.format(applicant,u,d,p)
+    if flag_type == 'mismatch':
+        o,t,th = flags
+        print('Applicant {} one {} two {} three {}'.format(applicant, o, t, th)
 
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
@@ -133,22 +170,23 @@ if __name__ == '__main__':
     dbase.connect_to('atest.db', create=True)
     
     fnames = Field_Names('header_config.csv') # I am header names
-    fnames.init_index_dict() 
+    fnames.init_index_dict()
     
     export_file = Export_File_Parser('test_export.csv',fnames.ID) # I open a csv export from a cloud database
     export_file.open_file()
 
-    for line in export_file: # for line in the csv file object yielded via the __iter__ method   
-               
+    for line in export_file: # for line in the csv file object yielded via the __iter__ method    
         line_object = Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         applicant = line_object.get_applicant_ID()
 
-        cities_served = ('kitchener', 'waterloo')
-        # check boundary error issues
-        if city.lower() not in cities_served:
-            print('Flag {} for out of bounds'.format(applicant))
-
+        city_flag = boundary_checker(city)
+        write_to_logs(applicant, city_flag, 'bound')
+        #### to do: build a separate table in the database and store the google
+        #### returned address as a canonical tagged reference to compare
+        #### addresses in our database that google can geocode but which may be
+        #### missing key features or have the wrong type Missing Ave, or Says N
+        #### rather than S which may be the correct address
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags) or False
         if decon_address:
             parsed_address, flags = decon_address
@@ -160,27 +198,22 @@ if __name__ == '__main__':
                 # create a reference to compare the flagged addresses from the database with                
                 source_units_flag, source_dirs_flag, source_post_flag = flags['MultiUnit'], flags['Direction'], flags['PostType']
                 reference_object = (parsed_address, city, source_units_flag, source_dirs_flag, source_post_flag)
-                
-                # ENCAPSULATE THIS IN THE FLAG CHECKER FUNCTION!
-                for returned_tuple in flags_from_db:                 
-
-                    if not flag_checker(reference_object, returned_tuple):
-                        # check Unit or Direction Errors
-                        _, _, db_uf, db_df, db_pf = returned_tuple
-                        logging.info('{} has these flags: Unit Flag {} Direction Flag {} Post Type Flag {}'.format(applicant, db_uf, db_df, db_pf))
-                        print('{} does not equal {}'.format(reference_object,returned_tuple))
-                    else:                        
-                        print('{} equals {}'.format(reference_object,returned_tuple))
-
-                    address_from_dbase = returned_tuple[0] # e.g. 100 Regina St
-                    post_types_from_dbase = parse_post_types(address_from_dbase)
+                # check to see if anything is missing
+                flag_referenes = flag_checker(reference_object, returned_tuple)
+                is_ok, toggles = flag_references
+                if not is_ok:
+                    write_to_logs(applicant, toggles, 'udp')
+                # check to see if anything is there, but doesn't match the
+                # canonical object
+                address_from_dbase = returned_tuple[0] # e.g. 100 Regina St
+                post_types_from_dbase = parse_post_types(address_from_dbase)
                     
-                    post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
+                post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
                     
-                    if any(post_type_evaluation): # if any of the flags were mismatched
-                        one, two, three = post_type_evaluation
-                        print('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
-                        logging.info('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
+                if any(post_type_evaluation): # if any of the flags were mismatched
+                    one, two, three = post_type_evaluation
+                    print('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
+                    logging.info('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
             
             else:                
                 raise Exception('Not_Logged_In_Database_{}'.format(applicant))
