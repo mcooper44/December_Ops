@@ -98,6 +98,8 @@ def evaluate_post_types(source_types, db_types):
     db_types = the result of passing an address from the database to to parse_post_types
 
     returns a tuple of boolean values (street name error, direction error, mismatch flag error)
+    True indicates an error, False indicates there is no mismatch and therefore
+    no error
     '''
     source_nt_tpl, source_dt_tpl, s_e_flag = source_types
     db_nt_tpl, db_dt_tpl, db_e_flag = db_types
@@ -119,7 +121,9 @@ def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
     '''
     looks for missing unit, direction or post type on the source
     this function recycles flag_match and returns False and flag 
-    toggles or True
+    toggles or True, and None.
+    True signifies that the address is correct
+    False indicates the address has some errors
     '''
     missing_unit = False
     missing_dir = False
@@ -127,6 +131,7 @@ def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
 
     for tpl_to_check_against in lst_of_tpls_to_check_against:
         if tpl_to_check != tpl_to_check_against:
+            # take a slice from the tuple containing the flags
             flag_match = evaluate_post_types(tpl_to_check[2:],
                                              tpl_to_check_against[2:])
             mu, md, mpt = flag_match
@@ -140,9 +145,14 @@ def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
     if any(udp_flags):
         return  (False, udp_flags)
     else:
-        return (True, _)
+        return (True, None)
 
 def boundary_checker(city):
+    '''
+    takes a city name as a string and tests to see if it is in the list of
+    cities to serve.  If it is, it returns True
+    Otherwise it returns False
+    '''
     in_bounds = ['kitchener', 'waterloo']
     lcity = city.lower()
     if lcity in in_bounds:
@@ -150,7 +160,7 @@ def boundary_checker(city):
     else:
         return False
 
-def write_to_logs(applicant, flags, flag_type='boundary'):
+def write_to_logs(applicant, flags=None, flag_type='boundary'):
     if flag_type == 'bound':
         print('Flag {} for out of bounds'.format(applicant))
     if flag_type == 'udp':
@@ -159,7 +169,7 @@ def write_to_logs(applicant, flags, flag_type='boundary'):
               {}'.format(applicant,u,d,p)
     if flag_type == 'mismatch':
         o,t,th = flags
-        print('Applicant {} one {} two {} three {}'.format(applicant, o, t, th)
+        logging.info('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(appilcant, o, t, th))
 
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
@@ -181,7 +191,8 @@ if __name__ == '__main__':
         applicant = line_object.get_applicant_ID()
 
         city_flag = boundary_checker(city)
-        write_to_logs(applicant, city_flag, 'bound')
+        if not city_flag:
+            write_to_logs(applicant, city_flag, 'bound')
         #### to do: build a separate table in the database and store the google
         #### returned address as a canonical tagged reference to compare
         #### addresses in our database that google can geocode but which may be
@@ -204,20 +215,18 @@ if __name__ == '__main__':
                 if not is_ok:
                     write_to_logs(applicant, toggles, 'udp')
                 # check to see if anything is there, but doesn't match the
-                # canonical object
+                # canonical object e.g. input address is 100 Regina st West,
+                # but shoudl be ... St South.
                 address_from_dbase = returned_tuple[0] # e.g. 100 Regina St
                 post_types_from_dbase = parse_post_types(address_from_dbase)
-                    
+
                 post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
-                    
+
                 if any(post_type_evaluation): # if any of the flags were mismatched
                     one, two, three = post_type_evaluation
                     print('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
-                    logging.info('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
-            
-            else:                
+            else:
                 raise Exception('Not_Logged_In_Database_{}'.format(applicant))
-        else:            
+        else:
             raise Exception('Address_Parse_Error_{}'.format(applicant))
-
     dbase.close_db()
