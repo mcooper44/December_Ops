@@ -19,6 +19,17 @@ myapikey = config.api_key
 logging.basicConfig(filename='address_parse_coding.log',level=logging.INFO)
 
 ## Address Parsing
+def extract_flag_strings(address):
+    '''
+    this function could probably be done better, but it pulls out the string
+    values for address post types and directions or returns None for each value
+    and wraps them in a tuple
+
+    '''
+    tagged_address, address_type = usaddress.tag(addr)
+    if address_type == 'Street Address':
+        pass
+    
 
 def street_number_parser(number_string):
     '''
@@ -271,12 +282,13 @@ class Coordinates():
 
 class SQLdatabase():
     # reference https://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace
+    # https://stackoverflow.com/questions/13934994/sqlite-foreign-key-examples
     def __init__(self):
         self.conn = None
         self.cursor = None
         self.name = None
         
-    def connect_to(self, name, create = False):
+    def connect_to(self, name, create = True):
         '''
         establish a connection and cursor and if necessary create the address table
         '''
@@ -295,12 +307,15 @@ class SQLdatabase():
                                                                          lat real,
                                                                          lng real)""")
                 self.conn.commit()
-                self.cursor.execute("""CREATE TABLE IF NOT EXISTS error_flags (lat real,
-                                                                               lng real,
-                                                                               city text,
-                                                                               unit_flag boolean,
-                                                                               dir_flag boolean,
-                                                                               post_type boolean)""")
+                self.cursor.execute("""CREATE TABLE IF NOT EXISTS error_flags 
+                                    (lat real,
+                                     lng real,
+                                     city text,
+                                     unit_flag boolean,
+                                     dir_flag boolean,
+                                     dir text,
+                                     post_type boolean,
+                                     post text)""")
                 self.conn.commit()
         except:
             print('error with database connection')
@@ -313,7 +328,9 @@ class SQLdatabase():
             self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?)', values)
             self.conn.commit()
         if table == 'error_flags':
-            self.cursor.execute('INSERT INTO error_flags VALUES (?,?,?,?,?,?)', values)
+            self.cursor.execute("""INSERT INTO error_flags VALUES
+                                (?,?,?,?,?,?,?,?)""", values)
+            self.conn.commit()
 
     def is_in_db(self, parsed_address, source_city):
         '''
@@ -391,14 +408,21 @@ if __name__ == '__main__':
                                 coding_result.street,
                                 coding_result.city,
                                 coding_result.lat,
-                                coding_result.lng,
-                                flagged_unit,
-                                flagged_dir,
-                                flagged_post_type)
+                                coding_result.lng)
+
                     dbase.insert_into_db('address', address_dbase_input)
+                    dir_str, pt_str =extract_flag_strings(coding_result.street)
+                    errorflag = (coding_result.lat,
+                                 coding_result.lng,
+                                 coding_result.city,
+                                 flagged_unit,
+                                 flagged_dir,
+                                 dir_str,
+                                 flagged_post_type,
+                                 pt_str)
 
                     errorflag_dbase_input = None # update this!!!!!!!!!!!!
-
+                    
                 if coding_result == None:
                     pass
                     print('error in geocoding. check logs for {}'.format(simplified_address))
