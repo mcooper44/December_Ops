@@ -26,7 +26,7 @@ def extract_flag_strings(address):
     and wraps them in a tuple
 
     '''
-    tagged_address, address_type = usaddress.tag(addr)
+    tagged_address, address_type = usaddress.tag(address)
     if address_type == 'Street Address':
         pass
     
@@ -98,7 +98,8 @@ def full_address_parser(addr):
     takes a street address e.g. 123 Main Street and attempts to break it into 
     the relevant chunks
     usaddress.tag() returns a tuple of (OrderedDict, str) with the str being a designator of typex
-    returns a tuple (True, original address, parsed address) or (False, original address, error code)       
+    :returns: a tuple (True, original address, (parsed address, error_flags)) 
+              or (False, original address, error code)       
     '''
     usaparsed_street_address = namedtuple('usaparsed_street_address','flag original return_value')
     if addr:
@@ -170,15 +171,15 @@ class AddressParser():
     def parse(self, address):
         '''
         give it an address with extraneous details and it will give you
-        a string of 'unit number street' or False
+        a tuple of  ('unit number street', error_flags) or False
         '''
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
         if address not in key_list:
             
             worked, in_put, out_put  = full_address_parser(address)
             if worked:                
-                self.parsed[in_put] = out_put
-                return out_put # a tuple of address, flags
+                self.parsed[in_put] = out_put # tuple of (parsed_address, flags)
+                return out_put 
             else:
                 self.errors[in_put] = out_put
                 return False
@@ -300,17 +301,16 @@ class SQLdatabase():
             if create:
                 self.cursor.execute("""CREATE TABLE IF NOT EXISTS address (source_street text,
                                                                          source_city text,
-                                                                         google_full_str text,
-                                                                         google_house_num text,
-                                                                         google_street text,
-                                                                         google_city text,
                                                                          lat real,
                                                                          lng real)""")
                 self.conn.commit()
-                self.cursor.execute("""CREATE TABLE IF NOT EXISTS error_flags 
+                self.cursor.execute("""CREATE TABLE IF NOT EXISTS google_result 
                                     (lat real,
                                      lng real,
-                                     city text,
+                                     google_full_str text,
+                                     google_house_num text,
+                                     google_street text,
+                                     google_city text,
                                      unit_flag boolean,
                                      dir_flag boolean,
                                      dir text,
@@ -325,11 +325,11 @@ class SQLdatabase():
             print('establish connection first')
             return False
         if table == 'address':
-            self.cursor.execute('INSERT INTO address VALUES (?,?,?,?,?,?,?,?)', values)
+            self.cursor.execute('INSERT INTO address VALUES (?,?,?,?)', values)
             self.conn.commit()
-        if table == 'error_flags':
-            self.cursor.execute("""INSERT INTO error_flags VALUES
-                                (?,?,?,?,?,?,?,?)""", values)
+        if table == 'google_result':
+            self.cursor.execute("""INSERT INTO google_result VALUES
+                                (?,?,?,?,?,?,?,?,?,?,?)""", values)
             self.conn.commit()
 
     def is_in_db(self, parsed_address, source_city):
@@ -353,6 +353,15 @@ class SQLdatabase():
         result = self.cursor.fetchone()
         if result:
             return result
+        else:
+            return (False, False)
+
+    def get_address(self, lat, lng):
+
+        self.cursor.execute("SELECT google_house_num, google_street FROM google_result WHERE lat=? AND lng=?", (lat, lng,))
+        result = self.cursor.fetchone()
+        if result:
+            return '{} {}'.format(result[0], result[1])
         else:
             return False
 
