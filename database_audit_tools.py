@@ -147,6 +147,16 @@ def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
     else:
         return (True, None)
 
+def write_to_logs(applicant, flags=None, flag_type='boundary'):
+    if flag_type == 'bound':
+        print('Flag {} for out of bounds'.format(applicant))
+    if flag_type == 'udp':
+        u, d, p = flags
+        print('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
+    if flag_type == 'mismatch':
+        o,t,th = flags
+        logging.info('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
+
 def boundary_checker(city):
     '''
     takes a city name as a string and tests to see if it is in the list of
@@ -160,30 +170,33 @@ def boundary_checker(city):
     else:
         return False
 
-def write_to_logs(applicant, flags=None, flag_type='boundary'):
-    if flag_type == 'bound':
-        print('Flag {} for out of bounds'.format(applicant))
-    if flag_type == 'udp':
-        u, d, p = flags
-        print('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
-    if flag_type == 'mismatch':
-        o,t,th = flags
-        logging.info('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
-
 def boundary_logger(city):
     
     if not boundary_checker(city):
         write_to_logs(applicant, flag_type='bound')
 
+def create_reference_object(flags, parsed_address, city):
+    source_units_flag, source_dirs_flag, source_post_flag = flags['MultiUnit'], flags['Direction'], flags['PostType']
+    reference = (parsed_address, city, source_units_flag, source_dirs_flag, source_post_flag)
+    return reference
 
+def missing_element_logger(applicant, flags, parsed_address, city, flags_from_db):
+    reference_object = create_reference_object(flags,parsed_address, city)
+    flag_references = flag_checker(reference_object, flags_from_db) # tuple, list of tuples
+    is_ok, toggles = flag_references
+    if not is_ok:
+        write_to_logs(applicant, toggles, 'udp')   
 
-
+def post_type_logger(applicant, source_post_types, post_types_from_dbase):
+    post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
+    if any(post_type_evaluation): # if any of the flags were mismatched
+        one, two, three = post_type_evaluation
+        logging.info("""{} Name Type Error = {} Direction Type Error = {} Eval Flag
+                     = {}""".format(applicant, one, two, three))
 
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
     
-    coordinate_manager = Coordinates()
-
     dbase = SQLdatabase() # I have methods to access a database and return geocode/address info
     dbase.connect_to('atest.db', create=True)
     
@@ -199,43 +212,18 @@ if __name__ == '__main__':
         applicant = line_object.get_applicant_ID()
         parsed_address, flags = address_parser.parse(address)
         lat, lng = dbase.get_coordinates(parsed_address, city)
-        
-
-        boundary_logger(city) 
-        
-
-        #### to do: build a separate table in the database and store the google
-        #### returned address as a canonical tagged reference to compare
-        #### addresses in our database that google can geocode but which may be
-        #### missing key features or have the wrong type Missing Ave, or Says N
-        #### rather than S which may be the correct address
-        
-        #missing_logger(decon_address)
-
-        source_post_types = parse_post_types(parsed_address) # is there a street type and/or direction?       
         flags_from_db = dbase.pull_flags_at(lat, lng) # list of tuples from the database
-        # INSERT look_for_errors_in(parsed_address, flags, lat, lng)
+        address_from_dbase =  dbase.get_address(lat, lng)# e.g. 100 Regina St
         
-        # create a reference to compare the flagged addresses from the database with                
-        source_units_flag, source_dirs_flag, source_post_flag = flags['MultiUnit'], flags['Direction'], flags['PostType']
-        reference_object = (parsed_address, city, source_units_flag, source_dirs_flag, source_post_flag)
-        # check to see if anything is missing
-        flag_references = flag_checker(reference_object, flags_from_db) # tuple, list of tuples
-        # missing_logger(flag_references)
-        is_ok, toggles = flag_references
-        if not is_ok:
-            write_to_logs(applicant, toggles, 'udp')
+        boundary_logger(city)        
+        missing_element_logger(applicant, flags, parsed_address, city, flags_from_db)
+
         # check to see if anything is there, but doesn't match the
         # canonical object e.g. input address is 100 Regina st West,
         # but shoudl be ... St South.
-        address_from_dbase =  dbase.get_address(lat, lng)# e.g. 100 Regina St
+        
         post_types_from_dbase = parse_post_types(address_from_dbase)
+        source_post_types = parse_post_types(parsed_address) # is there a street type and/or direction? 
 
-        post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
-
-        if any(post_type_evaluation): # if any of the flags were mismatched
-            one, two, three = post_type_evaluation
-            print('Name Type Error = {} Direction Type Error = {} Eval Flag = {}'.format(one, two, three))
-
-
+        post_type_logger(applicant, source_post_types, post_types_from_dbase) 
     dbase.close_db()
