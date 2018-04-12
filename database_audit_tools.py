@@ -1,8 +1,8 @@
 #####################################################################################
 # This script is for comparing a csv database export against a database of previously 
 # geo_coded addresses it looks at the flags in the database that were set when 
-# the addresses were coded and compares the csv address to see if there are any
-# mismatches for key address parts like direction, street type (ave, drive etc)
+# the addresses were coded and compares the csv address (source) to see if there are 
+# any mismatches for key address parts like direction, street type (ave, drive etc)
 # and city.  It then logs and provides indications as to what is the error type.
 # Name Type Error = Missing a Drive, Street etc.
 # Direction Type Error = Missing a cardinal point direction (N,S,E,W)
@@ -148,6 +148,10 @@ def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
         return (True, None)
 
 def write_to_logs(applicant, flags=None, flag_type='boundary'):
+    '''
+    this function is used by the different flag checking functions to write different strings
+    to the logs
+    '''
     if flag_type == 'bound':
         print('Flag {} for out of bounds'.format(applicant))
     if flag_type == 'udp':
@@ -171,16 +175,28 @@ def boundary_checker(city):
         return False
 
 def boundary_logger(city):
-    
+    '''
+    checks to see if the city is out of bounds.  If it is, it writes to the log
+    '''
     if not boundary_checker(city):
         write_to_logs(applicant, flag_type='bound')
 
 def create_reference_object(flags, parsed_address, city):
+    '''
+    takes flags extracted from the address, an address and a city and reformats them into a tuple
+    that can be compared against flags extracted from the database for the canonical address exemplar
+    '''
     source_units_flag, source_dirs_flag, source_post_flag = flags['MultiUnit'], flags['Direction'], flags['PostType']
     reference = (parsed_address, city, source_units_flag, source_dirs_flag, source_post_flag)
     return reference
 
 def missing_element_logger(applicant, flags, parsed_address, city, flags_from_db):
+    '''
+    Takes flags (unit, direction, post type) extracted from the source address, flags extracted 
+    from the canonical object in the database and uses the create_reference_object to create a 
+    template to use in the flag_checker function.
+    If there is a mismatch of the flags, it then creates a log entry denoting where the issues are.    
+    '''
     reference_object = create_reference_object(flags,parsed_address, city)
     flag_references = flag_checker(reference_object, flags_from_db) # tuple, list of tuples
     is_ok, toggles = flag_references
@@ -188,6 +204,11 @@ def missing_element_logger(applicant, flags, parsed_address, city, flags_from_db
         write_to_logs(applicant, toggles, 'udp')   
 
 def post_type_logger(applicant, source_post_types, post_types_from_dbase):
+    '''
+    uses the evaluate_post_types function to evaluate if the street type or direction
+    is mismatched in teh source address or if there is some error that merits follow up
+    if there is, it will write to the logs
+    '''
     post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
     if any(post_type_evaluation): # if any of the flags were mismatched
         one, two, three = post_type_evaluation
@@ -215,15 +236,16 @@ if __name__ == '__main__':
         flags_from_db = dbase.pull_flags_at(lat, lng) # list of tuples from the database
         address_from_dbase =  dbase.get_address(lat, lng)# e.g. 100 Regina St
         
-        boundary_logger(city)        
+        boundary_logger(city) # check to see if the city is out of bounds
+        
+        # then look to see if any items are missing and if they are, log them       
         missing_element_logger(applicant, flags, parsed_address, city, flags_from_db)
 
-        # check to see if anything is there, but doesn't match the
+        # finally check to see if anything is there, but doesn't match the
         # canonical object e.g. input address is 100 Regina st West,
-        # but shoudl be ... St South.
-        
+        # but shoudl be ... St South.  IF so, log it all!!!!!!!!
         post_types_from_dbase = parse_post_types(address_from_dbase)
         source_post_types = parse_post_types(parsed_address) # is there a street type and/or direction? 
-
         post_type_logger(applicant, source_post_types, post_types_from_dbase) 
+    
     dbase.close_db()
