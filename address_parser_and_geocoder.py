@@ -28,7 +28,8 @@ def extract_flag_strings(address):
     '''
     tagged_address, address_type = usaddress.tag(address)
     if address_type == 'Street Address':
-        pass
+        stripped_address, flags = address_builder(tagged_address)
+        street_tpl, dir_tpl, eval_flag  = parse_post_types(stripped_address)
     
 
 def street_number_parser(number_string):
@@ -405,24 +406,33 @@ if __name__ == '__main__':
                 address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
                 coding_result = coordinate_manager.lookup(address_for_api) # returns False, None or tuple
                 if coding_result:
+                    # we have a sucessful result - now we need to error check
+                    # this address and see if the input result has any errors
+                    # because we can check it against the google result
                     # we have a successful result - log it in teh database
+                    # SOURCE FLAGS
                     flagged_unit = flags['MultiUnit'] # True or False
                     flagged_dir = flags['Direction'] # True or False
                     flagged_post_type = flags['PostType']
-
+                    # extract google address information here
+                    # extract flags on google addresss
+                    # match flags
+                    # create error toggles
+                    # log to database
+                    # ecapsulate in functions/methods
+        
                     address_dbase_input = (simplified_address, 
-                                city, 
-                                coding_result.g_address_str,
-                                coding_result.house_number,
-                                coding_result.street,
-                                coding_result.city,
-                                coding_result.lat,
-                                coding_result.lng)
+                                           city, 
+                                           coding_result.lat,
+                                           coding_result.lng)
 
                     dbase.insert_into_db('address', address_dbase_input)
                     dir_str, pt_str =extract_flag_strings(coding_result.street)
-                    errorflag = (coding_result.lat,
+                    google_result = (coding_result.lat,
                                  coding_result.lng,
+                                 coding_result.g_address_str,
+                                 coding_result.house_number,
+                                 coding_result.street,
                                  coding_result.city,
                                  flagged_unit,
                                  flagged_dir,
@@ -430,8 +440,8 @@ if __name__ == '__main__':
                                  flagged_post_type,
                                  pt_str)
 
-                    errorflag_dbase_input = None # update this!!!!!!!!!!!!
-                    
+                    insert_into_db(self, 'google_result', google_result)
+
                 if coding_result == None:
                     pass
                     print('error in geocoding. check logs for {}'.format(simplified_address))
