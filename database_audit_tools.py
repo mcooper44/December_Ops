@@ -215,6 +215,17 @@ def post_type_logger(applicant, source_post_types, post_types_from_dbase):
         logging.info("""{} Name Type Error = {} Direction Type Error = {} Eval Flag
                      = {}""".format(applicant, one, two, three))
 
+def google_parser(g_address, g_city):
+    '''
+    this function runs a google address through the different error checking functions
+    and returns a consolidated set of flags to log in the database and check
+    against the input string
+    '''
+    boundary_value = boundary_checker(g_city) # either True or False
+    post_types = parse_post_types(g_address) #  ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
+    pass # this will later encapsulate something to handle the source and google strings     
+
+
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
     

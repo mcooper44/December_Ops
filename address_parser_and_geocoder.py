@@ -398,7 +398,7 @@ if __name__ == '__main__':
     for line in export_file: # I am a csv object
         line_object = dbdm.Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
-        
+        # pull file id as well - insert that method call here! 
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
         if decon_address is not False:
             simplified_address, flags = decon_address
@@ -411,24 +411,32 @@ if __name__ == '__main__':
                     # because we can check it against the google result
                     # we have a successful result - log it in teh database
                     # SOURCE FLAGS
-                    flagged_unit = flags['MultiUnit'] # True or False
+                    flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
                     flagged_dir = flags['Direction'] # True or False
                     flagged_post_type = flags['PostType']
+                    source_post_types = parse_post_types(simplified_address)
                     # extract google address information here
                     # extract flags on google addresss
                     # match flags
                     # create error toggles
                     # log to database
                     # ecapsulate in functions/methods
-        
+                    
                     address_dbase_input = (simplified_address, 
                                            city, 
                                            coding_result.lat,
                                            coding_result.lng)
-
+                    
+                    google_address = '{} {}'.format(coding_result.house_number, coding_result.street)
+                    google_post_types = parse_post_types(google_address)
+                    pt_eval = evaluate_post_types(source_post_types, google_post_types)
+                    # TO DO: IF THERE IS A MISMATCH LOGIC A WAY THROUGH IT
+                    # IS THE GOOGLE RESULT OUT OF THE BOUNDARY?  IS A KEY ADDRESS FEATURE MISSING
+                    # FROM THE SOURCE STRING? HOW TO RESOLVE WHAT IS INSERTED OR RETURNED 
+                    # FROM SUBSEQUENT DATABASE CALLS
                     dbase.insert_into_db('address', address_dbase_input)
-                    dir_str, pt_str =extract_flag_strings(coding_result.street)
-                    google_result = (coding_result.lat,
+
+                    google_result = (coding_result.lat, # THIS DATABASE INSERT NEEDS WORK
                                  coding_result.lng,
                                  coding_result.g_address_str,
                                  coding_result.house_number,
@@ -450,6 +458,8 @@ if __name__ == '__main__':
                     # we are at the limit - cool down
             else:
                 print('already coded {}!'.format(simplified_address))
+                # INSERT CODE TO DETERMINE IF WE NEED TO LOG A UNIT DESIGNATOR AND
+                # IF SO, TO LOG IT IN THE DATABASE
         else:            
             print('error in parsing address. check logs for {} at {}'.format(address_parser.errors[address],address))
     dbase.close_db()
