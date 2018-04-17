@@ -174,12 +174,22 @@ def boundary_checker(city):
     else:
         return False
 
-def boundary_logger(city):
+def boundary_logger(applicant, city, google=False):
     '''
-    checks to see if the city is out of bounds.  If it is, it writes to the log
+    checks to see if the city is out of bounds.  If it is, it writes to the log.
+    google flag is to indicate if the address being boundary checked is a 
+    source address (=False) or an address returend by the google api
+    This can sometimes come up if the source address is a valid for another
+    community (often in another country), but not locally.  The fact that 
+    King Street, Queen Street etc. are common street names in many communities 
+    can certainly complicate things.
     '''
     if not boundary_checker(city):
-        write_to_logs(applicant, flag_type='bound')
+        if not google:
+            write_to_logs(applicant, flag_type='bound')
+        else:
+            applicant_string = 'Google result for {}'.format(applicant)
+            write_to_logs(applicant_string, flag_type='bound')
 
 def create_reference_object(flags, parsed_address, city):
     '''
@@ -247,7 +257,7 @@ if __name__ == '__main__':
         flags_from_db = dbase.pull_flags_at(lat, lng) # list of tuples from the database
         address_from_dbase =  dbase.get_address(lat, lng)# e.g. 100 Regina St
         
-        boundary_logger(city) # check to see if the city is out of bounds
+        boundary_logger(applicant, city) # check to see if the city is out of bounds
         
         # then look to see if any items are missing and if they are, log them       
         missing_element_logger(applicant, flags, parsed_address, city, flags_from_db)
