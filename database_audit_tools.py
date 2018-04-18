@@ -99,8 +99,9 @@ def evaluate_post_types(source_types, db_types):
     db_types = the result of passing an address from the database to to parse_post_types
 
     returns a tuple of boolean values (street name error, direction error, mismatch flag error)
-    True indicates an error, False indicates there is no mismatch and therefore
-    no error
+    True indicates an error, False indicates there is no mismatch and therefore no error
+    
+    (street name type errors, direction type errors, a name or dir dictionary matching error)
     '''
     source_nt_tpl, source_dt_tpl, s_e_flag = source_types
     db_nt_tpl, db_dt_tpl, db_e_flag = db_types
@@ -113,7 +114,9 @@ def evaluate_post_types(source_types, db_types):
         sn_error = True
     if source_dt_tpl != db_dt_tpl:
         dt_error = True
-    if s_e_flag != db_e_flag:
+    if s_e_flag:
+        fl_error = True
+    if db_e_flag:
         fl_error = True
 
     return (sn_error, dt_error, fl_error)
@@ -231,6 +234,7 @@ def two_city_parser(source_city, g_city):
     this function determines if the source and google city checks
     are valid and then uses some logic to determine if they are 
     equavalent and if not indicate that they are not 
+    returns True (they both match) or False (they do not match)
     '''
     source_value = boundary_checker(source_city) # either True or False
     google_value = boundary_checker(g_city)
