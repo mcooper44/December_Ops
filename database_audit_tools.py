@@ -28,6 +28,7 @@ def parse_post_types(address):
     to 123 Queen St E by checking the first letter of Street vs. St. and East vs. E
     this does break down for some of the letters but for this application it should be 
     sufficient.
+    returns a tuple ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
     '''
     
     street_types = {'a': ('avenue', 'ave', 'av'),
@@ -50,7 +51,7 @@ def parse_post_types(address):
 
     streetnameptype = False # ave st etc. are present
     streetnamepdir = False # north south east etc. are present
-    eval_flag = False # is there a mismatch?
+    eval_flag = False # is there a mismatch in the pt or dir keys?
     street_key = None # what is the first letter of street type?
     dir_key = None # what is the first letter of the direction tag e.g. north?
     
@@ -225,16 +226,52 @@ def post_type_logger(applicant, source_post_types, post_types_from_dbase):
         logging.info("""{} Name Type Error = {} Direction Type Error = {} Eval Flag
                      = {}""".format(applicant, one, two, three))
 
-def google_parser(g_address, g_city):
+def two_city_parser(source_city, g_city):
     '''
-    this function runs a google address through the different error checking functions
-    and returns a consolidated set of flags to log in the database and check
-    against the input string
+    this function determines if the source and google city checks
+    are valid and then uses some logic to determine if they are 
+    equavalent and if not indicate that they are not 
     '''
-    boundary_value = boundary_checker(g_city) # either True or False
-    post_types = parse_post_types(g_address) #  ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
-    pass # this will later encapsulate something to handle the source and google strings     
+    source_value = boundary_checker(source_city) # either True or False
+    google_value = boundary_checker(g_city)
 
+    def letter_match(source_city, g_city):
+        sc = source_city.lower()
+        gc = g_city.lower()
+        # b/c there are only 2 valid cities, we can see if the first letters
+        # are the same to test equivalence.
+        if sc[0] == gc[0]: 
+            return True # they both match
+        else:
+            return False # they don't match
+    
+    # matching, source is valid, google is valid
+    return (letter_match(source_city, g_city), source_value, google_value)
+    
+       
+def two_city_logger(applicant, source_city, g_city):
+    result = two_city_parser(source_city, g_city)
+    log_string = None
+    if not all(result): # cities match and are both valid
+        matching, sv, gv = result
+        if all([sv, gv]): # if source city and google are valid cities
+            if not matching: # but don't match
+                log_string = """{} returned valid city, but source: {} 
+                                does not match google: {}""".format(applicant, 
+                                                                    source_city, 
+                                                                    g_city)
+        if not all([sv,gv]): # if source or google are not valid
+            if not sv: # if source is not valid 
+                log_string = """{} has an invalid 
+                                source City: {}""".format(applicant, 
+                                                          source_city)
+            if not gv: # if we got an odd geocoding result
+                log_string = """{} source city {} 
+                                returned invalid google city {} """.format(applicant, source_city, g_city)
+    if log_string:
+        logging.info(log_string)
+
+        
 
 if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings and set type flags
