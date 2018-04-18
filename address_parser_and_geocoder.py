@@ -8,7 +8,7 @@ import sqlite3
 import logging
 import config	# secret api key source
 import db_data_models as dbdm # classes for dealing with L2F exports
-from database_audit_tools import parse_post_types, evaluate_post_types, flag_checker
+from database_audit_tools import parse_post_types, evaluate_post_types, flag_checker, two_city_parser
 
 #api key
 myapikey = config.api_key
@@ -19,18 +19,6 @@ myapikey = config.api_key
 logging.basicConfig(filename='address_parse_coding.log',level=logging.INFO)
 
 ## Address Parsing
-def extract_flag_strings(address):
-    '''
-    this function could probably be done better, but it pulls out the string
-    values for address post types and directions or returns None for each value
-    and wraps them in a tuple
-
-    '''
-    tagged_address, address_type = usaddress.tag(address)
-    if address_type == 'Street Address':
-        stripped_address, flags = address_builder(tagged_address)
-        street_tpl, dir_tpl, eval_flag  = parse_post_types(stripped_address)
-    
 
 def street_number_parser(number_string):
     '''
@@ -398,68 +386,76 @@ if __name__ == '__main__':
     for line in export_file: # I am a csv object
         line_object = dbdm.Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
-        # pull file id as well - insert that method call here! 
+        applicant = line_object.get_applicant_ID()
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
         if decon_address is not False:
             simplified_address, flags = decon_address
+            flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
             if dbase.is_in_db(simplified_address, city) == False:
                 address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
+                ### HERE BE GEOCODING ###
                 coding_result = coordinate_manager.lookup(address_for_api) # returns False, None or tuple
-                if coding_result:
-                    # we have a sucessful result - now we need to error check
-                    # this address and see if the input result has any errors
-                    # because we can check it against the google result
-                    # we have a successful result - log it in teh database
-                    # SOURCE FLAGS
-                    flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
-                    flagged_dir = flags['Direction'] # True or False
-                    flagged_post_type = flags['PostType']
-                    source_post_types = parse_post_types(simplified_address)
-                    # extract google address information here
-                    # extract flags on google addresss
-                    # match flags
-                    # create error toggles
-                    # log to database
-                    # ecapsulate in functions/methods
-                    
-                    address_dbase_input = (simplified_address, 
-                                           city, 
-                                           coding_result.lat,
-                                           coding_result.lng)
-                    
+                if coding_result:               
+                    source_post_types = parse_post_types(simplified_address) # SOURCE PT 
+                    _, _, s_evf  = source_post_types
+
+                    g_city = coding_result.city
                     google_address = '{} {}'.format(coding_result.house_number, coding_result.street)
-                    google_post_types = parse_post_types(google_address)
-                    pt_eval = evaluate_post_types(source_post_types, google_post_types)
-                    # TO DO: IF THERE IS A MISMATCH LOGIC A WAY THROUGH IT
-                    # IS THE GOOGLE RESULT OUT OF THE BOUNDARY?  IS A KEY ADDRESS FEATURE MISSING
-                    # FROM THE SOURCE STRING? HOW TO RESOLVE WHAT IS INSERTED OR RETURNED 
-                    # FROM SUBSEQUENT DATABASE CALLS
-                    dbase.insert_into_db('address', address_dbase_input)
+                    google_post_types = parse_post_types(google_address) # GOOGLE PT
+                    g_post_type_tp, g_dir_type_tp, g_evf  = google_post_types
+                    
+                    # evaluate source vs. google post types
+                    pt_eval_errors = evaluate_post_types(source_post_types, google_post_types)
+                    
+                    cities_valid_and_matching = two_city_parser(city, g_city) # True or False
+                    
+                    # ok we have looked at the source and google address and derived post types
+                    # we have also looked at the cities and determined if they match and are valid
+                    # we can start to use logic to decide what to put in the database
+                    # ...
 
-                    google_result = (coding_result.lat, # THIS DATABASE INSERT NEEDS WORK
-                                 coding_result.lng,
-                                 coding_result.g_address_str,
-                                 coding_result.house_number,
-                                 coding_result.street,
-                                 coding_result.city,
-                                 flagged_unit,
-                                 flagged_dir,
-                                 dir_str,
-                                 flagged_post_type,
-                                 pt_str)
+                    
+                    if all(cities_valid_and_matching): # Cities input and returned match and are valid
+                        if not any([s_evf, g_evf]): # if the post type parsers didn't find any weirdness
 
-                    insert_into_db(self, 'google_result', google_result)
+                            if not any(pt_eval_errors): # no post type errors are present and everything matches
+                                # we made it fam.  We can enter things in the database
+                                flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
+                                flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type                                
 
-                if coding_result == None:
-                    pass
-                    print('error in geocoding. check logs for {}'.format(simplified_address))
+                                address_dbase_input = (simplified_address, 
+                                                    city, 
+                                                    coding_result.lat,
+                                                    coding_result.lng)
+                                dbase.insert_into_db('address', address_dbase_input)
+
+                                google_result = (coding_result.lat, # THIS DATABASE INSERT NEEDS WORK
+                                            coding_result.lng,
+                                            coding_result.g_address_str,
+                                            coding_result.house_number,
+                                            coding_result.street,
+                                            coding_result.city,
+                                            flagged_unit,
+                                            flagged_dir,
+                                            dir_str,
+                                            flagged_post_type,
+                                            pt_str)
+
+                                dbase.insert_into_db('google_result', google_result)
+
+                if coding_result == None:                    
+                    print('error in geocoding address for {}. check logs for {}'.format(applicant, simplified_address))
+                    
                 if coding_result == False:
-                    pass
+                    raise Exception('We are at coding limit!')
                     # we are at the limit - cool down
             else:
                 print('already coded {}!'.format(simplified_address))
-                # INSERT CODE TO DETERMINE IF WE NEED TO LOG A UNIT DESIGNATOR AND
-                # IF SO, TO LOG IT IN THE DATABASE
+                if flagged_unit:
+                    # there is a unit flag from the source address.  Is there one in the database?
+                    pass
+
+                
         else:            
-            print('error in parsing address. check logs for {} at {}'.format(address_parser.errors[address],address))
+            print('error in parsing address for {}. check logs for {} at {}'.format(applicant, address_parser.errors[address],address))
     dbase.close_db()
