@@ -7,7 +7,9 @@ import string
 import sqlite3
 import logging
 import config	# secret api key source
-import db_data_models as dbdm # classes for dealing with L2F exports
+from db_data_models import Field_Names
+from db_data_models import Visit_Line_Object
+from db_data_models import Export_File_Parser
 from address_audit_tools import parse_post_types
 from address_audit_tools import evaluate_post_types
 from address_audit_tools import flag_checker
@@ -397,13 +399,13 @@ if __name__ == '__main__':
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('atest.db', create=True)
     
-    fnames = dbdm.Field_Names('header_config.csv') # I am header names
+    fnames = Field_Names('header_config.csv') # I am header names
     fnames.init_index_dict() 
-    export_file = dbdm.Export_File_Parser('test_export.csv',fnames.ID) # I open a csv
+    export_file = Export_File_Parser('test_export.csv',fnames.ID) # I open a csv
     export_file.open_file()
 
     for line in export_file: # I am a csv object
-        line_object = dbdm.Visit_Line_Object(line,fnames.ID)
+        line_object = Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         applicant = line_object.get_applicant_ID()
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
