@@ -23,7 +23,21 @@ myapikey = config.api_key
 # error logging is handled by functions that carry out parsing and geocoding
 # they pass False or None on to the objects using them and are handled by the objects
 
-logging.basicConfig(filename='address_parse_coding.log',level=logging.INFO)
+geocoding_logger = logging.getLogger(__name__)
+geocoding_logger.setLevel(logging.DEBUG)
+geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+geocoding_log_file_handler = logging.FileHandler('geocoding.log')
+geocoding_log_file_handler.setFormatter(geocoding_log_formatter)
+geocoding_logger.addHandler(geocoding_log_file_handler)
+
+address_str_parse_logger = logging.getLogger(__name__)
+address_str_parse_logger.setLevel(logging.INFO)
+address_str_parse_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+address_str_parse_log_file_handler = logging.FileHandler('address_str_parse_functions.log')
+geocoding_log_file_handler.setFormatter(address_str_parse_log_formatter)
+address_str_parse_logger.addHandler(address_str_parse_log_file_handler)
+
+
 
 ## Address Parsing
 
@@ -109,19 +123,19 @@ def full_address_parser(addr):
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
-                logging.info('Could not derive Street Address from {}'.format(addr))
+                address_str_parse_logger.info('Could not derive Street Address from {}'.format(addr))
                 return usaparsed_street_address(False, addr, 'address_type Error')
                 
         except usaddress.RepeatedLabelError:
             # log address format error and flag for manual follow up
-            logging.info('RepeatedLabelError from {}'.format(addr))            
+            address_str_parse_logger.info('RepeatedLabelError from {}'.format(addr))            
             return usaparsed_street_address(False, addr, 'RepeatedLabelError')
         except KeyError:
-            logging.info('KeyError from {}'.format(addr))
+            address_str_parse_logger.info('KeyError from {}'.format(addr))
             return usaparsed_street_address(False, addr, 'KeyError')            
             
     else:
-        logging.info('Blank Field Error from {}'.format(addr))
+        address_str_parse_logger.info('Blank Field Error from {}'.format(addr))
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
 
@@ -132,7 +146,7 @@ def street_from_buzz(address_string):
     split_line = address_string.partition(',')
     return split_line[0]
 
-def returnGeocoderResult(address,myapikey):
+def returnGeocoderResult(address, myapikey):
     """
     this function takes an address and passes it to googles geocoding
     api with the help of the Geocoder Library.
@@ -145,15 +159,15 @@ def returnGeocoderResult(address,myapikey):
             if result.status == 'OK':
                 return result
             elif result.status == 'OVER_QUERY_LIMIT':
-                logging.info('{} yeilded {}'.format(address,result.status))
+                geocoding_logger.info('{} yeilded {}'.format(address,result.status))
                 return False
             else:
-                logging.info('Result is None with {} on {}'.format(result.status, address))
+                geocoding_logger.info('Result is None with {} on {}'.format(result.status, address))
                 return None
         else:
             return None
     except Exception as boo:
-        logging.info('Exception {} raised'.format(boo))
+        geocoding_logger.info('Exception {} raised'.format(boo))
         return False
 
 class AddressParser():
@@ -243,7 +257,7 @@ class Coordinates():
                         lng)
             else:
                 # huh. that's odd. Recieved something other than valid object, False or None
-                raise Exception('Error in lookup method of Coordinates Class')
+                geocoding_logger.debug('Geocoder returned something that is neither, False, or None with {}'.format(address))
         else:
             raise Exception('Over_Query_Limit')
    

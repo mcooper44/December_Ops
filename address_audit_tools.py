@@ -11,7 +11,15 @@
 import usaddress
 import logging
 
-logging.basicConfig(filename='database_error.log',level=logging.INFO)
+address_audit_log = logging.getLogger(__name__)
+address_audit_log.setLevel(logging.INFO)
+address_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+address_log_file_handler = logging.FileHandler('address_errors.log')
+address_log_file_handler.setFormatter(address_log_formatter)
+address_audit_log.addHandler(address_log_file_handler)
+
+
+
 
 def parse_post_types(address):
     '''
@@ -159,7 +167,7 @@ def write_to_logs(applicant, flags=None, flag_type='boundary'):
         print('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
     if flag_type == 'mismatch':
         o,t,th = flags
-        logging.info('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
+        address_audit_log.info('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
 
 def boundary_checker(city):
     '''
@@ -222,7 +230,7 @@ def post_type_logger(applicant, source_post_types, post_types_from_dbase):
     post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
     if any(post_type_evaluation): # if any of the flags were mismatched
         one, two, three = post_type_evaluation
-        logging.info("""{} Name Type Error = {} Direction Type Error = {} Eval Flag
+        address_audit_log.info("""{} Name Type Error = {} Direction Type Error = {} Eval Flag
                      = {}""".format(applicant, one, two, three))
 
 def two_city_parser(source_city, g_city):
@@ -269,4 +277,4 @@ def two_city_logger(applicant, source_city, g_city):
                 log_string = """{} source city {} 
                                 returned invalid google city {} """.format(applicant, source_city, g_city)
     if log_string:
-        logging.info(log_string)
+        address_audit_log.info(log_string)
