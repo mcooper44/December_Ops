@@ -12,6 +12,8 @@ from address_audit_tools import parse_post_types
 from address_audit_tools import evaluate_post_types
 from address_audit_tools import flag_checker
 from address_audit_tools import two_city_parser
+from address_audit_tools import post_type_logger
+from address_audit_tools import two_city_logger
 
 #api key
 myapikey = config.api_key
@@ -461,14 +463,14 @@ if __name__ == '__main__':
 
                                 dbase.insert_into_db('google_result', google_result)
                             else:
-                                # post type logging function call
-                                pass
+                                post_type_logger(applicant, source_post_types, google_post_types)
+                                
                         else:
-                            # post type issues - something not mapped in the existing datastructure of directions or post type 
-                            pass 
+                            post_type_logger(applicant, source_post_types, google_post_types)
+                        
                     else:
-                        # outside of boundary issues
-                        pass
+                        two_city_logger(applicant, city, g_city)
+                        
                 if coding_result == None:                    
                     print('error in geocoding address for {}. check logs for {}'.format(applicant, simplified_address))
                     
