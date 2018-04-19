@@ -8,7 +8,10 @@ import sqlite3
 import logging
 import config	# secret api key source
 import db_data_models as dbdm # classes for dealing with L2F exports
-from database_audit_tools import parse_post_types, evaluate_post_types, flag_checker, two_city_parser
+from address_audit_tools import parse_post_types
+from address_audit_tools import evaluate_post_types
+from address_audit_tools import flag_checker
+from address_audit_tools import two_city_parser
 
 #api key
 myapikey = config.api_key
@@ -47,7 +50,9 @@ def address_builder(parsed_string):
     '''
     parse_keys = parsed_string.keys()
     built_string = str()  
+    # this should become a tuple! dealing with a dictionary is not needed 
     flags = {'MultiUnit': False, 'Direction': False, 'PostType': False} # for diffing key aspects of addresses
+
     if 'AddressNumber' in parse_keys:
         source_value = parsed_string['AddressNumber']
         street_number = street_number_parser(source_value)
@@ -272,7 +277,7 @@ class Coordinates():
 
 class SQLdatabase():
     # reference https://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace
-    # https://stackoverflow.com/questions/13934994/sqlite-foreign-key-examples
+
     def __init__(self):
         self.conn = None
         self.cursor = None
@@ -346,7 +351,10 @@ class SQLdatabase():
             return (False, False)
 
     def get_address(self, lat, lng):
-
+        '''
+        takes a lat, lng and pulls out the unit number and street from the database as a tuple
+        and returns a formatted string combining unit and street
+        '''
         self.cursor.execute("SELECT google_house_num, google_street FROM google_result WHERE lat=? AND lng=?", (lat, lng,))
         result = self.cursor.fetchone()
         if result:
@@ -358,13 +366,22 @@ class SQLdatabase():
         '''
         returns all the source addresses and their flags at a given lat,lng
         this will allow us to identify partial addresses to follow up on
+        returns: boolean values in a 3 tuple (unit_flag, dir_flag, post_type)
         '''
-        self.cursor.execute("SELECT source_street, source_city, unit_flag, dir_flag, post_type FROM address WHERE lat=? AND lng =?",(lat,lng,))
-        flag_query = self.cursor.fetchall()
+        self.cursor.execute("SELECT unit_flag, dir_flag, post_type FROM google_result WHERE lat=? AND lng =?",(lat,lng,))
+        flag_query = self.cursor.fetchone()
         if flag_query:
             return flag_query
         else:
             return False
+
+    def set_unit_flag_in_db(self, lat, lng):
+        '''
+        updates the unit flag at lat, lng as True in table google_result
+        '''
+        # http://www.sqlitetutorial.net/sqlite-python/update/
+        values = (True, lat, lng)
+        self.cursor.execute('UPDATE google_result SET unit_flag=? WHERE lat=? AND lng=?', values)
 
     def close_db(self):
         '''
@@ -391,13 +408,13 @@ if __name__ == '__main__':
         if decon_address is not False:
             simplified_address, flags = decon_address
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
-            if dbase.is_in_db(simplified_address, city) == False:
+            if dbase.is_in_db(simplified_address, city) == False: # we have not coded it before
                 address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
                 ### HERE BE GEOCODING ###
                 coding_result = coordinate_manager.lookup(address_for_api) # returns False, None or tuple
                 if coding_result:               
-                    source_post_types = parse_post_types(simplified_address) # SOURCE PT 
-                    _, _, s_evf  = source_post_types
+                    source_post_types = parse_post_types(simplified_address) # SOURCE PT's
+                    _, _, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
 
                     g_city = coding_result.city
                     google_address = '{} {}'.format(coding_result.house_number, coding_result.street)
@@ -429,20 +446,29 @@ if __name__ == '__main__':
                                                     coding_result.lng)
                                 dbase.insert_into_db('address', address_dbase_input)
 
-                                google_result = (coding_result.lat, # THIS DATABASE INSERT NEEDS WORK
+                                google_result = (coding_result.lat, 
                                             coding_result.lng,
                                             coding_result.g_address_str,
                                             coding_result.house_number,
                                             coding_result.street,
                                             coding_result.city,
-                                            flagged_unit,
-                                            flagged_dir,
-                                            dir_str,
-                                            flagged_post_type,
-                                            pt_str)
+                                            flagged_unit, # did we identify the building has units?
+                                            flagged_dir, # NSEW?
+                                            dir_str, # something from [N, S, E, W]?
+                                            flagged_post_type, # street, drive etc. 
+                                            pt_str # s, d etc. 
+                                            ) 
 
                                 dbase.insert_into_db('google_result', google_result)
-
+                            else:
+                                # post type logging function call
+                                pass
+                        else:
+                            # post type issues - something not mapped in the existing datastructure of directions or post type 
+                            pass 
+                    else:
+                        # outside of boundary issues
+                        pass
                 if coding_result == None:                    
                     print('error in geocoding address for {}. check logs for {}'.format(applicant, simplified_address))
                     
@@ -451,11 +477,12 @@ if __name__ == '__main__':
                     # we are at the limit - cool down
             else:
                 print('already coded {}!'.format(simplified_address))
-                if flagged_unit:
-                    # there is a unit flag from the source address.  Is there one in the database?
-                    pass
-
-                
+                if flagged_unit: # if the input string has a unit number and we have already coded it
+                    lat, lng = dbase.get_coordinates(simplified_address, city) # get the lat, lng
+                    uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
+                    if not uf: # if the input string has one, but the database does not, we need to update the database
+                        print('unit flag was missing from {} in the database.  We have added one'.format(simplified_address))
+                        dbase.set_unit_flag_in_db(lat, lng)                                    
         else:            
             print('error in parsing address for {}. check logs for {} at {}'.format(applicant, address_parser.errors[address],address))
     dbase.close_db()
