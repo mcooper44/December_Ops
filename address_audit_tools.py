@@ -82,7 +82,7 @@ def parse_post_types(address):
                 eval_flag = True
         
     else:
-        print('invalid tag response')
+        print('attempting to parse post types. Got invalid tag response for {}'.format(address))
         return None    
     
     return ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
@@ -116,7 +116,7 @@ def evaluate_post_types(source_types, db_types):
 
     return (sn_error, dt_error, fl_error)
 
-def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
+def flag_checker(tpl_to_check, tpl_to_check_against):
     '''
     looks for missing unit, direction or post type on the source
     this function recycles flag_match and returns False and flag 
@@ -128,18 +128,19 @@ def flag_checker(tpl_to_check, lst_of_tpls_to_check_against):
     missing_dir = False
     missing_pt = False
 
-    for tpl_to_check_against in lst_of_tpls_to_check_against:
-        if tpl_to_check != tpl_to_check_against:
-            # take a slice from the tuple containing the flags
-            flag_match = evaluate_post_types(tpl_to_check[2:],
-                                             tpl_to_check_against[2:])
-            mu, md, mpt = flag_match
-            if mu:
-                missing_unit = mu
-            if md:
-                missing_dir = md
-            if mpt:
-                missing_pt = mpt
+    
+    if tpl_to_check != tpl_to_check_against:
+        
+        flag_match = evaluate_post_types(tpl_to_check,
+                                            tpl_to_check_against)
+        mu, md, mpt = flag_match
+        if mu:
+            missing_unit = mu
+        if md:
+            missing_dir = md
+        if mpt:
+            missing_pt = mpt
+    
     udp_flags = (missing_unit, missing_dir, missing_pt)
     if any(udp_flags):
         return  (False, udp_flags)
@@ -190,13 +191,13 @@ def boundary_logger(applicant, city, google=False):
             applicant_string = 'Google result for {}'.format(applicant)
             write_to_logs(applicant_string, flag_type='bound')
 
-def create_reference_object(flags, parsed_address, city):
+def create_reference_object(flags):
     '''
     takes flags extracted from the address, an address and a city and reformats them into a tuple
     that can be compared against flags extracted from the database for the canonical address exemplar
     '''
     source_units_flag, source_dirs_flag, source_post_flag = flags['MultiUnit'], flags['Direction'], flags['PostType']
-    reference = (parsed_address, city, source_units_flag, source_dirs_flag, source_post_flag)
+    reference = (source_units_flag, source_dirs_flag, source_post_flag)
     return reference
 
 def missing_element_logger(applicant, flags, parsed_address, city, flags_from_db):
@@ -206,8 +207,8 @@ def missing_element_logger(applicant, flags, parsed_address, city, flags_from_db
     template to use in the flag_checker function.
     If there is a mismatch of the flags, it then creates a log entry denoting where the issues are.    
     '''
-    reference_object = create_reference_object(flags,parsed_address, city)
-    flag_references = flag_checker(reference_object, flags_from_db) # tuple, list of tuples
+    reference_object = create_reference_object(flags)
+    flag_references = flag_checker(reference_object, flags_from_db) # tuple, tuple of database flags
     is_ok, toggles = flag_references
     if not is_ok:
         write_to_logs(applicant, toggles, 'udp')   
