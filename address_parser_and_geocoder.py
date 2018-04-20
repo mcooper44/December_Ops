@@ -23,15 +23,15 @@ myapikey = config.api_key
 # error logging is handled by functions that carry out parsing and geocoding
 # they pass False or None on to the objects using them and are handled by the objects
 
-geocoding_logger = logging.getLogger(__name__)
+geocoding_logger = logging.getLogger('geocoder')
 geocoding_logger.setLevel(logging.DEBUG)
 geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 geocoding_log_file_handler = logging.FileHandler('geocoding.log')
 geocoding_log_file_handler.setFormatter(geocoding_log_formatter)
 geocoding_logger.addHandler(geocoding_log_file_handler)
 
-address_str_parse_logger = logging.getLogger(__name__)
-address_str_parse_logger.setLevel(logging.INFO)
+address_str_parse_logger = logging.getLogger('address_parser')
+address_str_parse_logger.setLevel(logging.ERROR)
 address_str_parse_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 address_str_parse_log_file_handler = logging.FileHandler('address_str_parse_functions.log')
 geocoding_log_file_handler.setFormatter(address_str_parse_log_formatter)
@@ -123,19 +123,19 @@ def full_address_parser(addr):
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
-                address_str_parse_logger.info('Could not derive Street Address from {}'.format(addr))
+                address_str_parse_logger.error('Could not derive Street Address from {}'.format(addr))
                 return usaparsed_street_address(False, addr, 'address_type Error')
                 
         except usaddress.RepeatedLabelError:
             # log address format error and flag for manual follow up
-            address_str_parse_logger.info('RepeatedLabelError from {}'.format(addr))            
+            address_str_parse_logger.error('RepeatedLabelError from {}'.format(addr))            
             return usaparsed_street_address(False, addr, 'RepeatedLabelError')
         except KeyError:
-            address_str_parse_logger.info('KeyError from {}'.format(addr))
+            address_str_parse_logger.error('KeyError from {}'.format(addr))
             return usaparsed_street_address(False, addr, 'KeyError')            
             
     else:
-        address_str_parse_logger.info('Blank Field Error from {}'.format(addr))
+        address_str_parse_logger.error('Blank Field Error from {}'.format(addr))
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
 
@@ -150,24 +150,29 @@ def returnGeocoderResult(address, myapikey):
     """
     this function takes an address and passes it to googles geocoding
     api with the help of the Geocoder Library.
-    it returns a geocoder object wrapped around the json response
+    it returns a geocoder object wrapped around the json response OR
+    False if we are at the free query limit or some major exception 
+    happens in the try block
+    or None if there is an error with the api (sometimes it just does
+    not work)
     """    
     try:            
         time.sleep(1)
         result = geocoder.google(address, key=myapikey)
         if result is not None:
             if result.status == 'OK':
+                geocoding_logger.info('{} is {}'.format(address, result.status))
                 return result
             elif result.status == 'OVER_QUERY_LIMIT':
-                geocoding_logger.info('{} yeilded {}'.format(address,result.status))
+                geocoding_logger.warning('{} yeilded {}'.format(address,result.status))
                 return False
             else:
-                geocoding_logger.info('Result is None with {} on {}'.format(result.status, address))
+                geocoding_logger.warning('Result is None with {} on {}'.format(result.status, address))
                 return None
         else:
             return None
     except Exception as boo:
-        geocoding_logger.info('Exception {} raised'.format(boo))
+        geocoding_logger.critical('Exception {} raised by {}'.format(boo, address))
         return False
 
 class AddressParser():
@@ -259,6 +264,7 @@ class Coordinates():
                 # huh. that's odd. Recieved something other than valid object, False or None
                 geocoding_logger.debug('Geocoder returned something that is neither, False, or None with {}'.format(address))
         else:
+            geocoding_logger.critical('Geocoder returned something that is neither, False, or None with {}'.format(address))
             raise Exception('Over_Query_Limit')
    
     def add_coordinates(self, lat, lng):
@@ -426,13 +432,18 @@ if __name__ == '__main__':
         if decon_address is not False:
             simplified_address, flags = decon_address
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
+            
+            source_post_types = parse_post_types(simplified_address) # SOURCE PT's
+            _, _, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
+
+            
+
             if dbase.is_in_db(simplified_address, city) == False: # we have not coded it before
                 address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
                 ### HERE BE GEOCODING ###
                 coding_result = coordinate_manager.lookup(address_for_api) # returns False, None or tuple
                 if coding_result:               
-                    source_post_types = parse_post_types(simplified_address) # SOURCE PT's
-                    _, _, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
+                    
 
                     g_city = coding_result.city
                     google_address = '{} {}'.format(coding_result.house_number, coding_result.street)
@@ -504,3 +515,4 @@ if __name__ == '__main__':
         else:            
             print('error in parsing address for {}. check logs for {} at {}'.format(applicant, address_parser.errors[address],address))
     dbase.close_db()
+    print('Process complete')

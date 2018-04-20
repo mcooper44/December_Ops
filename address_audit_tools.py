@@ -12,9 +12,9 @@ import usaddress
 import logging
 
 address_audit_log = logging.getLogger(__name__)
-address_audit_log.setLevel(logging.INFO)
+address_audit_log.setLevel(logging.ERROR)
 address_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
-address_log_file_handler = logging.FileHandler('address_errors.log')
+address_log_file_handler = logging.FileHandler('address_audit_errors.log')
 address_log_file_handler.setFormatter(address_log_formatter)
 address_audit_log.addHandler(address_log_file_handler)
 
@@ -161,13 +161,17 @@ def write_to_logs(applicant, flags=None, flag_type='boundary'):
     to the logs
     '''
     if flag_type == 'bound':
-        print('Flag {} for out of bounds'.format(applicant))
+        address_audit_log.error('Flag {} for out of bounds'.format(applicant))
     if flag_type == 'udp':
         u, d, p = flags
-        print('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
+        address_audit_log.error('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
     if flag_type == 'mismatch':
         o,t,th = flags
-        address_audit_log.info('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
+        address_audit_log.error('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
+    if flag_type == 'two_city':
+        address_audit_log.error(flags) # in this case flags = a string from the two_city_logger
+    if flag_type == 'g_bound':
+        address_audit_log.error('{} returned invalid city {} on google result'.format(applicant, flags))
 
 def boundary_checker(city):
     '''
@@ -195,9 +199,8 @@ def boundary_logger(applicant, city, google=False):
     if not boundary_checker(city):
         if not google:
             write_to_logs(applicant, flag_type='bound')
-        else:
-            applicant_string = 'Google result for {}'.format(applicant)
-            write_to_logs(applicant_string, flag_type='bound')
+        else:            
+            write_to_logs(applicant, city, flag_type='g_bound')
 
 def create_reference_object(flags):
     '''
@@ -228,10 +231,8 @@ def post_type_logger(applicant, source_post_types, post_types_from_dbase):
     if there is, it will write to the logs
     '''
     post_type_evaluation = evaluate_post_types(source_post_types, post_types_from_dbase)
-    if any(post_type_evaluation): # if any of the flags were mismatched
-        one, two, three = post_type_evaluation
-        address_audit_log.info("""{} Name Type Error = {} Direction Type Error = {} Eval Flag
-                     = {}""".format(applicant, one, two, three))
+    if any(post_type_evaluation): # if any of the flags were mismatched       
+        write_to_logs(applicant, post_type_evaluation, 'mismatch')
 
 def two_city_parser(source_city, g_city):
     '''
@@ -277,4 +278,5 @@ def two_city_logger(applicant, source_city, g_city):
                 log_string = """{} source city {} 
                                 returned invalid google city {} """.format(applicant, source_city, g_city)
     if log_string:
-        address_audit_log.info(log_string)
+        write_to_logs(applicant, log_string, 'two_city')
+        
