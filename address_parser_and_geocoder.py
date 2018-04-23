@@ -5,6 +5,7 @@ from collections import namedtuple, defaultdict
 import usaddress
 import string
 import sqlite3
+import re
 import logging
 import config	# secret api key source
 from db_data_models import Field_Names
@@ -106,7 +107,7 @@ def address_builder(parsed_string):
     final_string = built_string.strip()    
     return (final_string, flags)  # strip out the leading white space, return the flags
 
-def full_address_parser(addr):
+def full_address_parser(address):
     '''
     takes a street address e.g. 123 Main Street and attempts to break it into 
     the relevant chunks
@@ -114,6 +115,7 @@ def full_address_parser(addr):
     :returns: a tuple (True, original address, (parsed address, error_flags)) 
               or (False, original address, error code)       
     '''
+    addr = address # insert something to strip out punctuation marks
     usaparsed_street_address = namedtuple('usaparsed_street_address','flag original return_value')
     if addr:
         try:
@@ -192,7 +194,7 @@ class AddressParser():
         a tuple of  ('unit number street', error_flags) or False
         '''
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
-        if address not in key_list:
+        if address not in key_list and address is not False:
             
             worked, in_put, out_put  = full_address_parser(address)
             if worked:                
@@ -204,6 +206,8 @@ class AddressParser():
         else:
             if address in self.errors:
                 return False
+            elif address == False:
+                return address
             else:
                 return self.parsed[address]
     
@@ -326,7 +330,7 @@ class SQLdatabase():
                 self.cursor.execute("""CREATE TABLE IF NOT EXISTS google_result 
                                     (lat real,
                                      lng real,
-                                     google_full_str text,
+                                     google_full_str text UNIQUE,
                                      google_house_num text,
                                      google_street text,
                                      google_city text,
@@ -347,7 +351,7 @@ class SQLdatabase():
             self.cursor.execute('INSERT INTO address VALUES (?,?,?,?)', values)
             self.conn.commit()
         if table == 'google_result':
-            self.cursor.execute("""INSERT INTO google_result VALUES
+            self.cursor.execute("""INSERT OR IGNORE INTO google_result VALUES
                                 (?,?,?,?,?,?,?,?,?,?,?)""", values)
             self.conn.commit()
 
@@ -361,6 +365,17 @@ class SQLdatabase():
 
         self.cursor.execute("SELECT * FROM address WHERE source_street=? AND source_city=?",(parsed_address,source_city,))
         db_ping = self.cursor.fetchone()        
+        if db_ping:
+            return True
+        else:
+            return False
+
+    def lat_lng_in_db(self, lat, lng):
+        '''
+        this pings the db and sees if we have logged a google result for the base address yet
+        '''
+        self.cursor.execute("SELECT * FROM google_result WHERE lat=? AND lng=?",(lat, lng,))
+        db_ping = self.cursor.fetchone()
         if db_ping:
             return True
         else:
@@ -418,11 +433,12 @@ if __name__ == '__main__':
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-    dbase.connect_to('atest.db', create=True)
+    dbase.connect_to('Address.db', create=True) # testing = atest.db
     
     fnames = Field_Names('header_config.csv') # I am header names
     fnames.init_index_dict() 
-    export_file = Export_File_Parser('test_export.csv',fnames.ID) # I open a csv
+    export_file = Export_File_Parser('2017_address_feedstock.csv',fnames.ID) # I open a csv 
+    # for testing us test_export.csv
     export_file.open_file()
 
     for line in export_file: # I am a csv object
@@ -435,6 +451,7 @@ if __name__ == '__main__':
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
             
             source_post_types = parse_post_types(simplified_address) # SOURCE PT's
+
             _, _, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
             if s_evf:
                 write_to_logs(applicant, city, 'post_parse') # The direction of street post type is wonky
@@ -488,8 +505,10 @@ if __name__ == '__main__':
                                             flagged_post_type, # street, drive etc. 
                                             pt_str # s, d etc. 
                                             ) 
-
-                                dbase.insert_into_db('google_result', google_result)
+                                # we have not logged this source address, but have we already logged the 
+                                # lat, lng and google result in the table?
+                                if not dbase.lat_lng_in_db(coding_result.lat, coding_result.lng):
+                                    dbase.insert_into_db('google_result', google_result)
                             else:
                                 post_type_logger(applicant, source_post_types, google_post_types)
                                 

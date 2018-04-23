@@ -165,7 +165,7 @@ def write_to_logs(applicant, flags=None, flag_type='bound'):
         address_audit_log.error('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
     if flag_type == 'mismatch':
         o,t,th = flags
-        address_audit_log.error('{} Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
+        address_audit_log.error('{} Returned a mismatch. Following Errors are True Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
     if flag_type == 'two_city':
         address_audit_log.error(flags) # in this case flags = a string from the two_city_logger
     if flag_type == 'g_bound':
