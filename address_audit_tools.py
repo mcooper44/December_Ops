@@ -18,9 +18,6 @@ address_log_file_handler = logging.FileHandler('address_audit_errors.log')
 address_log_file_handler.setFormatter(address_log_formatter)
 address_audit_log.addHandler(address_log_file_handler)
 
-
-
-
 def parse_post_types(address):
     '''
     This function provides output indicating the presence and equivalency of 
@@ -32,6 +29,7 @@ def parse_post_types(address):
     this does break down for some of the letters but for this application it should be 
     sufficient.
     returns a tuple ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
+    eval_flag indicates the presence of an unmapped or potentially wrong usadress tag outcome
     '''
     
     street_types = {'a': ('avenue', 'ave', 'av'),
@@ -66,7 +64,7 @@ def parse_post_types(address):
         if 'StreetNamePostType' in tags.keys():
                 
             tag_value = tags['StreetNamePostType']
-            street_key = tag_value[0].lower()
+            street_key = tag_value[0].lower() # Street becomes s
             if street_key in street_types.keys():
                 tvalue = tag_value.lower()
                 if tvalue in street_types[street_key]:
@@ -155,7 +153,7 @@ def flag_checker(tpl_to_check, tpl_to_check_against):
     else:
         return (True, None)
 
-def write_to_logs(applicant, flags=None, flag_type='boundary'):
+def write_to_logs(applicant, flags=None, flag_type='bound'):
     '''
     this function is used by the different flag checking functions to write different strings
     to the logs
@@ -172,6 +170,8 @@ def write_to_logs(applicant, flags=None, flag_type='boundary'):
         address_audit_log.error(flags) # in this case flags = a string from the two_city_logger
     if flag_type == 'g_bound':
         address_audit_log.error('{} returned invalid city {} on google result'.format(applicant, flags))
+    if flag_type == 'post_parse':
+        address_audit_log.error('{} returned a error flag.  Follow up with the address {}'.format(applicant, flags))
 
 def boundary_checker(city):
     '''

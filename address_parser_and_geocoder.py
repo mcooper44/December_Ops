@@ -16,6 +16,7 @@ from address_audit_tools import flag_checker
 from address_audit_tools import two_city_parser
 from address_audit_tools import post_type_logger
 from address_audit_tools import two_city_logger
+from address_audit_tools import write_to_logs
 
 #api key
 myapikey = config.api_key
@@ -435,8 +436,8 @@ if __name__ == '__main__':
             
             source_post_types = parse_post_types(simplified_address) # SOURCE PT's
             _, _, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
-
-            
+            if s_evf:
+                write_to_logs(applicant, city, 'post_parse') # The direction of street post type is wonky
 
             if dbase.is_in_db(simplified_address, city) == False: # we have not coded it before
                 address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
