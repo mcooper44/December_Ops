@@ -232,7 +232,11 @@ class Visit_Line_Object():
         '''
         returns the address for the visit formatted as a tuple address, city, postal code
         '''
-        return (self.visit_Address, self.visit_City, self.visit_Postal_Code)
+        address_3tuple = (self.visit_Address, self.visit_City, self.visit_Postal_Code)
+        if any(address_3tuple):
+            return address_3tuple
+        else:
+            return (False, False, False)
 
     def get_hh_id_number(self):
         '''
