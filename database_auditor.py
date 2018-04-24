@@ -9,6 +9,8 @@
 # Eval Flag = there is a potential mismatch between Name Type or Direction Type
 # i.e. google determining that 100 Main Street North vs. 100 Main Street West
 # are equavalent when they are geocoded.
+# At the moment it does not, but it should provide methods to rewrite the csv with
+# corrected address information
 #####################################################################################
 
 from address_parser_and_geocoder import AddressParser, SQLdatabase, Coordinates
