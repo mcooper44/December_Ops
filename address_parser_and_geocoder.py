@@ -18,6 +18,7 @@ from address_audit_tools import two_city_parser
 from address_audit_tools import post_type_logger
 from address_audit_tools import two_city_logger
 from address_audit_tools import write_to_logs
+from address_audit_tools import boundary_checker
 
 #api key
 myapikey = config.api_key
@@ -469,8 +470,8 @@ if __name__ == '__main__':
             print('Processing {} at line number: {} at {}'.format(applicant, ln_num, strftime("%H:%M:%S", gmtime())))
         
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
-        
-        if decon_address is not False:
+        in_bounds = boundary_checker(city)
+        if decon_address is not False and in_bounds == True:
             simplified_address, flags = decon_address
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
             
@@ -546,7 +547,7 @@ if __name__ == '__main__':
                     print('error in geocoding address on line {} for {}. check logs for {}'.format(ln_num, applicant, simplified_address))
                     
                 if coding_result == False:
-                    raise Exception('We are at coding limit! We reached {}'.format(ln_num))
+                    raise Exception('We are at coding limit! We reached line {}'.format(ln_num))
                     # we are at the limit - cool down
             else:
                               
