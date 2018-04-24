@@ -160,21 +160,29 @@ def write_to_logs(applicant, flags=None, flag_type=None):
     to the logs with assoicated error codes
     '''
     if flag_type == 'bound':
-        address_audit_log.error('##10## {} flag for out of bounds'.format(applicant))
+        address_audit_log.error('##11## {} flag for out of bounds'.format(applicant))
     if flag_type == 'udp': # source is missing flags - esp. unit
         u, d, p = flags
-        address_audit_log.error('##30## {} is missing  unit {} Direction {} PostType {}'.format(applicant,u,d,p))
+        address_audit_log.error('##30## {} is missing unit {} Direction {} PostType {}'.format(applicant,u,d,p))
     if flag_type == 'mismatch':
         o,t,th = flags
         address_audit_log.error('##20## {} Returned a mismatch. Following Errors are True Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
-    if flag_type == 'two_city':
+    if flag_type == 'no_unit': # the source string is missing a unit
+        address_audit_log.error('##21## {} is missing a unit number on address {}'.format(applicant, flags))
+    if flag_type == 'two_city': #11 source != google; 12 source city=bad 13 source city=valid + google city=invalid
         address_audit_log.error(flags) # in this case flags = a string from the two_city_logger
     if flag_type == 'g_bound':
-        address_audit_log.error('##15## {} returned invalid city {} on google result'.format(applicant, flags))
+        address_audit_log.error('##12## {} returned invalid city {} on google result'.format(applicant, flags))
     if flag_type == 'post_parse':
         address_audit_log.error('##25## {} returned a error flag.  Follow up with the address {}'.format(applicant, flags))
+    if flag_type == 'source':
+        s_add, s_city = flags
+        address_audit_log.error('##10## {} has errors in address {} and/or city {}'.format(applicant, s_add, s_city))
     if not flag_type:
         raise Exception('FLAG NOT PRESENT in write_to_logs call')
+
+def missing_unit_logger(applicant, address):
+    write_to_logs(applicant, address), 'no_unit'
 
 def boundary_checker(city):
     '''
@@ -188,6 +196,13 @@ def boundary_checker(city):
         return True
     else:
         return False
+
+def source_error_logger(applicant, address, city):
+    '''
+    flags and address that we cannot parse or that is out of bounds
+    '''
+    flags = (address, city)
+    write_to_logs(applicant, flags, 'source')
 
 def boundary_logger(applicant, city, google=False):
     '''
@@ -261,25 +276,31 @@ def two_city_parser(source_city, g_city):
     return (letter_match(source_city, g_city), source_value, google_value)
        
 def two_city_logger(applicant, source_city, g_city):
+    '''
+    logs the following errors:
+    11 - source + google do not match
+    12 - source city is not valid
+    13 - source city is valid, but google city is not
+    '''
     result = two_city_parser(source_city, g_city)
     log_string = None
     if not all(result): # cities match and are both valid
         matching, sv, gv = result
         if all([sv, gv]): # if source city and google are valid cities
             if not matching: # but don't match
-                log_string = """##11## {} returned valid city, but source: {} does not match google: {}""".format(applicant, 
+                log_string = """##13## {} returned valid city, but source: {} does not match google: {}""".format(applicant, 
                                                                                                            source_city, 
                                                                                                            g_city)
         if not all([sv,gv]): # if source or google are not valid
             if not sv: # if source is not valid 
-                log_string = """##12## {} has an invalid source City: {}""".format(applicant, 
+                log_string = """##14## {} has an invalid source City: {}""".format(applicant, 
                                                                             source_city)
             if not gv: # if we got an odd geocoding result
-                log_string = """##13## {} source city {} returned invalid google city {}""".format(applicant, 
+                log_string = """##15## {} source city {} returned invalid google city {}""".format(applicant, 
                                                                                              source_city, 
                                                                                              g_city)
     if log_string:
         write_to_logs(applicant, log_string, 'two_city')
     if not log_string:
-        raise Exception('ERROR parsing google vs. source address for {}'.format(applicant))
+        raise Exception('ERROR parsing google vs. source address for {} logger could not derive log string'.format(applicant))
         

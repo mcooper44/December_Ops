@@ -19,6 +19,8 @@ from address_audit_tools import post_type_logger
 from address_audit_tools import two_city_logger
 from address_audit_tools import write_to_logs
 from address_audit_tools import boundary_checker
+from address_audit_tools import boundary_logger
+from address_audit_tools import missing_unit_logger
 
 #api key
 myapikey = config.api_key
@@ -119,7 +121,7 @@ def scrub_bad_formats_from(address):
                               ord(','): ''
                               })
     bad_formats = [' - ', ' -  ', '- ', ' -', '  - ', '  -  ']
-    for bad in bad_formats:
+    for bad in bad_formats: # grrr.  I wish I knew who spammed this garbage in the db
         good_address = good_address.replace(bad, '-')
     return good_address
 
@@ -140,7 +142,7 @@ def full_address_parser(address):
             if address_type == 'Street Address':
                 # parse the address with the other helper functions
                 p_add = address_builder(tagged_address) # tuple of (parsed address, flags)
-                address_str_parse_logger.info('##70## Parsed {} with result {}'.format(address, p_add[0]))
+                address_str_parse_logger.info('##80## Parsed {} with result {}'.format(address, p_add[0]))
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
@@ -167,7 +169,7 @@ def street_from_buzz(address_string):
     split_line = address_string.partition(',')
     return split_line[0]
 
-def returnGeocoderResult(address, myapikey):
+def returnGeocoderResult(address, myapikey=config, second_chance=True):
     """
     this function takes an address and passes it to googles geocoding
     api with the help of the Geocoder Library.
@@ -176,7 +178,8 @@ def returnGeocoderResult(address, myapikey):
     happens in the try block
     or None if there is an error with the api (sometimes it just does
     not work)
-    """    
+    """
+    try_again = second_chance    
     try:            
         time.sleep(1)
         result = geocoder.google(address, key=myapikey)
@@ -185,15 +188,21 @@ def returnGeocoderResult(address, myapikey):
                 geocoding_logger.info('##500## {} is {}'.format(address, result.status))
                 return result
             elif result.status == 'OVER_QUERY_LIMIT':
-                geocoding_logger.warning('##403## {} yeilded {}'.format(address,result.status))
+                geocoding_logger.warning('##402## {} yeilded {}'.format(address,result.status))
                 return False
             else:
-                #geocoding_logger.warning('##401##Result is None with {} on {}'.format(result.status, address))
+                geocoding_logger.warning('##403## Result is not OK or OVER with {} at {}'.format(result.status, address))
                 return None
         else:
-            return None
+            geocoding_logger.warning('##401## Result is None with status {} on {}'.format(result.status, address))
+            if try_again:
+                print('got None from google api, trying again for {}'.format(address))
+                time.sleep(10) # wait and try again once more after waiting
+                returnGeocoderResult(address, myapikey=config, second_chance=False)
+            else:
+                return None # tried to see if a second attempt would work, but it didn't
     except Exception as boo:
-        geocoding_logger.critical('##600## Exception {} raised by {}'.format(boo, address))
+        geocoding_logger.critical('##400## Try Block in returnGeocoderResult raised Exception {} from {}'.format(boo, address))
         return False
 
 class AddressParser():
@@ -283,11 +292,8 @@ class Coordinates():
                         city,
                         lat,
                         lng)
-            else:
-                # huh. that's odd. Recieved something other than valid object, False or None
-                geocoding_logger.debug('##400## Geocoder returned something that is neither, False, or None with: {}'.format(address))
+            
         else:
-            geocoding_logger.critical('##404## at limit with: {}'.format(address))
             raise Exception('Over_Query_Limit')
    
     def add_coordinates(self, lat, lng):
@@ -448,6 +454,7 @@ class SQLdatabase():
         self.conn.close()
 
 if __name__ == '__main__':
+    # this is a beast, I know.  It should change but I'm 
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
@@ -464,13 +471,16 @@ if __name__ == '__main__':
         line_object = Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         applicant = line_object.get_applicant_ID()
-        print(applicant, address, city)
+        
         ln_num += 1
         if ln_num in mile_stones:
             print('Processing {} at line number: {} at {}'.format(applicant, ln_num, strftime("%H:%M:%S", gmtime())))
         
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
         in_bounds = boundary_checker(city)
+        if not in_bounds:
+            boundary_logger(applicant, city)
+        # first layer error checking we can deconstruct the address and it's not out of bounds
         if decon_address is not False and in_bounds == True:
             simplified_address, flags = decon_address
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
@@ -479,19 +489,17 @@ if __name__ == '__main__':
             o_, o_, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
             if s_evf:
                 write_to_logs(applicant, city, 'post_parse') # The direction of street post type is wonky
-
-            if dbase.is_in_db(simplified_address, city) == False: # we have not coded it before
+            # second layer: if we have not coded it and there are no eval flags
+            if dbase.is_in_db(simplified_address, city) == False and s_evf == False: 
                 address_for_api = '{} {} Ontario, Canada'.format(simplified_address, city)
                 ### HERE BE GEOCODING ###
                 coding_result = coordinate_manager.lookup(address_for_api) # returns False, None or tuple
-                if coding_result:               
-                    
-
+                if coding_result:              
                     g_city = coding_result.city
                     google_address = '{} {}'.format(coding_result.house_number, coding_result.street)
                     google_post_types = parse_post_types(google_address) # GOOGLE PT
                    
-                    g_post_type_tp, g_dir_type_tp, g_evf  = google_post_types
+                    g_post_type_tp, g_dir_type_tp, g_evf = google_post_types
                     
                     # evaluate source vs. google post types
                     pt_eval_errors = evaluate_post_types(source_post_types, google_post_types)
@@ -503,12 +511,12 @@ if __name__ == '__main__':
                     # we can start to use logic to decide what to put in the database
                     # ...
 
-                    
+                    # third layer: google and source address construction and cities need to match
                     if all(cities_valid_and_matching): # Cities input and returned match and are valid
                         if not any([s_evf, g_evf]): # if the post type parsers didn't find any weirdness
 
-                            if not any(pt_eval_errors): # no post type errors are present and everything matches
-                                # we made it fam.  We can enter things in the database
+                            if not any(pt_eval_errors): # no post type errors are present: google vs source match
+                                # we made it fam.  We can enter things in the database now
                                 flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
                                 flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type                                
 
@@ -556,11 +564,9 @@ if __name__ == '__main__':
                     uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
                     if not uf: # if the input string has one, but the database does not, we need to update the database
                         print('unit flag was missing from {} in the database.  We have added one'.format(simplified_address))
-                        dbase.set_unit_flag_in_db(lat, lng)                                    
+                        dbase.set_unit_flag_in_db(lat, lng)
+                        missing_unit_logger(applicant, address)
         else:            
-            print('error in parsing address on line {} for {}. check logs for {}'.format(ln_num, applicant, address))
-        
-        
-        
+            print('address error on line {} for {}. check logs for {}'.format(ln_num, applicant, address))      
     dbase.close_db()
     print('Process complete')
