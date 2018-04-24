@@ -156,22 +156,22 @@ def flag_checker(tpl_to_check, tpl_to_check_against):
 def write_to_logs(applicant, flags=None, flag_type='bound'):
     '''
     this function is used by the different flag checking functions to write different strings
-    to the logs
+    to the logs with assoicated error codes
     '''
     if flag_type == 'bound':
-        address_audit_log.error('Flag {} for out of bounds'.format(applicant))
-    if flag_type == 'udp':
+        address_audit_log.error('##10## {} flag for out of bounds'.format(applicant))
+    if flag_type == 'udp': # source is missing flags - esp. unit
         u, d, p = flags
-        address_audit_log.error('Applicant: {} Unit Toggle: {} Dir Toggle: {} PostType Toggle: {}'.format(applicant,u,d,p))
+        address_audit_log.error('##30## {} is missing  unit {} Direction {} PostType {}'.format(applicant,u,d,p))
     if flag_type == 'mismatch':
         o,t,th = flags
-        address_audit_log.error('{} Returned a mismatch. Following Errors are True Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
+        address_audit_log.error('##20## {} Returned a mismatch. Following Errors are True Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th))
     if flag_type == 'two_city':
         address_audit_log.error(flags) # in this case flags = a string from the two_city_logger
     if flag_type == 'g_bound':
-        address_audit_log.error('{} returned invalid city {} on google result'.format(applicant, flags))
+        address_audit_log.error('##15## {} returned invalid city {} on google result'.format(applicant, flags))
     if flag_type == 'post_parse':
-        address_audit_log.error('{} returned a error flag.  Follow up with the address {}'.format(applicant, flags))
+        address_audit_log.error('##25## {} returned a error flag.  Follow up with the address {}'.format(applicant, flags))
 
 def boundary_checker(city):
     '''
