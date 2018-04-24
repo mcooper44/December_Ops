@@ -5,7 +5,7 @@ from collections import namedtuple, defaultdict
 import usaddress
 import string
 import sqlite3
-import re
+from time import gmtime, strftime
 import logging
 import config	# secret api key source
 from db_data_models import Field_Names
@@ -26,20 +26,20 @@ myapikey = config.api_key
 # they pass False or None on to the objects using them and are handled by the objects
 
 geocoding_logger = logging.getLogger('geocoder')
-geocoding_logger.setLevel(logging.DEBUG)
-geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+geocoding_logger.setLevel(logging.INFO)
+#geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+geocoding_log_formatter = logging.Formatter('%(message)s')
 geocoding_log_file_handler = logging.FileHandler('geocoding.log')
 geocoding_log_file_handler.setFormatter(geocoding_log_formatter)
 geocoding_logger.addHandler(geocoding_log_file_handler)
 
 address_str_parse_logger = logging.getLogger('address_parser')
-address_str_parse_logger.setLevel(logging.ERROR)
-address_str_parse_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+address_str_parse_logger.setLevel(logging.INFO)
+#address_str_parse_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
+address_str_parse_log_formatter = logging.Formatter('%(message)s')
 address_str_parse_log_file_handler = logging.FileHandler('address_str_parse_functions.log')
 geocoding_log_file_handler.setFormatter(address_str_parse_log_formatter)
 address_str_parse_logger.addHandler(address_str_parse_log_file_handler)
-
-
 
 ## Address Parsing
 
@@ -107,6 +107,21 @@ def address_builder(parsed_string):
     final_string = built_string.strip()    
     return (final_string, flags)  # strip out the leading white space, return the flags
 
+def scrub_bad_formats_from(address):
+    '''
+    This function scrubs common garbage inputs from the address string and makes
+    minor corrections to improve outcomes further down the pipeline
+    '''
+    good_address = address.translate({ord('.'): '',
+                              ord('#'): '',
+                              ord("`"): '',
+                              ord(','): ''
+                              })
+    bad_formats = [' - ', ' -  ', '- ', ' -', '  - ', '  -  ']
+    for bad in bad_formats:
+        good_address = good_address.replace(bad, '-')
+    return good_address
+
 def full_address_parser(address):
     '''
     takes a street address e.g. 123 Main Street and attempts to break it into 
@@ -115,7 +130,8 @@ def full_address_parser(address):
     :returns: a tuple (True, original address, (parsed address, error_flags)) 
               or (False, original address, error code)       
     '''
-    addr = address # insert something to strip out punctuation marks
+    
+    addr = scrub_bad_formats_from(address)
     usaparsed_street_address = namedtuple('usaparsed_street_address','flag original return_value')
     if addr:
         try:
@@ -123,22 +139,23 @@ def full_address_parser(address):
             if address_type == 'Street Address':
                 # parse the address with the other helper functions
                 p_add = address_builder(tagged_address) # tuple of (parsed address, flags)
+                address_str_parse_logger.info('##70## Parsed {} with result {}'.format(address, p_add[0]))
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
-                address_str_parse_logger.error('Could not derive Street Address from {}'.format(addr))
+                address_str_parse_logger.error('##71## Could not derive Street Address from {}'.format(address))
                 return usaparsed_street_address(False, addr, 'address_type Error')
                 
         except usaddress.RepeatedLabelError:
             # log address format error and flag for manual follow up
-            address_str_parse_logger.error('RepeatedLabelError from {}'.format(addr))            
+            address_str_parse_logger.error('##72## RepeatedLabelError from {}'.format(address))            
             return usaparsed_street_address(False, addr, 'RepeatedLabelError')
         except KeyError:
-            address_str_parse_logger.error('KeyError from {}'.format(addr))
+            address_str_parse_logger.error('##73## KeyError from {}'.format(address))
             return usaparsed_street_address(False, addr, 'KeyError')            
             
     else:
-        address_str_parse_logger.error('Blank Field Error from {}'.format(addr))
+        address_str_parse_logger.error('##74## Blank Field Error from {}'.format(address))
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
 
@@ -164,18 +181,18 @@ def returnGeocoderResult(address, myapikey):
         result = geocoder.google(address, key=myapikey)
         if result is not None:
             if result.status == 'OK':
-                geocoding_logger.info('{} is {}'.format(address, result.status))
+                geocoding_logger.info('##500## {} is {}'.format(address, result.status))
                 return result
             elif result.status == 'OVER_QUERY_LIMIT':
-                geocoding_logger.warning('{} yeilded {}'.format(address,result.status))
+                geocoding_logger.warning('##403## {} yeilded {}'.format(address,result.status))
                 return False
             else:
-                geocoding_logger.warning('Result is None with {} on {}'.format(result.status, address))
+                #geocoding_logger.warning('##401##Result is None with {} on {}'.format(result.status, address))
                 return None
         else:
             return None
     except Exception as boo:
-        geocoding_logger.critical('Exception {} raised by {}'.format(boo, address))
+        geocoding_logger.critical('##600## Exception {} raised by {}'.format(boo, address))
         return False
 
 class AddressParser():
@@ -267,9 +284,9 @@ class Coordinates():
                         lng)
             else:
                 # huh. that's odd. Recieved something other than valid object, False or None
-                geocoding_logger.debug('Geocoder returned something that is neither, False, or None with {}'.format(address))
+                geocoding_logger.debug('##400## Geocoder returned something that is neither, False, or None with: {}'.format(address))
         else:
-            geocoding_logger.critical('Geocoder returned something that is neither, False, or None with {}'.format(address))
+            geocoding_logger.critical('##404## at limit with: {}'.format(address))
             raise Exception('Over_Query_Limit')
    
     def add_coordinates(self, lat, lng):
@@ -330,7 +347,7 @@ class SQLdatabase():
                 self.cursor.execute("""CREATE TABLE IF NOT EXISTS google_result 
                                     (lat real,
                                      lng real,
-                                     google_full_str text UNIQUE,
+                                     google_full_str text,
                                      google_house_num text,
                                      google_street text,
                                      google_city text,
@@ -440,19 +457,25 @@ if __name__ == '__main__':
     export_file = Export_File_Parser('2017_address_feedstock.csv',fnames.ID) # I open a csv 
     # for testing us test_export.csv
     export_file.open_file()
-
+    mile_stones = range(0, 30001, 50)
+    ln_num = 1
     for line in export_file: # I am a csv object
         line_object = Visit_Line_Object(line,fnames.ID)
         address, city, _ = line_object.get_address()
         applicant = line_object.get_applicant_ID()
+        print(applicant, address, city)
+        ln_num += 1
+        if ln_num in mile_stones:
+            print('Processing {} at line number: {} at {}'.format(applicant, ln_num, strftime("%H:%M:%S", gmtime())))
+        
         decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
+        
         if decon_address is not False:
             simplified_address, flags = decon_address
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
             
             source_post_types = parse_post_types(simplified_address) # SOURCE PT's
-
-            _, _, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
+            o_, o_, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
             if s_evf:
                 write_to_logs(applicant, city, 'post_parse') # The direction of street post type is wonky
 
@@ -466,6 +489,7 @@ if __name__ == '__main__':
                     g_city = coding_result.city
                     google_address = '{} {}'.format(coding_result.house_number, coding_result.street)
                     google_post_types = parse_post_types(google_address) # GOOGLE PT
+                   
                     g_post_type_tp, g_dir_type_tp, g_evf  = google_post_types
                     
                     # evaluate source vs. google post types
@@ -519,13 +543,13 @@ if __name__ == '__main__':
                         two_city_logger(applicant, city, g_city)
                         
                 if coding_result == None:                    
-                    print('error in geocoding address for {}. check logs for {}'.format(applicant, simplified_address))
+                    print('error in geocoding address on line {} for {}. check logs for {}'.format(ln_num, applicant, simplified_address))
                     
                 if coding_result == False:
-                    raise Exception('We are at coding limit!')
+                    raise Exception('We are at coding limit! We reached {}'.format(ln_num))
                     # we are at the limit - cool down
             else:
-                print('already coded {}!'.format(simplified_address))
+                              
                 if flagged_unit: # if the input string has a unit number and we have already coded it
                     lat, lng = dbase.get_coordinates(simplified_address, city) # get the lat, lng
                     uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
@@ -533,6 +557,9 @@ if __name__ == '__main__':
                         print('unit flag was missing from {} in the database.  We have added one'.format(simplified_address))
                         dbase.set_unit_flag_in_db(lat, lng)                                    
         else:            
-            print('error in parsing address for {}. check logs for {} at {}'.format(applicant, address_parser.errors[address],address))
+            print('error in parsing address on line {} for {}. check logs for {}'.format(ln_num, applicant, address))
+        
+        
+        
     dbase.close_db()
     print('Process complete')
