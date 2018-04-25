@@ -121,8 +121,11 @@ def scrub_bad_formats_from(address):
                               ord(','): ''
                               })
     bad_formats = [' - ', ' -  ', '- ', ' -', '  - ', '  -  ']
+    bad_features = ['-A', '-B','-C', '-D', '-E']
     for bad in bad_formats: # grrr.  I wish I knew who spammed this garbage in the db
         good_address = good_address.replace(bad, '-')
+    for feature in bad_features:
+        good_address = good_address.replace(feature, '')
     return good_address
 
 def full_address_parser(address):
@@ -253,7 +256,7 @@ class Coordinates():
         self.api_key = myapikey
         self.can_proceed = True
         self.calls = 0
-        self.coordinates =  defaultdict(dict)
+        self.coordinates = {}
         self.dict_template = {'Errors': {'Name_Type': False,
                                          'Dir_Type': False, 
                                          'City_Error': False, 
@@ -272,29 +275,33 @@ class Coordinates():
         has been returned by google - better luck next time?
         '''
         address_tpl = namedtuple('address_tpl', 'g_address_str,house_number,street,city,lat,lng')
-        if self.can_proceed:
-            response = returnGeocoderResult(address, self.api_key)
-            self.calls += 1
-            if response == False: # returnGeocoderResult returns False when limit reached
-                self.can_proceed = False
-                return response
-            if response == None:
-                return None
-            if response.ok: # Either True or False
-                lat, lng = response.lat, response.lng
-                g_address_str = response.address
-                city = response.city
-                house_number = response.housenumber
-                street = response.street
-                return address_tpl(g_address_str,
-                        house_number,
-                        street,
-                        city,
-                        lat,
-                        lng)
-            
+        if address in self.coordinates:
+            return self.coordinates[address]
         else:
-            raise Exception('Over_Query_Limit')
+            if self.can_proceed:
+                response = returnGeocoderResult(address, self.api_key)
+                self.calls += 1
+                if response == False: # returnGeocoderResult returns False when limit reached
+                    self.can_proceed = False
+                    return response
+                if response == None:
+                    return None
+                if response.ok: # Either True or False
+                    self.coordinates[address] = response
+                    lat, lng = response.lat, response.lng
+                    g_address_str = response.address
+                    city = response.city
+                    house_number = response.housenumber
+                    street = response.street
+                    return address_tpl(g_address_str,
+                            house_number,
+                            street,
+                            city,
+                            lat,
+                            lng)
+                
+            else:
+                raise Exception('Over_Query_Limit after {} calls'.format(self.calls))
    
     def add_coordinates(self, lat, lng):
         '''
@@ -437,7 +444,7 @@ class SQLdatabase():
         if flag_query:
             return flag_query
         else:
-            return False
+            return (False, False, False)
 
     def set_unit_flag_in_db(self, lat, lng):
         '''
@@ -557,15 +564,21 @@ if __name__ == '__main__':
                 if coding_result == False:
                     raise Exception('We are at coding limit! We reached line {}'.format(ln_num))
                     # we are at the limit - cool down
-            else:
-                              
+            else:                              
                 if flagged_unit: # if the input string has a unit number and we have already coded it
-                    lat, lng = dbase.get_coordinates(simplified_address, city) # get the lat, lng
-                    uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
-                    if not uf: # if the input string has one, but the database does not, we need to update the database
-                        print('unit flag was missing from {} in the database.  We have added one'.format(simplified_address))
-                        dbase.set_unit_flag_in_db(lat, lng)
-                        missing_unit_logger(applicant, address)
+                    try:
+                        lat, lng = dbase.get_coordinates(simplified_address, city) # get the lat, lng
+                        if not lat and lng:
+                            address_str_parse_logger.error('##405## Attempting to find geocodes in google_table but not present. Check address on line {}'.format(ln_num))
+                        else:
+                            uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
+                            if not uf: # if the input string has one, but the database does not, we need to update the database
+                                print('unit flag was missing from {} in the database.  We have added one'.format(simplified_address))
+                                dbase.set_unit_flag_in_db(lat, lng)
+                                missing_unit_logger(applicant, address)
+                    except Exception as oops:
+                        print('Error with {} at address: {} on line {}'.format(applicant, simplified_address, ln_num))
+                        print('It raised Error: {}'.format(oops))
         else:            
             print('address error on line {} for {}. check logs for {}'.format(ln_num, applicant, address))      
     dbase.close_db()
