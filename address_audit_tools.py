@@ -182,7 +182,12 @@ def write_to_logs(applicant, flags=None, flag_type=None):
         raise Exception('FLAG NOT PRESENT in write_to_logs call')
 
 def missing_unit_logger(applicant, address):
-    write_to_logs(applicant, address), 'no_unit'
+    '''
+    registers that no unit is present on the source address but that in
+    the past we have found addresses at that location that listed unit
+    numbers.  
+    '''
+    write_to_logs(applicant, address, 'no_unit')
 
 def boundary_checker(city):
     '''
@@ -191,10 +196,14 @@ def boundary_checker(city):
     Otherwise it returns False
     '''
     in_bounds = ['kitchener', 'waterloo']
-    lcity = city.lower()
-    if lcity in in_bounds:
-        return True
+    if city:
+        lcity = city.lower()
+        if lcity in in_bounds:
+            return True
+        else:
+            return False
     else:
+        print('missing City value in boundary checker')
         return False
 
 def source_error_logger(applicant, address, city):
