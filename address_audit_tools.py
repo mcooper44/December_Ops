@@ -272,14 +272,17 @@ def two_city_parser(source_city, g_city):
     google_value = boundary_checker(g_city)
 
     def letter_match(source_city, g_city):
-        sc = source_city.lower()
-        gc = g_city.lower()
-        # b/c there are only 2 valid cities, we can see if the first letters
-        # are the same to test equivalence.
-        if sc[0] == gc[0]: 
-            return True # they both match
+        if source_city and g_city:
+            sc = source_city.lower()
+            gc = g_city.lower()
+            # b/c there are only 2 valid cities, we can see if the first letters
+            # are the same to test equivalence.
+            if sc[0] == gc[0]: 
+                return True # they both match
+            else:
+                return False # they don't match
         else:
-            return False # they don't match
+            return False
     
     # matching, source is valid, google is valid
     return (letter_match(source_city, g_city), source_value, google_value)

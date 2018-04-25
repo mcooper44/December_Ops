@@ -287,18 +287,20 @@ class Coordinates():
                 if response == None:
                     return None
                 if response.ok: # Either True or False
-                    self.coordinates[address] = response
+                    
                     lat, lng = response.lat, response.lng
                     g_address_str = response.address
                     city = response.city
                     house_number = response.housenumber
                     street = response.street
-                    return address_tpl(g_address_str,
+                    response_tple = address_tpl(g_address_str,
                             house_number,
                             street,
                             city,
                             lat,
                             lng)
+                    self.coordinates[address] = response_tple
+                    return response_tple
                 
             else:
                 raise Exception('Over_Query_Limit after {} calls'.format(self.calls))
