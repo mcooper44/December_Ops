@@ -1,12 +1,12 @@
 import csv
 import geocoder
-import time
 from collections import namedtuple, defaultdict
 import usaddress
 import string
 import sqlite3
-from time import gmtime, strftime
+from time import gmtime, strftime, sleep
 import logging
+import re
 import config	# secret api key source
 from db_data_models import Field_Names
 from db_data_models import Visit_Line_Object
@@ -120,6 +120,7 @@ def scrub_bad_formats_from(address):
                               ord("`"): '',
                               ord(','): ''
                               })
+    good_address = re.sub(r'\([^)]*\)', '', good_address)
     bad_formats = [' - ', ' -  ', '- ', ' -', '  - ', '  -  ']
     bad_features = ['-A', '-B','-C', '-D', '-E']
     for bad in bad_formats: # grrr.  I wish I knew who spammed this garbage in the db
@@ -184,7 +185,7 @@ def returnGeocoderResult(address, myapikey=config, second_chance=True):
     """
     try_again = second_chance    
     try:            
-        time.sleep(1)
+        sleep(1)
         result = geocoder.google(address, key=myapikey)
         if result is not None:
             if result.status == 'OK':
@@ -200,7 +201,7 @@ def returnGeocoderResult(address, myapikey=config, second_chance=True):
             geocoding_logger.warning('##401## Result is None with status {} on {}'.format(result.status, address))
             if try_again:
                 print('got None from google api, trying again for {}'.format(address))
-                time.sleep(10) # wait and try again once more after waiting
+                sleep(10) # wait and try again once more after waiting
                 returnGeocoderResult(address, myapikey=config, second_chance=False)
             else:
                 return None # tried to see if a second attempt would work, but it didn't
