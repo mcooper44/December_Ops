@@ -58,7 +58,10 @@ def street_number_parser(number_string):
     space = number_string.split(' ') 
     dash = space[-1].split('-')
     out = dash[-1].strip().split(' ')
-    return out[-1].strip().strip(updown) # strip white space and any letters i.e. 124B will now = 124
+    if not out:
+        return number_string
+    else:
+        return out[-1].strip().strip(updown) # strip white space and any letters i.e. 124B will now = 124
 
 def address_builder(parsed_string):
     '''
@@ -127,7 +130,10 @@ def scrub_bad_formats_from(address):
         good_address = good_address.replace(bad, '-')
     for feature in bad_features:
         good_address = good_address.replace(feature, '')
-    return good_address
+    if good_address:
+        return good_address
+    else:
+        return address
 
 def full_address_parser(address):
     '''
@@ -165,13 +171,6 @@ def full_address_parser(address):
         address_str_parse_logger.error('##74## Blank Field Error from {}'.format(address))
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
-
-def street_from_buzz(address_string):
-    '''
-    helper function for clipping the junk line out of the address string.
-    '''
-    split_line = address_string.partition(',')
-    return split_line[0]
 
 def returnGeocoderResult(address, myapikey=config, second_chance=True):
     """
@@ -242,6 +241,15 @@ class AddressParser():
             else:
                 return self.parsed[address]
     
+    def return_simple_address(self, source_address):
+        '''
+        this function sidesteps the error checking steps
+        and just tries to simplify an address string
+        '''
+        _, _, parsed_address = full_address_parser(source_address)
+        simple_address, _ = parsed_address
+        return simple_address
+
     def is_not_error(self, address):
         # need to insert some database ping here
         if address not in self.errors:
