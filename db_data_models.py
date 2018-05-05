@@ -200,9 +200,9 @@ class Visit_Line_Object():
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
         self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
-        self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
-        self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
-        self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+        self.main_applicant_Fname = None
+        self.main_applicant_Lname = None
+        self.main_applicant_DOB = None
         self.main_applicant_Age = visit_line[fnamedict['Client Age']] # Main Applicant Age
         self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
         self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
@@ -220,7 +220,17 @@ class Visit_Line_Object():
         self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
         self.HH_main_applicant_profile = None
         self.HH_family_members_profile = None      
-
+        
+        try:
+            if visit_line[fnamedict['Client First Name']]:
+                self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
+            if visit_line[fnamedict['Client Last Name']]:
+                self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
+            if visit_line[fnamedict['Client Date of Birth']]:
+                self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+        except:
+            pass
+            
         if december_flag:
             self.xmas_ID = visit_line[fnamedict['Request ID']]
             self.xmas_food_provided = visit_line[fnamedict['Foods Provided']]
