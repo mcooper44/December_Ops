@@ -494,7 +494,9 @@ if __name__ == '__main__':
         if ln_num in mile_stones:
             print('Processing {} at line number: {} at {}'.format(applicant, ln_num, strftime("%H:%M:%S", gmtime())))
         
-        decon_address = address_parser.parse(address) # returns ('301 Front Street West', flags)
+        # deconstructed address -returns ('301 Front Street West', flags)
+        # flags = {'MultiUnit': False, 'Direction': False, 'PostType': False} 
+        decon_address = address_parser.parse(address) 
         in_bounds = boundary_checker(city)
         if not in_bounds:
             boundary_logger(applicant, city)
@@ -584,7 +586,8 @@ if __name__ == '__main__':
                         else:
                             uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
                             if not uf: # if the input string has one, but the database does not, we need to update the database
-                                print('unit flag was missing from {} in the database.  We have added one'.format(simplified_address))
+                                print('unit flag was missing from {} in the database.  We have added one for {} at {}'.format(simplified_address,
+                                                                                                                        applicant, ln_num))
                                 dbase.set_unit_flag_in_db(lat, lng)
                                 missing_unit_logger(applicant, address)
                     except Exception as oops:

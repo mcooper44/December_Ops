@@ -53,7 +53,7 @@ def parse_post_types(address):
 
     streetnameptype = False # ave st etc. are present
     streetnamepdir = False # north south east etc. are present
-    eval_flag = False # is there a mismatch in the pt or dir keys?
+    eval_flag = False # is there a mismatch in the pt or dir keys?  An error or an outlier? Flag for followup
     street_key = None # what is the first letter of street type?
     dir_key = None # what is the first letter of the direction tag e.g. north?
     
