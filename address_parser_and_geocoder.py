@@ -348,10 +348,8 @@ class Coordinates():
 
     def __iter__(self):
         for latitude in self.coordinates:
-            l = latitude
             for lg in self.coordinates[latitude]:
-                lngtude = lg
-                yield (l, lg)
+                yield (latitude, lg)
 
 class SQLdatabase():
     # reference https://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace
