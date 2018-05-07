@@ -143,7 +143,8 @@ class Household():
     contains people, and their relationships, 
     has visit dates and a total of all visits
     has dietary conditions, sources of income
-    referrals provided and ethnicities
+    referrals provided and ethnicities as well 
+    as geocoordinates if those can be derived.
     '''
     
     def __init__(self, Household_ID):
@@ -151,7 +152,8 @@ class Household():
         self.Visits = {} # a dictionary of visit objects keyed off of the seq. visit_id
         self.Member_Roles = defaultdict(list) # TO DO: this will be some sort of datastructure Adults : [], Children : [] etc.
         self.Member_Set = set()
-        
+        self.coordinates = []
+        self.neighbourhood = []              
 
     def add_visit(self,HH_Visit_Number_Sequence_ID, Visit_Object):
         '''
@@ -176,6 +178,21 @@ class Household():
         for person_id_num in relationship_object.keys():
             relationship = relationship_object[person_id_num]
             self.Member_Roles[relationship].append(person_id_num)
+
+    def add_geolocation(self, lat, lng, v_date):
+        '''
+        adds a tuple of (visit date, (lat, lng)) to the 
+        self.coordinates list. lat, lng are floats
+        '''
+        points = (lat, lng)
+        self.coordinates.append((v_date, points))
+
+    def add_neighbourhood(self, neighbourhood_name, v_date):
+        '''
+        adds a tuple of (visit date, neighbourhood) to the 
+        self.neighbourhood list.  neighbourhood is a string
+        '''
+        self.neighbourhood.append((v_date, neighbourhood_name))
 
     def __str__(self):
         return '{} has {} members and {} visits'.format(self.Household_ID, len(self.Member_Set), len(self.Visits))
