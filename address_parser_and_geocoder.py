@@ -335,16 +335,23 @@ class Coordinates():
         '''
         add/update an address in the coordinate tree
         '''       
-        self.coordinates[lat][lng]['Address_Strings'].add(address)
+        self.coordinates[lat][lng]['Address_Strings'].udpate(address)
     
     def add_household(self, lat, lng, household):
         '''
         add a household to the coordinate tree
         '''
-        self.coordinates[lat][lng]['Households'].add(household)        
+        self.coordinates[lat][lng]['Households'].update(household)        
     
     def __str__(self):
         return 'Coordinate Object. can_proceed  = {} and has made {} calls'.format(self.can_proceed, self.calls)
+
+    def __iter__(self):
+        for latitude in self.coordinates:
+            l = latitude
+            for lg in self.coordinates[latitude]:
+                lngtude = lg
+                yield (l, lg)
 
 class SQLdatabase():
     # reference https://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace
