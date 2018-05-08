@@ -213,7 +213,7 @@ class Visit_Line_Object():
     and provides methods to do so if needed #TO DO
 
     '''    
-
+    
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
         self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
@@ -263,7 +263,6 @@ class Visit_Line_Object():
             if visit_line[fnamedict['Visited Agency']]:
                 self.visit_Agency = visit_line[fnamedict['Visited Agency']]
         except:
-            print('some fields not present in source csv')
             pass
             
         if december_flag:
