@@ -221,20 +221,21 @@ class Visit_Line_Object():
         self.main_applicant_Lname = None
         self.main_applicant_DOB = None
         self.main_applicant_Age = visit_line[fnamedict['Client Age']] # Main Applicant Age
-        self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
-        self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
+        self.main_applicant_Gender = None # Main Applicant Gender
+        self.main_applicant_Phone = None # Main Applicant Phone Numbers
         self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
         self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
-        self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']] # Client Primary Source of Income
+        self.household_primary_SOI = None # Client Primary Source of Income
         self.visit_Address = visit_line[fnamedict['Address']]
         self.visit_City = visit_line[fnamedict['City']]
-        self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
+        self.visit_Postal_Code = None
         self.visit_Household_ID = str(visit_line[fnamedict['Household ID']]) # Household ID - the unique file number used to identify households
         self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
         self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
-        self.visit_Referral = visit_line[fnamedict['Referrals Provided']] # Referrals Provided
-        self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
+        self.visit_Referral = None # Referrals Provided
+        self.visit_Family_Slice = None
+        self.visit_Agency = None # organization that provided services
         self.HH_main_applicant_profile = None
         self.HH_family_members_profile = None      
         
@@ -245,7 +246,24 @@ class Visit_Line_Object():
                 self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
             if visit_line[fnamedict['Client Date of Birth']]:
                 self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+            if visit_line[fnamedict['Client Gender']]:
+                self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
+            if visit_line[fnamedict['Client Phone Numbers']]:
+                self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
+            if visit_line[fnamedict['Client Primary Income Source']]:
+                self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']]
+            if visit_line[fnamedict['Postal Code']]:
+                self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
+            if visit_line[fnamedict['Household ID']]:
+                self.visit_Household_ID = str(visit_line[fnamedict['Household ID']])
+            if visit_line[fnamedict['Referrals Provided']]:
+                self.visit_Referral = visit_line[fnamedict['Referrals Provided']] # Referrals Provided
+            if visit_line[fnamedict['HH Mem 1- ID']:]:
+                self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
+            if visit_line[fnamedict['Visited Agency']]:
+                self.visit_Agency = visit_line[fnamedict['Visited Agency']]
         except:
+            print('some fields not present in source csv')
             pass
             
         if december_flag:
@@ -336,15 +354,18 @@ class Visit_Line_Object():
 class Visit():
     '''
     Contains data related to a visit : 
-    a date, a main applicant, family_members, household_id, address
+    a date, a main applicant, family_members, household_id, address, agency (if provided)
+    most often we will only have an export from one agency, but sometimes it is possible
+    to pool data from multiple service providers
     '''
-    def __init__(self, vnumber, date, main_applicant, family_members, householdID, address):
+    def __init__(self, vnumber, date, main_applicant, family_members, householdID, address, agency=None):
        self.vnumber = vnumber
        self.vdate = date
        self.main_applicant = main_applicant
        self.family_members = family_members
        self.householdID = householdID
        self.address = address
+       self.service_provider = agency
 
     def get_address(self):
         '''
@@ -377,7 +398,9 @@ class Visit():
         pass
 
     def __str__(self):
-        return '{} had main applicant {}'.format(self.vnumber, self.main_applicant)
+        return '{} had main applicant {} and was provided by {}'.format(self.vnumber, 
+                                                                     self.main_applicant, 
+                                                                     self.service_provider)
 
     def __repr__(self):
         return 'Visit #{} Had applicant: {}'.format(self.vnumber, self.main_applicant)
