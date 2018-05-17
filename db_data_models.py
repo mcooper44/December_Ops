@@ -287,12 +287,24 @@ class Visit_Line_Object():
         returns hh id field number
         '''
         return self.visit_Household_ID
-
+    
+    def get_applicant_ID(self):
+        '''
+        returns main applicant ID
+        '''
+        return self.main_applicant_ID
+    
     def get_visit_date(self):
         '''
         returns the visit date
         '''
         return self.visit_Date
+
+    def get_applicant_identity(self):
+        '''
+        returns a tuple of (Ethnicities, self-identifies as)
+        '''
+        return (self.main_applicant_Ethnicity, self.main_applicant_Self_Identity)
 
     def has_family(self):
         '''
@@ -315,12 +327,6 @@ class Visit_Line_Object():
                 self.main_applicant_Gender,
                 self.main_applicant_Ethnicity,
                 self.main_applicant_Self_Identity)
-
-    def get_applicant_ID(self):
-        '''
-        returns main applicant ID
-        '''
-        return self.main_applicant_ID
 
     def get_family_members(self):
         '''
@@ -458,8 +464,8 @@ class Export_File_Parser():
                 line_number = str(self.line_counter)
                 line_object = Visit_Line_Object(visit_line, self.headers)
                 vdate = line_object.get_visit_date()
-                mapp = None
-                famapp = None
+                mapp = None # main applicant
+                famapp = None # family memmbers
                 people_in_visit = [] # list of tuples
                 household_id_number = None
                 visit_address = None
