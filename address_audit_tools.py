@@ -15,7 +15,7 @@ address_audit_log = logging.getLogger(__name__)
 address_audit_log.setLevel(logging.ERROR)
 #address_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 address_log_formatter = logging.Formatter('%(message)s')
-address_log_file_handler = logging.FileHandler('address_audit_errors.log')
+address_log_file_handler = logging.FileHandler(r'Logging/address_audit_errors.log')
 address_log_file_handler.setFormatter(address_log_formatter)
 address_audit_log.addHandler(address_log_file_handler)
 
