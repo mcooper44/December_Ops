@@ -61,6 +61,13 @@ class Neighbourhoods():
 
     def __str__(self):
         return 'container for shapes populated with {} entries'.format(len(self.nhood_shapes))
+    
+    def __iter__(self):
+        '''
+        yields the neighbourhood names in the shapes dictionary
+        '''
+        for neighbourhood_name in self.nhood_shapes.keys():
+            yield neighbourhood_name
 
 if __name__ == '__main__':
     print('starting')
