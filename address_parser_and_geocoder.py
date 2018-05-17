@@ -246,10 +246,13 @@ class AddressParser():
         this function sidesteps the error checking steps
         and just tries to simplify an address string
         '''
-        _, _, parsed_address = full_address_parser(source_address)
-        simple_address, _ = parsed_address
-        return simple_address
-
+        try:
+            _, _, parsed_address = full_address_parser(source_address)
+            simple_address, _ = parsed_address
+            return simple_address
+        except:
+            return None
+            
     def is_not_error(self, address):
         # need to insert some database ping here
         if address not in self.errors:
