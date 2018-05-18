@@ -135,7 +135,7 @@ def scrub_bad_formats_from(address):
     else:
         return address
 
-def full_address_parser(address):
+def full_address_parser(address, file_id):
     '''
     takes a street address e.g. 123 Main Street and attempts to break it into 
     the relevant chunks
@@ -152,23 +152,23 @@ def full_address_parser(address):
             if address_type == 'Street Address':
                 # parse the address with the other helper functions
                 p_add = address_builder(tagged_address) # tuple of (parsed address, flags)
-                address_str_parse_logger.info('##80## Parsed {} with result {}'.format(address, p_add[0]))
+                address_str_parse_logger.info('##80## Parsed {} with result {}'.format(file_id, p_add[0]))
                 return usaparsed_street_address(True, addr, p_add)
             else:                
                 # log address format error and flag for manual follow up
-                address_str_parse_logger.error('##71## Could not derive Street Address from {}'.format(address))
+                address_str_parse_logger.error('##71## Could not derive Street Address from {}'.format(file_id))
                 return usaparsed_street_address(False, addr, 'address_type Error')
                 
         except usaddress.RepeatedLabelError:
             # log address format error and flag for manual follow up
-            address_str_parse_logger.error('##72## RepeatedLabelError from {}'.format(address))            
+            address_str_parse_logger.error('##72## RepeatedLabelError from {}'.format(file_id))            
             return usaparsed_street_address(False, addr, 'RepeatedLabelError')
         except KeyError:
-            address_str_parse_logger.error('##73## KeyError from {}'.format(address))
+            address_str_parse_logger.error('##73## KeyError from {}'.format(file_id))
             return usaparsed_street_address(False, addr, 'KeyError')            
             
     else:
-        address_str_parse_logger.error('##74## Blank Field Error from {}'.format(address))
+        address_str_parse_logger.error('##74## Blank Field Error from {}'.format(file_id))
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
 
@@ -218,7 +218,7 @@ class AddressParser():
         self.errors = {}
         self.parsed = {}
 
-    def parse(self, address):
+    def parse(self, address, file_id=None):
         '''
         give it an address with extraneous details and it will give you
         a tuple of  ('unit number street', error_flags) or False
@@ -226,7 +226,7 @@ class AddressParser():
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
         if address not in key_list and address is not False:
             
-            worked, in_put, out_put  = full_address_parser(address)
+            worked, in_put, out_put  = full_address_parser(address, file_id)
             if worked:                
                 self.parsed[in_put] = out_put # tuple of (parsed_address, flags)
                 return out_put 
@@ -241,13 +241,13 @@ class AddressParser():
             else:
                 return self.parsed[address]
     
-    def return_simple_address(self, source_address):
+    def return_simple_address(self, source_address, file_id):
         '''
         this function sidesteps the error checking steps
         and just tries to simplify an address string
         '''
         try:
-            _, _, parsed_address = full_address_parser(source_address)
+            _, _, parsed_address = full_address_parser(source_address, file_id)
             simple_address, _ = parsed_address
             return simple_address
         except:
@@ -504,7 +504,7 @@ if __name__ == '__main__':
         
         # deconstructed address -returns ('301 Front Street West', flags)
         # flags = {'MultiUnit': False, 'Direction': False, 'PostType': False} 
-        decon_address = address_parser.parse(address) 
+        decon_address = address_parser.parse(address, applicant) 
         in_bounds = boundary_checker(city)
         if not in_bounds:
             boundary_logger(applicant, city)
