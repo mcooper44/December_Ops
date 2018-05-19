@@ -24,7 +24,6 @@ def parse_log_string(log_string, log_code):
         log_output = 'double check address format and that the city is correct'
         flag = 'bad'
         return (applicant, log_output, flag)
-
     if log_code == '11' or log_code == '14': ##11## {} flag for out of bounds'.format(applicant)
         applicant = split_string[1]
         log_output = 'city field is not Kitchener or Waterloo. Double check that it is valid.'
@@ -99,7 +98,7 @@ def parse_log_string(log_string, log_code):
         flag = 'good'
         return (applicant, log_output, flag)
     if log_code == '400': ##400##  Try Block in returnGeocoderResult raised Exception {} from {}'.format(boo, address)
-        applicant = split_string[10]
+        applicant = split_string[9]
         log_output = 'when trying to geocode {} recieved {}'.format(applicant, split_string[8])
         flag = 'address'
         return (applicant, log_output, flag)
@@ -109,12 +108,12 @@ def parse_log_string(log_string, log_code):
         flag = 'address'
         return (applicant, log_output, flag)
     if log_code == '402': ##402## {} yeilded {}'.format(address,result.status)) 'OVER_QUERY_LIMIT'
-        applicant = split_string[1]
-        log_output = '{}'.format(split_string[3])
+        applicant = 'bad_google_result'
+        log_output = 'OVER_Q_LIMIT'
         flag = 'address'
         return (applicant, log_output, flag)
     if log_code == '403': ##403## Result is not OK or OVER with {} at {}'.format(result.status, address) # some major error with the api?
-        applicant = split_string[0]
+        applicant = 'bad_google_result'
         log_output = log_string
         flag = 'address'
         return (applicant, log_output, flag)
@@ -170,3 +169,6 @@ if __name__ == '__main__':
     muh_logs = Log_Files('Logging')
     muh_logs.discover_logs()
     print(muh_logs.files)
+    muh_logs.parse_logs()
+    for bad in muh_logs.bad_results.keys():
+        print(muh_logs.bad_results[bad])
