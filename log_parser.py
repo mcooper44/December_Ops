@@ -1,5 +1,6 @@
 from collections import defaultdict
 import os
+import csv
 
 def extract_code(log_string):
 
@@ -162,8 +163,21 @@ class Log_Files():
                         self.address_problems[applicant].add(log_output)
                     if not flag:
                         pass
-
-
+    
+    def write_output_to_file(self, log_type='bad', output_file_name ='log.csv' ):
+       '''
+        write the output to a file for follow up
+       this method needs to be rewritten to be more generic
+       '''
+       output_file = open(output_file_name, 'w')
+       writer = csv.writer(output_file)
+       if log_type == 'bad':
+           for applicant in self.bad_results.keys():
+               output_string = [applicant]
+               log_strings = self.bad_results[applicant]
+               for issue in log_strings:
+                   output_string = output_string + [issue]
+                   writer.writerow(output_string)
 
 if __name__ == '__main__':
     muh_logs = Log_Files('Logging')
