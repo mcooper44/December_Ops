@@ -1,3 +1,12 @@
+#################################################################
+# this script provides classes to access the database of geocoded
+# address data and runs through a L2F export attempting to
+# geocode all the addressses.  It also creates error logs that
+# can be parsed later to find bad source address inputs that 
+# can be looked up and manually corrected in l2f
+# it is in need of some major refactoring love
+#################################################################
+
 import csv
 import geocoder
 from collections import namedtuple, defaultdict
@@ -601,6 +610,9 @@ if __name__ == '__main__':
                     except Exception as oops:
                         print('Error with {} at address: {} on line {}'.format(applicant, simplified_address, ln_num))
                         print('It raised Error: {}'.format(oops))
+                else:
+                    # we have already coded it and everything is fine
+                    pass
         else:            
             print('address error on line {} for {}. check logs for {}'.format(ln_num, applicant, address))      
     dbase.close_db()
