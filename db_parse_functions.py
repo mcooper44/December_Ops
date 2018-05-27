@@ -22,9 +22,9 @@ def diet_parser(diet_string):
 
     for condition in diet_conditions: # for each issue/preference
         if condition: # if it's not blank
-            diet = diet + condition + ', ' # add it to the string that will be returned
+            diet = '{} {}'.format(diet, condition)  # add it to the string that will be returned
 
-    return diet[:-2].strip()  # return the string minus the trailing comma and extra spaces
+    return diet.strip()
 
 def extract_families_into_list_slices(l,n):
     '''
