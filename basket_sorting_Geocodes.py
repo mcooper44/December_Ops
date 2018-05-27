@@ -1,4 +1,3 @@
-from random import randint
 from collections import namedtuple
 from collections import defaultdict
 from math import radians, cos, sin, asin, sqrt
@@ -67,15 +66,14 @@ class Delivery_Routes():
     takes a collection of households and parses them into individual routes
 
     '''    
-    route_collection = None # a dictionary of all the routes and the hh they contain 1: [12345,2341234,123412,62345]
-
-    def __init__(self, max_boxes, start_count):
+    def __init__(self, max_boxes = 7, start_count = 1):
         self.max_boxes = max_boxes # max number of boxes per/route
         self.start_count = start_count # what we start counting routes at
         self.hh_dict = None # a dictionary of Delivery_Household() objects
         self.conn = None # connection to the route db
         self.cur = None # database cursor
         self.route_db = None # the path to the last database we connected to
+        self.route_collection = None # a dictionary of all the routes and the hh they contain 1: [12345,2341234,123412,62345]
 
     def get_status(self):
         '''
@@ -90,8 +88,8 @@ class Delivery_Routes():
         '''
         returns the collection of routes held in the object
         '''
-        if Delivery_Routes.route_collection:
-            return Delivery_Routes.route_collection
+        if self.route_collection:
+            return self.route_collection
         else:
             print('the routes have not been created yet')
 
@@ -172,7 +170,7 @@ class Delivery_Routes():
                 r_key = str(route_counter)
                 routes[r_key] = applicant_route
                 route_counter += 1
-        Delivery_Routes.route_collection = routes
+        self.route_collection = routes
    
     def create_route_db(self, db_name):
         '''
