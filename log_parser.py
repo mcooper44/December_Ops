@@ -37,12 +37,12 @@ def parse_log_string(log_string, log_code):
         return (applicant, log_output, flag)
     if log_code == '13': ##13## {} returned valid city, but source: {} does not match google: {}
         applicant = split_string[1]
-        log_output = 'the city needs to be updated'
+        log_output = 'The city needs to be updated. It is in KW but the city needs to be swapped from Kitchener to Waterloo or vice versa'
         flag = 'bad'
         return (applicant, log_output, flag)
     if log_code == '15': ##15## {} source city {} returned invalid google city {}
         applicant = split_string[1]
-        log_output = 'google says this file has an address outside of KW'
+        log_output = 'google says this file has an address outside of KW. Please verify'
         flag = 'bad'
         return (applicant, log_output, flag)
     if log_code == '20': ##20## {} Returned a mismatch. Following Errors are True Name Type E = {} Dir Type E = {} Eval Flag = {}'.format(applicant, o, t, th)
@@ -52,11 +52,11 @@ def parse_log_string(log_string, log_code):
         eval_type = split_string[22]
         log_output = ''
         if name_type == 'True':
-            log_output = log_output + 'Check street address. Is it missing St, Ave etc? '
+            log_output = '{}, {},'.format(log_output,'Check street address. Do they live on 123 Main Street, but in L2F it says 123 Main Avenue etc?')
         if dir_type == 'True':
-            log_output = log_output + 'Check that the street direction is correct. '
+            log_output = '{}, {},'.format(log_output, 'Check that the street direction is correct.')
         if eval_type == 'True':
-            log_output = log_output + 'Verify that the address is correctly formatted. '
+            log_output = '{}, {},'.format(log_output, 'Verify that the address is correctly formatted.')
         flag = 'bad'    
         return (applicant, log_output, flag)
     if log_code == '21': ##21## {} is missing a unit number on address {}'.format(applicant, flags))
@@ -76,11 +76,11 @@ def parse_log_string(log_string, log_code):
         mpt = split_string[9]
         log_output = ''
         if mu == 'True':
-            log_output = log_output + 'The address is a multiunit building and is probably missing an appartment number. '
+            log_output = '{}, {}'.format(log_output,'The address is a multiunit building and is probably missing an appartment number.')
         if md == 'True':
-            log_output = log_output + 'The address is missing a direction like North, South, East, West. '
+            log_output = '{}, {}'.format(log_output,'The address is missing a direction like North, South, East, West.')
         if mpt == 'True':
-            log_output = log_output + 'The address is missing Ave, Street, Rd etc. '
+            log_output = '{}, {}'.format(log_output,'The address is missing Ave, Street, Rd etc.')
         flag = 'bad'
         return (applicant, log_output, flag)
     if log_code == '71' or log_code == '72': ##71## Could not derive Street Address from {}'.format(address)
@@ -128,12 +128,16 @@ def parse_log_string(log_string, log_code):
         log_output = log_string
         flag = 'good'
         return (applicant, log_output, flag)
+    else:
+        return (False, False, False)
 
 def return_log_output(log_string):
     log_code = extract_code(log_string)
     if log_code:
         applicant, log_output, flag = parse_log_string(log_string, log_code)
         return (applicant, log_output, flag)
+    else:
+        return (False, False, False)
 
 class Log_Files():
     def __init__(self, path):
@@ -154,6 +158,7 @@ class Log_Files():
         for file_path in self.files:
             with open(file_path) as log_file:
                 for line in log_file:
+                    print(line)
                     applicant, log_output, flag = return_log_output(line)
                     if flag == 'bad':
                         self.bad_results[applicant].add(log_output)
@@ -184,5 +189,4 @@ if __name__ == '__main__':
     muh_logs.discover_logs()
     print(muh_logs.files)
     muh_logs.parse_logs()
-    for bad in muh_logs.bad_results.keys():
-        print(muh_logs.bad_results[bad])
+    muh_logs.write_output_to_file()
