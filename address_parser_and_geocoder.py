@@ -198,13 +198,13 @@ def returnGeocoderResult(address, myapikey=config, second_chance=True):
         if result is not None:
             if result.status == 'OK':
                 geocoding_logger.info('##500## {} is {}'.format(address, result.status))
-                return result
+                return (True, result)
             elif result.status == 'OVER_QUERY_LIMIT':
                 geocoding_logger.error('##402## {} yeilded {}'.format(address,result.status))
-                return False
+                return (False, None)
             else:
                 geocoding_logger.error('##403## Result is not OK or OVER with {} at {}'.format(result.status, address))
-                return None
+                return (None, None)
         else:
             geocoding_logger.error('##401## Result is None with status {} on {}'.format(result.status, address))
             if try_again:
@@ -301,20 +301,20 @@ class Coordinates():
             return self.coordinates[address]
         else:
             if self.can_proceed:
-                response = returnGeocoderResult(address, self.api_key)
+                response, result = returnGeocoderResult(address, self.api_key)
                 self.calls += 1
                 if response == False: # returnGeocoderResult returns False when limit reached
                     self.can_proceed = False
                     return response
                 if response == None:
                     return None
-                if response.ok: # Either True or False
+                if response == True: # Either True or False
                     
-                    lat, lng = response.lat, response.lng
-                    g_address_str = response.address
-                    city = response.city
-                    house_number = response.housenumber
-                    street = response.street
+                    lat, lng = result.lat, result.lng
+                    g_address_str = result.address
+                    city = result.city
+                    house_number = result.housenumber
+                    street = result.street
                     response_tple = address_tpl(g_address_str,
                             house_number,
                             street,
