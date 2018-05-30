@@ -17,15 +17,14 @@ class Field_Names():
         this method creates a dictionary using the config_file that can be used to extract
         data points from the line and provides an easier way to keep track of where the
         varioius fields are.
-        the config file should be a csv of: 
-        field name, 0
-        field name, 1
-        field name, 2...
+        param config_file should be the file
         '''
         with open(self.config_file) as f:
             name_ID_reader = csv.reader(f)
-            for row in name_ID_reader:
-                self.ID[row[0]] = int(row[1])
+            file_header = next(name_ID_reader, None)
+            for col_header in file_header:
+                col_header_index = file_header.index(col_header)
+                self.ID[col_header] = col_header_index
 
 class Person():
     '''
