@@ -38,7 +38,7 @@ myapikey = config.api_key
 # they pass False or None on to the objects using them and are handled by the objects
 
 geocoding_logger = logging.getLogger('geocoder')
-geocoding_logger.setLevel(logging.INFO)
+geocoding_logger.setLevel(logging.ERROR)
 #geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 geocoding_log_formatter = logging.Formatter('%(message)s')
 geocoding_log_file_handler = logging.FileHandler(r'Logging/geocoding.log')
@@ -46,7 +46,7 @@ geocoding_log_file_handler.setFormatter(geocoding_log_formatter)
 geocoding_logger.addHandler(geocoding_log_file_handler)
 
 address_str_parse_logger = logging.getLogger('address_parser')
-address_str_parse_logger.setLevel(logging.INFO)
+address_str_parse_logger.setLevel(logging.ERROR)
 #address_str_parse_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 address_str_parse_log_formatter = logging.Formatter('%(message)s')
 address_str_parse_log_file_handler = logging.FileHandler(r'Logging/address_str_parse_functions.log')
@@ -200,13 +200,13 @@ def returnGeocoderResult(address, myapikey=config, second_chance=True):
                 geocoding_logger.info('##500## {} is {}'.format(address, result.status))
                 return result
             elif result.status == 'OVER_QUERY_LIMIT':
-                geocoding_logger.warning('##402## {} yeilded {}'.format(address,result.status))
+                geocoding_logger.error('##402## {} yeilded {}'.format(address,result.status))
                 return False
             else:
-                geocoding_logger.warning('##403## Result is not OK or OVER with {} at {}'.format(result.status, address))
+                geocoding_logger.error('##403## Result is not OK or OVER with {} at {}'.format(result.status, address))
                 return None
         else:
-            geocoding_logger.warning('##401## Result is None with status {} on {}'.format(result.status, address))
+            geocoding_logger.error('##401## Result is None with status {} on {}'.format(result.status, address))
             if try_again:
                 print('got None from google api, trying again for {}'.format(address))
                 sleep(10) # wait and try again once more after waiting
@@ -238,6 +238,7 @@ class AddressParser():
             worked, in_put, out_put  = full_address_parser(address, file_id)
             if worked:                
                 self.parsed[in_put] = out_put # tuple of (parsed_address, flags)
+
                 return out_put 
             else:
                 self.errors[in_put] = out_put
@@ -321,7 +322,10 @@ class Coordinates():
                             lat,
                             lng)
                     self.coordinates[address] = response_tple
-                    return response_tple
+                    if all(response_tple):
+                        return response_tple
+                    else:
+                        return None
                 
             else:
                 raise Exception('Over_Query_Limit after {} calls'.format(self.calls))
@@ -364,8 +368,7 @@ class Coordinates():
                 yield (latitude, lg)
 
 class SQLdatabase():
-    # reference https://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace
-
+    
     def __init__(self):
         self.conn = None
         self.cursor = None
@@ -439,6 +442,7 @@ class SQLdatabase():
             self.cursor.execute("SELECT * FROM errors WHERE source_street=? AND source_city=?",(parsed_address,source_city,))
             error_ping = self.cursor.fetchone()
             if error_ping:
+                print('found result {} {} in error table'.format(parsed_address, source_city))
                 return True
             else:
                 return False
@@ -488,6 +492,14 @@ class SQLdatabase():
         else:
             return False
 
+    def in_address_table(self, input_address, input_city):
+        self.cursor.execute("SELECT * FROM address WHERE source_street=? AND source_city=?",(input_address, input_city,))
+        db_ping = self.cursor.fetchone()
+        if db_ping:
+            return True
+        else:
+            return False
+
     def pull_flags_at(self, lat, lng):
         '''
         returns all the source addresses and their flags at a given lat,lng
@@ -506,7 +518,7 @@ class SQLdatabase():
         updates the unit flag at lat, lng as True in table google_result
         '''
         # http://www.sqlitetutorial.net/sqlite-python/update/
-        values = (True, lat, lng)
+        values = (1, lat, lng)
         self.cursor.execute('UPDATE google_result SET unit_flag=? WHERE lat=? AND lng=?', values)
         self.conn.commit()
         
@@ -549,7 +561,7 @@ if __name__ == '__main__':
         if decon_address is not False and in_bounds == True:
             simplified_address, flags = decon_address
             flagged_unit = flags['MultiUnit'] # True or False THIS UNIT FLAG IS SIGNIFICANT
-            
+            print(simplified_address)
             source_post_types = parse_post_types(simplified_address) # SOURCE PT's
             o_, o_, s_evf  = source_post_types # source evaluation flag i.e a pt parse error
             if s_evf:
@@ -579,16 +591,33 @@ if __name__ == '__main__':
 
                     # third layer: google and source address construction and cities need to match
                     error_free = False # A reference for saving a correct address or recording in a dif db
-                    rejected = False
-                    flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
-                    flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type                                
+                    rejected = False                       
 
                     address_dbase_input = (simplified_address, 
                                             city, 
                                             coding_result.lat,
                                             coding_result.lng)
                     
-                    google_result = (coding_result.lat, 
+                    google_result = None
+
+                    if all(cities_valid_and_matching): # Cities input and returned match and are valid
+
+                              
+                        if not any([s_evf, g_evf]): # if the post type parsers didn't find any weirdness
+
+                            if not any(pt_eval_errors): # no post type errors are present: google vs source match
+                                # we made it fam.  We can enter things in the database now
+                                error_free = True # we made it through 3 layers of error checking!
+                                
+                                flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
+                                flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type 
+
+                                dbase.insert_into_db('address', address_dbase_input)
+                                
+                                # we have not logged this source address, but have we already logged the 
+                                # lat, lng and google result in the table?
+                                if not dbase.lat_lng_in_db(coding_result.lat, coding_result.lng):
+                                    google_result = (coding_result.lat, 
                                             coding_result.lng,
                                             coding_result.g_address_str,
                                             coding_result.house_number,
@@ -601,17 +630,8 @@ if __name__ == '__main__':
                                             pt_str # s, d etc. 
                                             )
 
-                    if all(cities_valid_and_matching): # Cities input and returned match and are valid
-                        if not any([s_evf, g_evf]): # if the post type parsers didn't find any weirdness
 
-                            if not any(pt_eval_errors): # no post type errors are present: google vs source match
-                                # we made it fam.  We can enter things in the database now
-                                error_free = True # we made it through 3 layers of error checking!
-                                dbase.insert_into_db('address', address_dbase_input)
-                                
-                                # we have not logged this source address, but have we already logged the 
-                                # lat, lng and google result in the table?
-                                if not dbase.lat_lng_in_db(coding_result.lat, coding_result.lng):
+
                                     dbase.insert_into_db('google_result', google_result)
                                     
                             else:
@@ -630,18 +650,24 @@ if __name__ == '__main__':
                         # geocoding this address again we should drop it in the db for future 
                         # reference and use
                         if not dbase.lat_lng_in_db(coding_result.lat, coding_result.lng):
-                            dbase.insert_into_db('google_result', google_result)
+                            if google_result:
+                                dbase.insert_into_db('google_result', google_result)
                     if rejected:
                         # to avoid handling this address again we will save it in the error table
+                        # and log it as having an error later if we try and code it again
                         dbase.insert_into_db('errors', address_dbase_input)   
                 if coding_result == None:                    
                     print('error in geocoding address on line {} for {}. check logs for {}'.format(ln_num, applicant, simplified_address))
+                    # to avoid pinging google again for this bad address, we will log it as an error
+                    error_tuple = (simplified_address, city, 0, 0)
+                    dbase.insert_into_db('errors', error_tuple)
                     
                 if coding_result == False:
                     raise Exception('We are at coding limit! We reached line {}'.format(ln_num))
                     # we are at the limit - cool down
             else:
                 if dbase.is_error(simplified_address, city):
+                    # we looked this address up, logged an error and made some database entries previously.
                     address_str_parse_logger.error('##777## {} was previously coded with errors'.format(applicant))
 
                 if flagged_unit: # if the input string has a unit number and we have already coded it
@@ -650,11 +676,14 @@ if __name__ == '__main__':
                         if not lat and lng:
                             address_str_parse_logger.error('##405## Attempting to find geocodes in google_table but not present. Check address on line {}'.format(ln_num))
                         else:
-                            uf, _, _ = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
-                            if not uf: # if the input string has one, but the database does not, we need to update the database
-                                print('unit flag was missing from {} in the database.  We have added one for {} at {}'.format(simplified_address,
-                                                                                                                        applicant, ln_num))
-                                dbase.set_unit_flag_in_db(lat, lng)
+                            is_coded = dbase.get_address(lat, lng)
+                            if is_coded:
+                                uf, f2, f3 = dbase.pull_flags_at(lat, lng) # and use that to get the unit flag from database
+
+                                if not uf and any([f2, f3]): # if the input string has one, but the database does not, we need to update the database
+                                    print('unit flag was missing from {} in the database.  We have added one for {} at {}'.format(simplified_address,
+                                                                                                                            applicant, ln_num))
+                                    dbase.set_unit_flag_in_db(lat, lng)
                                 
                     except Exception as oops:
                         print('Error with {} at address: {} on line {}'.format(applicant, simplified_address, ln_num))
@@ -663,6 +692,7 @@ if __name__ == '__main__':
                     # we have already coded it and everything is fine
                     pass
         else:            
-            print('address error on line {} for {}. check logs for {}'.format(ln_num, applicant, address))      
+            print('address error on line {} for {}. check logs for {}'.format(ln_num, applicant, address))
+
     dbase.close_db()
     print('Process complete')
