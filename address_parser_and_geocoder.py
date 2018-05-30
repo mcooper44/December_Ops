@@ -185,10 +185,10 @@ def returnGeocoderResult(address, myapikey=config, second_chance=True):
     """
     this function takes an address and passes it to googles geocoding
     api with the help of the Geocoder Library.
-    it returns a geocoder object wrapped around the json response OR
-    False if we are at the free query limit or some major exception 
+    it returns a 2 tuple of (True, geocoder object wrapped around the json response) OR
+    (False, None) if we are at the free query limit or some major exception 
     happens in the try block
-    or None if there is an error with the api (sometimes it just does
+    or (None, None) if there is an error with the api (sometimes it just does
     not work)
     """
     try_again = second_chance    
@@ -212,7 +212,7 @@ def returnGeocoderResult(address, myapikey=config, second_chance=True):
                 sleep(10) # wait and try again once more after waiting
                 returnGeocoderResult(address, myapikey=config, second_chance=False)
             else:
-                return None # tried to see if a second attempt would work, but it didn't
+                return (None, None) # tried to see if a second attempt would work, but it didn't
     except Exception as boo:
         geocoding_logger.critical('##400## Try Block in returnGeocoderResult raised Exception {} from {}'.format(boo, address))
         return False
@@ -308,7 +308,7 @@ class Coordinates():
                     return response
                 if response == None:
                     return None
-                if response == True: # Either True or False
+                if response == True and result != None: # Either True or False
                     
                     lat, lng = result.lat, result.lng
                     g_address_str = result.address
