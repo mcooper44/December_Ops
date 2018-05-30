@@ -52,11 +52,11 @@ def parse_log_string(log_string, log_code):
         eval_type = split_string[22]
         log_output = ''
         if name_type == 'True':
-            log_output = '{}, {},'.format(log_output,'Check street address. Do they live on 123 Main Street, but in L2F it says 123 Main Avenue etc?')
+            log_output = '{} {}'.format(log_output,'Check street address. Do they live on 123 Main Street, but in L2F it says 123 Main Avenue etc?')
         if dir_type == 'True':
-            log_output = '{}, {},'.format(log_output, 'Check that the street direction is correct.')
+            log_output = '{} {}'.format(log_output, 'Check that the street direction is correct.')
         if eval_type == 'True':
-            log_output = '{}, {},'.format(log_output, 'Verify that the address is correctly formatted.')
+            log_output = '{} {}'.format(log_output, 'Verify that the address is correctly formatted.')
         flag = 'bad'    
         return (applicant, log_output, flag)
     if log_code == '21': ##21## {} is missing a unit number on address {}'.format(applicant, flags))
@@ -76,18 +76,22 @@ def parse_log_string(log_string, log_code):
         mpt = split_string[9]
         log_output = ''
         if mu == 'True':
-            log_output = '{}, {}'.format(log_output,'The address is a multiunit building and is probably missing an appartment number.')
+            log_output = '{} {}'.format(log_output,'The address is a multiunit building and is probably missing an appartment number.')
         if md == 'True':
-            log_output = '{}, {}'.format(log_output,'The address is missing a direction like North, South, East, West.')
+            log_output = '{} {}'.format(log_output,'The address is missing a direction like North, South, East, West.')
         if mpt == 'True':
-            log_output = '{}, {}'.format(log_output,'The address is missing Ave, Street, Rd etc.')
+            log_output = '{} {}'.format(log_output,'The address is missing Ave, Street, Rd etc.')
         flag = 'bad'
         return (applicant, log_output, flag)
-    if log_code == '71' or log_code == '72': ##71## Could not derive Street Address from {}'.format(address)
+    if log_code == '71': ##71## Could not derive Street Address from {}'.format(address)
         applicant = split_string[7]
         log_output = 'Double check that the address is formatted correctly.'
         flag = 'bad'
         return (applicant, log_output, flag)
+    if log_code == '72':
+        applicant = split_string[3]
+        log_output = 'Double check that the address is formatted correctly.'
+        flag = 'bad'
     if log_code == '74': ##74## Blank Field Error from {}'.format(address)
         applicant = split_string[5]
         log_output = 'Is there an address? Or is the address cell blank?'
@@ -190,3 +194,4 @@ if __name__ == '__main__':
     print(muh_logs.files)
     muh_logs.parse_logs()
     muh_logs.write_output_to_file()
+    print('done')
