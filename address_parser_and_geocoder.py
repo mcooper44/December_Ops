@@ -376,7 +376,8 @@ class SQLdatabase():
         
     def connect_to(self, name, create = True):
         '''
-        establish a connection and cursor and if necessary create the address table
+        establish a connection and cursor and if necessary create the address, error
+        and google_result tables
         '''
         if name:
             self.name = name
@@ -411,6 +412,11 @@ class SQLdatabase():
             print('error with database connection')
          
     def insert_into_db(self, table, values):
+        '''
+        inserts values into one of the three tables in the address.db
+        'address' 'google_result', 'errors'
+        '''
+
         if not self.name:
             print('establish connection first')
             return False
@@ -428,6 +434,7 @@ class SQLdatabase():
     def is_in_db(self, parsed_address, source_city):
         '''
         this method checks to see if an address has been logged in the database already.
+        First it looks in the address and then the error table
         https://stackoverflow.com/questions/25387537/sqlite3-operationalerror-near-syntax-error
         sql always kills me on this and it takes me forever to find and recomprehend Martins answer
         :(
@@ -448,6 +455,11 @@ class SQLdatabase():
                 return False
 
     def is_error(self, parsed_address, source_city):
+        '''
+        returns a boolean value if the given address, city combination has been entered in the 
+        error table
+        '''
+
         self.cursor.execute("SELECT * FROM errors WHERE source_street=? AND source_city=?",(parsed_address,source_city,))
         error_ping = self.cursor.fetchone()
         if error_ping:
@@ -467,7 +479,9 @@ class SQLdatabase():
             return False
 
     def get_coordinates(self, input_address, input_city):
-        
+        '''
+        searches the address and then errors table and if it finds an entry it returns the lat, lng
+        '''
         self.cursor.execute("SELECT lat, lng FROM address WHERE source_street=? AND source_city=?",(input_address, input_city,))
         result = self.cursor.fetchone()
         if result:
@@ -493,16 +507,20 @@ class SQLdatabase():
             return False
 
     def in_address_table(self, input_address, input_city):
+        '''
+        returns the values in the address table or False if none are present.
+        Takes a parsed address and input City as parameters
+        '''
         self.cursor.execute("SELECT * FROM address WHERE source_street=? AND source_city=?",(input_address, input_city,))
         db_ping = self.cursor.fetchone()
         if db_ping:
-            return True
+            return db_ping
         else:
             return False
 
     def pull_flags_at(self, lat, lng):
         '''
-        returns all the source addresses and their flags at a given lat,lng
+        returns one source addresses and their flags at a given lat,lng
         this will allow us to identify partial addresses to follow up on
         returns: boolean values in a 3 tuple (unit_flag, dir_flag, post_type)
         '''
@@ -518,7 +536,7 @@ class SQLdatabase():
         updates the unit flag at lat, lng as True in table google_result
         '''
         # http://www.sqlitetutorial.net/sqlite-python/update/
-        values = (1, lat, lng)
+        values = (True, lat, lng)
         self.cursor.execute('UPDATE google_result SET unit_flag=? WHERE lat=? AND lng=?', values)
         self.conn.commit()
         
@@ -629,8 +647,6 @@ if __name__ == '__main__':
                                             flagged_post_type, # street, drive etc. 
                                             pt_str # s, d etc. 
                                             )
-
-
 
                                     dbase.insert_into_db('google_result', google_result)
                                     
