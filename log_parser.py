@@ -97,6 +97,11 @@ def parse_log_string(log_string, log_code):
         log_output = 'Is there an address? Or is the address cell blank?'
         flag = 'bad'
         return (applicant, log_output, flag)
+    if log_code == '777': ##777## {} was previously coded with errors'.format(applicant)
+        applicant = split_string[1]
+        log_output = 'was previously coded with errors'
+        flag = 'bad'
+        return (applicant, log_output, flag)
     if log_code == '80': # good result  ##80## Parsed {} with result {}'.format(address, flags)
         applicant = split_string[2]
         log_output = 'good_address'
