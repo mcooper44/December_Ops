@@ -1,529 +1,216 @@
 Visit Date,0
 Client ID,1
 Client Status,2
-Client Age,3
-Client Gender,4
-Client Email Addresses,5
-Client Phone Numbers,6
-Client Marital Status,7
-Client Ethnicities,8
-Client Self-Identifies As,9
-Client Post Secondary Student,10
-Client Primary Income Source,11
-Client Child Support,12
-Client Child Tax Benefit,13
-Client Children's Aid,14
-Client Canadian Pension Plan (CPP),15
-Client Employment Insurance (EI),16
-Client Employed: Full-Time,17
-Client Employed: Part-Time,18
-Client Family Support,19
-Client Immigration,20
-Client No Income,21
-Client Old Age Security (OAS),22
-Client Ontario Works (OW),23
-Client Other,24
-Client Private Disability,25
-Client Private Pension,26
-Client Ontario Disability Support Program (ODSP),27
-Client Scholarships,28
-Client Self Employed,29
-Client Spouse/Family Support,30
-Client Student Loans,31
-Client Temporary Work,32
-Client Universal Child Benefit,33
-Client WSIB,34
-Address,35
-City,36
-Postal Code,37
-Housing Type,38
-Household ID,39
-Household Size,40
-Total Monthly Gross Income,41
-Total Monthly Expenses,42
-Household Languages,43
-Dietary Considerations,44
-Recorded At (UTC),45
-Visited Agency,46
-Quantity,47
-Voucher Dollars Spent,48
-Visit Reasons,49
-Food Provided,50
-Items Provided,51
-Referrals Provided,52
-HH Mem 1- ID,53
-HH Mem 1- Status,54
-HH Mem 1- Last Name,55
-HH Mem 1- First Name,56
-HH Mem 1- Date of Birth,57
-HH Mem 1- Age,58
-HH Mem 1- Gender,59
-HH Mem 1- Ethnicities,60
-HH Mem 1- Self-Identifies As,61
-HH Mem 1- Post Secondary Student,62
-HH Mem 1- Relationship,63
-HH Mem 1- Child Support,64
-HH Mem 1- Child Tax Benefit,65
-HH Mem 1- Children's Aid,66
-HH Mem 1- Canadian Pension Plan (CPP),67
-HH Mem 1- Employment Insurance (EI),68
-HH Mem 1- Employed: Full-Time,69
-HH Mem 1- Employed: Part-Time,70
-HH Mem 1- Family Support,71
-HH Mem 1- Immigration,72
-HH Mem 1- No Income,73
-HH Mem 1- Old Age Security (OAS),74
-HH Mem 1- Ontario Works (OW),75
-HH Mem 1- Other,76
-HH Mem 1- Private Disability,77
-HH Mem 1- Private Pension,78
-HH Mem 1- Ontario Disability Support Program (ODSP),79
-HH Mem 1- Scholarships,80
-HH Mem 1- Self Employed,81
-HH Mem 1- Spouse/Family Support,82
-HH Mem 1- Student Loans,83
-HH Mem 1- Temporary Work,84
-HH Mem 1- Universal Child Benefit,85
-HH Mem 1- WSIB,86
-HH Mem 2- ID,87
-HH Mem 2- Status,88
-HH Mem 2- Last Name,89
-HH Mem 2- First Name,90
-HH Mem 2- Date of Birth,91
-HH Mem 2- Age,92
-HH Mem 2- Gender,93
-HH Mem 2- Ethnicities,94
-HH Mem 2- Self-Identifies As,95
-HH Mem 2- Post Secondary Student,96
-HH Mem 2- Relationship,97
-HH Mem 2- Child Support,98
-HH Mem 2- Child Tax Benefit,99
-HH Mem 2- Children's Aid,100
-HH Mem 2- Canadian Pension Plan (CPP),101
-HH Mem 2- Employment Insurance (EI),102
-HH Mem 2- Employed: Full-Time,103
-HH Mem 2- Employed: Part-Time,104
-HH Mem 2- Family Support,105
-HH Mem 2- Immigration,106
-HH Mem 2- No Income,107
-HH Mem 2- Old Age Security (OAS),108
-HH Mem 2- Ontario Works (OW),109
-HH Mem 2- Other,110
-HH Mem 2- Private Disability,111
-HH Mem 2- Private Pension,112
-HH Mem 2- Ontario Disability Support Program (ODSP),113
-HH Mem 2- Scholarships,114
-HH Mem 2- Self Employed,115
-HH Mem 2- Spouse/Family Support,116
-HH Mem 2- Student Loans,117
-HH Mem 2- Temporary Work,118
-HH Mem 2- Universal Child Benefit,119
-HH Mem 2- WSIB,120
-HH Mem 3- ID,121
-HH Mem 3- Status,122
-HH Mem 3- Last Name,123
-HH Mem 3- First Name,124
-HH Mem 3- Date of Birth,125
-HH Mem 3- Age,126
-HH Mem 3- Gender,127
-HH Mem 3- Ethnicities,128
-HH Mem 3- Self-Identifies As,129
-HH Mem 3- Post Secondary Student,130
-HH Mem 3- Relationship,131
-HH Mem 3- Child Support,132
-HH Mem 3- Child Tax Benefit,133
-HH Mem 3- Children's Aid,134
-HH Mem 3- Canadian Pension Plan (CPP),135
-HH Mem 3- Employment Insurance (EI),136
-HH Mem 3- Employed: Full-Time,137
-HH Mem 3- Employed: Part-Time,138
-HH Mem 3- Family Support,139
-HH Mem 3- Immigration,140
-HH Mem 3- No Income,141
-HH Mem 3- Old Age Security (OAS),142
-HH Mem 3- Ontario Works (OW),143
-HH Mem 3- Other,144
-HH Mem 3- Private Disability,145
-HH Mem 3- Private Pension,146
-HH Mem 3- Ontario Disability Support Program (ODSP),147
-HH Mem 3- Scholarships,148
-HH Mem 3- Self Employed,149
-HH Mem 3- Spouse/Family Support,150
-HH Mem 3- Student Loans,151
-HH Mem 3- Temporary Work,152
-HH Mem 3- Universal Child Benefit,153
-HH Mem 3- WSIB,154
-HH Mem 4- ID,155
-HH Mem 4- Status,156
-HH Mem 4- Last Name,157
-HH Mem 4- First Name,158
-HH Mem 4- Date of Birth,159
-HH Mem 4- Age,160
-HH Mem 4- Gender,161
-HH Mem 4- Ethnicities,162
-HH Mem 4- Self-Identifies As,163
-HH Mem 4- Post Secondary Student,164
-HH Mem 4- Relationship,165
-HH Mem 4- Child Support,166
-HH Mem 4- Child Tax Benefit,167
-HH Mem 4- Children's Aid,168
-HH Mem 4- Canadian Pension Plan (CPP),169
-HH Mem 4- Employment Insurance (EI),170
-HH Mem 4- Employed: Full-Time,171
-HH Mem 4- Employed: Part-Time,172
-HH Mem 4- Family Support,173
-HH Mem 4- Immigration,174
-HH Mem 4- No Income,175
-HH Mem 4- Old Age Security (OAS),176
-HH Mem 4- Ontario Works (OW),177
-HH Mem 4- Other,178
-HH Mem 4- Private Disability,179
-HH Mem 4- Private Pension,180
-HH Mem 4- Ontario Disability Support Program (ODSP),181
-HH Mem 4- Scholarships,182
-HH Mem 4- Self Employed,183
-HH Mem 4- Spouse/Family Support,184
-HH Mem 4- Student Loans,185
-HH Mem 4- Temporary Work,186
-HH Mem 4- Universal Child Benefit,187
-HH Mem 4- WSIB,188
-HH Mem 5- ID,189
-HH Mem 5- Status,190
-HH Mem 5- Last Name,191
-HH Mem 5- First Name,192
-HH Mem 5- Date of Birth,193
-HH Mem 5- Age,194
-HH Mem 5- Gender,195
-HH Mem 5- Ethnicities,196
-HH Mem 5- Self-Identifies As,197
-HH Mem 5- Post Secondary Student,198
-HH Mem 5- Relationship,199
-HH Mem 5- Child Support,200
-HH Mem 5- Child Tax Benefit,201
-HH Mem 5- Children's Aid,202
-HH Mem 5- Canadian Pension Plan (CPP),203
-HH Mem 5- Employment Insurance (EI),204
-HH Mem 5- Employed: Full-Time,205
-HH Mem 5- Employed: Part-Time,206
-HH Mem 5- Family Support,207
-HH Mem 5- Immigration,208
-HH Mem 5- No Income,209
-HH Mem 5- Old Age Security (OAS),210
-HH Mem 5- Ontario Works (OW),211
-HH Mem 5- Other,212
-HH Mem 5- Private Disability,213
-HH Mem 5- Private Pension,214
-HH Mem 5- Ontario Disability Support Program (ODSP),215
-HH Mem 5- Scholarships,216
-HH Mem 5- Self Employed,217
-HH Mem 5- Spouse/Family Support,218
-HH Mem 5- Student Loans,219
-HH Mem 5- Temporary Work,220
-HH Mem 5- Universal Child Benefit,221
-HH Mem 5- WSIB,222
-HH Mem 6- ID,223
-HH Mem 6- Status,224
-HH Mem 6- Last Name,225
-HH Mem 6- First Name,226
-HH Mem 6- Date of Birth,227
-HH Mem 6- Age,228
-HH Mem 6- Gender,229
-HH Mem 6- Ethnicities,230
-HH Mem 6- Self-Identifies As,231
-HH Mem 6- Post Secondary Student,232
-HH Mem 6- Relationship,233
-HH Mem 6- Child Support,234
-HH Mem 6- Child Tax Benefit,235
-HH Mem 6- Children's Aid,236
-HH Mem 6- Canadian Pension Plan (CPP),237
-HH Mem 6- Employment Insurance (EI),238
-HH Mem 6- Employed: Full-Time,239
-HH Mem 6- Employed: Part-Time,240
-HH Mem 6- Family Support,241
-HH Mem 6- Immigration,242
-HH Mem 6- No Income,243
-HH Mem 6- Old Age Security (OAS),244
-HH Mem 6- Ontario Works (OW),245
-HH Mem 6- Other,246
-HH Mem 6- Private Disability,247
-HH Mem 6- Private Pension,248
-HH Mem 6- Ontario Disability Support Program (ODSP),249
-HH Mem 6- Scholarships,250
-HH Mem 6- Self Employed,251
-HH Mem 6- Spouse/Family Support,252
-HH Mem 6- Student Loans,253
-HH Mem 6- Temporary Work,254
-HH Mem 6- Universal Child Benefit,255
-HH Mem 6- WSIB,256
-HH Mem 7- ID,257
-HH Mem 7- Status,258
-HH Mem 7- Last Name,259
-HH Mem 7- First Name,260
-HH Mem 7- Date of Birth,261
-HH Mem 7- Age,262
-HH Mem 7- Gender,263
-HH Mem 7- Ethnicities,264
-HH Mem 7- Self-Identifies As,265
-HH Mem 7- Post Secondary Student,266
-HH Mem 7- Relationship,267
-HH Mem 7- Child Support,268
-HH Mem 7- Child Tax Benefit,269
-HH Mem 7- Children's Aid,270
-HH Mem 7- Canadian Pension Plan (CPP),271
-HH Mem 7- Employment Insurance (EI),272
-HH Mem 7- Employed: Full-Time,273
-HH Mem 7- Employed: Part-Time,274
-HH Mem 7- Family Support,275
-HH Mem 7- Immigration,276
-HH Mem 7- No Income,277
-HH Mem 7- Old Age Security (OAS),278
-HH Mem 7- Ontario Works (OW),279
-HH Mem 7- Other,280
-HH Mem 7- Private Disability,281
-HH Mem 7- Private Pension,282
-HH Mem 7- Ontario Disability Support Program (ODSP),283
-HH Mem 7- Scholarships,284
-HH Mem 7- Self Employed,285
-HH Mem 7- Spouse/Family Support,286
-HH Mem 7- Student Loans,287
-HH Mem 7- Temporary Work,288
-HH Mem 7- Universal Child Benefit,289
-HH Mem 7- WSIB,290
-HH Mem 8- ID,291
-HH Mem 8- Status,292
-HH Mem 8- Last Name,293
-HH Mem 8- First Name,294
-HH Mem 8- Date of Birth,295
-HH Mem 8- Age,296
-HH Mem 8- Gender,297
-HH Mem 8- Ethnicities,298
-HH Mem 8- Self-Identifies As,299
-HH Mem 8- Post Secondary Student,300
-HH Mem 8- Relationship,301
-HH Mem 8- Child Support,302
-HH Mem 8- Child Tax Benefit,303
-HH Mem 8- Children's Aid,304
-HH Mem 8- Canadian Pension Plan (CPP),305
-HH Mem 8- Employment Insurance (EI),306
-HH Mem 8- Employed: Full-Time,307
-HH Mem 8- Employed: Part-Time,308
-HH Mem 8- Family Support,309
-HH Mem 8- Immigration,310
-HH Mem 8- No Income,311
-HH Mem 8- Old Age Security (OAS),312
-HH Mem 8- Ontario Works (OW),313
-HH Mem 8- Other,314
-HH Mem 8- Private Disability,315
-HH Mem 8- Private Pension,316
-HH Mem 8- Ontario Disability Support Program (ODSP),317
-HH Mem 8- Scholarships,318
-HH Mem 8- Self Employed,319
-HH Mem 8- Spouse/Family Support,320
-HH Mem 8- Student Loans,321
-HH Mem 8- Temporary Work,322
-HH Mem 8- Universal Child Benefit,323
-HH Mem 8- WSIB,324
-HH Mem 9- ID,325
-HH Mem 9- Status,326
-HH Mem 9- Last Name,327
-HH Mem 9- First Name,328
-HH Mem 9- Date of Birth,329
-HH Mem 9- Age,330
-HH Mem 9- Gender,331
-HH Mem 9- Ethnicities,332
-HH Mem 9- Self-Identifies As,333
-HH Mem 9- Post Secondary Student,334
-HH Mem 9- Relationship,335
-HH Mem 9- Child Support,336
-HH Mem 9- Child Tax Benefit,337
-HH Mem 9- Children's Aid,338
-HH Mem 9- Canadian Pension Plan (CPP),339
-HH Mem 9- Employment Insurance (EI),340
-HH Mem 9- Employed: Full-Time,341
-HH Mem 9- Employed: Part-Time,342
-HH Mem 9- Family Support,343
-HH Mem 9- Immigration,344
-HH Mem 9- No Income,345
-HH Mem 9- Old Age Security (OAS),346
-HH Mem 9- Ontario Works (OW),347
-HH Mem 9- Other,348
-HH Mem 9- Private Disability,349
-HH Mem 9- Private Pension,350
-HH Mem 9- Ontario Disability Support Program (ODSP),351
-HH Mem 9- Scholarships,352
-HH Mem 9- Self Employed,353
-HH Mem 9- Spouse/Family Support,354
-HH Mem 9- Student Loans,355
-HH Mem 9- Temporary Work,356
-HH Mem 9- Universal Child Benefit,357
-HH Mem 9- WSIB,358
-HH Mem 10- ID,359
-HH Mem 10- Status,360
-HH Mem 10- Last Name,361
-HH Mem 10- First Name,362
-HH Mem 10- Date of Birth,363
-HH Mem 10- Age,364
-HH Mem 10- Gender,365
-HH Mem 10- Ethnicities,366
-HH Mem 10- Self-Identifies As,367
-HH Mem 10- Post Secondary Student,368
-HH Mem 10- Relationship,369
-HH Mem 10- Child Support,370
-HH Mem 10- Child Tax Benefit,371
-HH Mem 10- Children's Aid,372
-HH Mem 10- Canadian Pension Plan (CPP),373
-HH Mem 10- Employment Insurance (EI),374
-HH Mem 10- Employed: Full-Time,375
-HH Mem 10- Employed: Part-Time,376
-HH Mem 10- Family Support,377
-HH Mem 10- Immigration,378
-HH Mem 10- No Income,379
-HH Mem 10- Old Age Security (OAS),380
-HH Mem 10- Ontario Works (OW),381
-HH Mem 10- Other,382
-HH Mem 10- Private Disability,383
-HH Mem 10- Private Pension,384
-HH Mem 10- Ontario Disability Support Program (ODSP),385
-HH Mem 10- Scholarships,386
-HH Mem 10- Self Employed,387
-HH Mem 10- Spouse/Family Support,388
-HH Mem 10- Student Loans,389
-HH Mem 10- Temporary Work,390
-HH Mem 10- Universal Child Benefit,391
-HH Mem 10- WSIB,392
-HH Mem 11- ID,393
-HH Mem 11- Status,394
-HH Mem 11- Last Name,395
-HH Mem 11- First Name,396
-HH Mem 11- Date of Birth,397
-HH Mem 11- Age,398
-HH Mem 11- Gender,399
-HH Mem 11- Ethnicities,400
-HH Mem 11- Self-Identifies As,401
-HH Mem 11- Post Secondary Student,402
-HH Mem 11- Relationship,403
-HH Mem 11- Child Support,404
-HH Mem 11- Child Tax Benefit,405
-HH Mem 11- Children's Aid,406
-HH Mem 11- Canadian Pension Plan (CPP),407
-HH Mem 11- Employment Insurance (EI),408
-HH Mem 11- Employed: Full-Time,409
-HH Mem 11- Employed: Part-Time,410
-HH Mem 11- Family Support,411
-HH Mem 11- Immigration,412
-HH Mem 11- No Income,413
-HH Mem 11- Old Age Security (OAS),414
-HH Mem 11- Ontario Works (OW),415
-HH Mem 11- Other,416
-HH Mem 11- Private Disability,417
-HH Mem 11- Private Pension,418
-HH Mem 11- Ontario Disability Support Program (ODSP),419
-HH Mem 11- Scholarships,420
-HH Mem 11- Self Employed,421
-HH Mem 11- Spouse/Family Support,422
-HH Mem 11- Student Loans,423
-HH Mem 11- Temporary Work,424
-HH Mem 11- Universal Child Benefit,425
-HH Mem 11- WSIB,426
-HH Mem 12- ID,427
-HH Mem 12- Status,428
-HH Mem 12- Last Name,429
-HH Mem 12- First Name,430
-HH Mem 12- Date of Birth,431
-HH Mem 12- Age,432
-HH Mem 12- Gender,433
-HH Mem 12- Ethnicities,434
-HH Mem 12- Self-Identifies As,435
-HH Mem 12- Post Secondary Student,436
-HH Mem 12- Relationship,437
-HH Mem 12- Child Support,438
-HH Mem 12- Child Tax Benefit,439
-HH Mem 12- Children's Aid,440
-HH Mem 12- Canadian Pension Plan (CPP),441
-HH Mem 12- Employment Insurance (EI),442
-HH Mem 12- Employed: Full-Time,443
-HH Mem 12- Employed: Part-Time,444
-HH Mem 12- Family Support,445
-HH Mem 12- Immigration,446
-HH Mem 12- No Income,447
-HH Mem 12- Old Age Security (OAS),448
-HH Mem 12- Ontario Works (OW),449
-HH Mem 12- Other,450
-HH Mem 12- Private Disability,451
-HH Mem 12- Private Pension,452
-HH Mem 12- Ontario Disability Support Program (ODSP),453
-HH Mem 12- Scholarships,454
-HH Mem 12- Self Employed,455
-HH Mem 12- Spouse/Family Support,456
-HH Mem 12- Student Loans,457
-HH Mem 12- Temporary Work,458
-HH Mem 12- Universal Child Benefit,459
-HH Mem 12- WSIB,460
-HH Mem 13- ID,461
-HH Mem 13- Status,462
-HH Mem 13- Last Name,463
-HH Mem 13- First Name,464
-HH Mem 13- Date of Birth,465
-HH Mem 13- Age,466
-HH Mem 13- Gender,467
-HH Mem 13- Ethnicities,468
-HH Mem 13- Self-Identifies As,469
-HH Mem 13- Post Secondary Student,470
-HH Mem 13- Relationship,471
-HH Mem 13- Child Support,472
-HH Mem 13- Child Tax Benefit,473
-HH Mem 13- Children's Aid,474
-HH Mem 13- Canadian Pension Plan (CPP),475
-HH Mem 13- Employment Insurance (EI),476
-HH Mem 13- Employed: Full-Time,477
-HH Mem 13- Employed: Part-Time,478
-HH Mem 13- Family Support,479
-HH Mem 13- Immigration,480
-HH Mem 13- No Income,481
-HH Mem 13- Old Age Security (OAS),482
-HH Mem 13- Ontario Works (OW),483
-HH Mem 13- Other,484
-HH Mem 13- Private Disability,485
-HH Mem 13- Private Pension,486
-HH Mem 13- Ontario Disability Support Program (ODSP),487
-HH Mem 13- Scholarships,488
-HH Mem 13- Self Employed,489
-HH Mem 13- Spouse/Family Support,490
-HH Mem 13- Student Loans,491
-HH Mem 13- Temporary Work,492
-HH Mem 13- Universal Child Benefit,493
-HH Mem 13- WSIB,494
-HH Mem 14- ID,495
-HH Mem 14- Status,496
-HH Mem 14- Last Name,497
-HH Mem 14- First Name,498
-HH Mem 14- Date of Birth,499
-HH Mem 14- Age,500
-HH Mem 14- Gender,501
-HH Mem 14- Ethnicities,502
-HH Mem 14- Self-Identifies As,503
-HH Mem 14- Post Secondary Student,504
-HH Mem 14- Relationship,505
-HH Mem 14- Child Support,506
-HH Mem 14- Child Tax Benefit,507
-HH Mem 14- Children's Aid,508
-HH Mem 14- Canadian Pension Plan (CPP),509
-HH Mem 14- Employment Insurance (EI),510
-HH Mem 14- Employed: Full-Time,511
-HH Mem 14- Employed: Part-Time,512
-HH Mem 14- Family Support,513
-HH Mem 14- Immigration,514
-HH Mem 14- No Income,515
-HH Mem 14- Old Age Security (OAS),516
-HH Mem 14- Ontario Works (OW),517
-HH Mem 14- Other,518
-HH Mem 14- Private Disability,519
-HH Mem 14- Private Pension,520
-HH Mem 14- Ontario Disability Support Program (ODSP),521
-HH Mem 14- Scholarships,522
-HH Mem 14- Self Employed,523
-HH Mem 14- Spouse/Family Support,524
-HH Mem 14- Student Loans,525
-HH Mem 14- Temporary Work,526
-HH Mem 14- Universal Child Benefit,527
-HH Mem 14- WSIB,528
+Client Last Name,3
+Client First Name,4
+Client Date of Birth,5
+Client Age,6
+Client Gender,7
+Client Email Addresses,8
+Client Phone Numbers,9
+Client Marital Status,10
+Client Ethnicities,11
+Client Self-Identifies As,12
+Client Post Secondary Student,13
+Client Primary Income Source,14
+Client Child Support,15
+Client Child Tax Benefit,16
+Client Children's Aid,17
+Client Canadian Pension Plan (CPP),18
+Client Employment Insurance (EI),19
+Client Employed: Full-Time,20
+Client Employed: Part-Time,21
+Client Family Support,22
+Client Immigration,23
+Client No Income,24
+Client Old Age Security (OAS),25
+Client Ontario Works (OW),26
+Client Other,27
+Client Private Disability,28
+Client Private Pension,29
+Client Ontario Disability Support Program (ODSP),30
+Client Scholarships,31
+Client Self Employed,32
+Client Spouse/Family Support,33
+Client Student Loans,34
+Client Temporary Work,35
+Client Universal Child Benefit,36
+Client WSIB,37
+Address,38
+City,39
+Postal Code,40
+Housing Type,41
+Household ID,42
+Household Size,43
+Household Languages,44
+Dietary Considerations,45
+Quantity,46
+Visit Reasons,47
+Food Provided,48
+Items Provided,49
+Referrals Provided,50
+HH Mem 1- ID,51
+HH Mem 1- Status,52
+HH Mem 1- Last Name,53
+HH Mem 1- First Name,54
+HH Mem 1- Date of Birth,55
+HH Mem 1- Age,56
+HH Mem 1- Gender,57
+HH Mem 1- Ethnicities,58
+HH Mem 1- Self-Identifies As,59
+HH Mem 1- Post Secondary Student,60
+HH Mem 1- Relationship,61
+HH Mem 2- ID,62
+HH Mem 2- Status,63
+HH Mem 2- Last Name,64
+HH Mem 2- First Name,65
+HH Mem 2- Date of Birth,66
+HH Mem 2- Age,67
+HH Mem 2- Gender,68
+HH Mem 2- Ethnicities,69
+HH Mem 2- Self-Identifies As,70
+HH Mem 2- Post Secondary Student,71
+HH Mem 2- Relationship,72
+HH Mem 3- ID,73
+HH Mem 3- Status,74
+HH Mem 3- Last Name,75
+HH Mem 3- First Name,76
+HH Mem 3- Date of Birth,77
+HH Mem 3- Age,78
+HH Mem 3- Gender,79
+HH Mem 3- Ethnicities,80
+HH Mem 3- Self-Identifies As,81
+HH Mem 3- Post Secondary Student,82
+HH Mem 3- Relationship,83
+HH Mem 4- ID,84
+HH Mem 4- Status,85
+HH Mem 4- Last Name,86
+HH Mem 4- First Name,87
+HH Mem 4- Date of Birth,88
+HH Mem 4- Age,89
+HH Mem 4- Gender,90
+HH Mem 4- Ethnicities,91
+HH Mem 4- Self-Identifies As,92
+HH Mem 4- Post Secondary Student,93
+HH Mem 4- Relationship,94
+HH Mem 5- ID,95
+HH Mem 5- Status,96
+HH Mem 5- Last Name,97
+HH Mem 5- First Name,98
+HH Mem 5- Date of Birth,99
+HH Mem 5- Age,100
+HH Mem 5- Gender,101
+HH Mem 5- Ethnicities,102
+HH Mem 5- Self-Identifies As,103
+HH Mem 5- Post Secondary Student,104
+HH Mem 5- Relationship,105
+HH Mem 6- ID,106
+HH Mem 6- Status,107
+HH Mem 6- Last Name,108
+HH Mem 6- First Name,109
+HH Mem 6- Date of Birth,110
+HH Mem 6- Age,111
+HH Mem 6- Gender,112
+HH Mem 6- Ethnicities,113
+HH Mem 6- Self-Identifies As,114
+HH Mem 6- Post Secondary Student,115
+HH Mem 6- Relationship,116
+HH Mem 7- ID,117
+HH Mem 7- Status,118
+HH Mem 7- Last Name,119
+HH Mem 7- First Name,120
+HH Mem 7- Date of Birth,121
+HH Mem 7- Age,122
+HH Mem 7- Gender,123
+HH Mem 7- Ethnicities,124
+HH Mem 7- Self-Identifies As,125
+HH Mem 7- Post Secondary Student,126
+HH Mem 7- Relationship,127
+HH Mem 8- ID,128
+HH Mem 8- Status,129
+HH Mem 8- Last Name,130
+HH Mem 8- First Name,131
+HH Mem 8- Date of Birth,132
+HH Mem 8- Age,133
+HH Mem 8- Gender,134
+HH Mem 8- Ethnicities,135
+HH Mem 8- Self-Identifies As,136
+HH Mem 8- Post Secondary Student,137
+HH Mem 8- Relationship,138
+HH Mem 9- ID,139
+HH Mem 9- Status,140
+HH Mem 9- Last Name,141
+HH Mem 9- First Name,142
+HH Mem 9- Date of Birth,143
+HH Mem 9- Age,144
+HH Mem 9- Gender,145
+HH Mem 9- Ethnicities,146
+HH Mem 9- Self-Identifies As,147
+HH Mem 9- Post Secondary Student,148
+HH Mem 9- Relationship,149
+HH Mem 10- ID,150
+HH Mem 10- Status,151
+HH Mem 10- Last Name,152
+HH Mem 10- First Name,153
+HH Mem 10- Date of Birth,154
+HH Mem 10- Age,155
+HH Mem 10- Gender,156
+HH Mem 10- Ethnicities,157
+HH Mem 10- Self-Identifies As,158
+HH Mem 10- Post Secondary Student,159
+HH Mem 10- Relationship,160
+HH Mem 11- ID,161
+HH Mem 11- Status,162
+HH Mem 11- Last Name,163
+HH Mem 11- First Name,164
+HH Mem 11- Date of Birth,165
+HH Mem 11- Age,166
+HH Mem 11- Gender,167
+HH Mem 11- Ethnicities,168
+HH Mem 11- Self-Identifies As,169
+HH Mem 11- Post Secondary Student,170
+HH Mem 11- Relationship,171
+HH Mem 12- ID,172
+HH Mem 12- Status,173
+HH Mem 12- Last Name,174
+HH Mem 12- First Name,175
+HH Mem 12- Date of Birth,176
+HH Mem 12- Age,177
+HH Mem 12- Gender,178
+HH Mem 12- Ethnicities,179
+HH Mem 12- Self-Identifies As,180
+HH Mem 12- Post Secondary Student,181
+HH Mem 12- Relationship,182
+HH Mem 13- ID,183
+HH Mem 13- Status,184
+HH Mem 13- Last Name,185
+HH Mem 13- First Name,186
+HH Mem 13- Date of Birth,187
+HH Mem 13- Age,188
+HH Mem 13- Gender,189
+HH Mem 13- Ethnicities,190
+HH Mem 13- Self-Identifies As,191
+HH Mem 13- Post Secondary Student,192
+HH Mem 13- Relationship,193
+HH Mem 14- ID,194
+HH Mem 14- Status,195
+HH Mem 14- Last Name,196
+HH Mem 14- First Name,197
+HH Mem 14- Date of Birth,198
+HH Mem 14- Age,199
+HH Mem 14- Gender,200
+HH Mem 14- Ethnicities,201
+HH Mem 14- Self-Identifies As,202
+HH Mem 14- Post Secondary Student,203
+HH Mem 14- Relationship,204
+HH Mem 15- ID,205
+HH Mem 15- Status,206
+HH Mem 15- Last Name,207
+HH Mem 15- First Name,208
+HH Mem 15- Date of Birth,209
+HH Mem 15- Age,210
+HH Mem 15- Gender,211
+HH Mem 15- Ethnicities,212
+HH Mem 15- Self-Identifies As,213
+HH Mem 15- Post Secondary Student,214
+HH Mem 15- Relationship,215
