@@ -92,6 +92,13 @@ class Delivery_Routes():
             return self.route_collection
         else:
             print('the routes have not been created yet')
+    
+    def set_hh_dict(self, dict_of_DH_objects):
+        '''
+        sets the datastructure from an external source
+        '''
+        self.hh_dict  = dict_of_DH_objects
+        print('Dictionary of Households set')
 
     def set_hh_data_structure(self, data_structure):
         '''
