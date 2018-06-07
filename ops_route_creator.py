@@ -5,6 +5,10 @@ from collections import namedtuple
 from address_parser_and_geocoder import Coordinates  
 from address_parser_and_geocoder import SQLdatabase
 from address_parser_and_geocoder import AddressParser
+from db_data_models import Field_Names
+from db_data_models import Visit_Line_Object
+from db_data_models import Export_File_Parser 
+
 
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
@@ -23,15 +27,14 @@ also add an iter method to the Delivery_Routes Class so we can cycle through
 it and drop the routes into a DB
 '''
 
-coordinate_manager = Coordinates() # I lookup and manage coordinate data
 address_parser = AddressParser() # I strip out extraneous junk from address strings
 
 dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
 dbase.connect_to('Address.db', create=True) # testing = atest.db
     
-fnames = Field_Names('2018source.csv') # I am header names
+fnames = Field_Names('2018sourceb.csv') # I am header names
 fnames.init_index_dict() 
-export_file = Export_File_Parser('2018source.csv',fnames.ID) # I open a csv 
+export_file = Export_File_Parser('2018sourceb.csv',fnames.ID) # I open a csv 
     # for testing us test_export.csv
 export_file.open_file()
 
@@ -45,14 +48,17 @@ for line in export_file: # I am a csv object
     address, city, _ = line_object.get_address()
     applicant = line_object.get_applicant_ID()
     family_size = line_object.visit_household_Size
+    try:
+        simple_address, _ = address_parser.parse(address, applicant)
+        if simple_address:
+            lt, lg =  dbase.get_coordinates(simple_address, city)   
+            if all([lt, lg]):
+                hh_dict[applicant] = Delivery_Household(applicant, None, family_size, lt, lg)
+    except:
+        print('error with {} {}'.format(address, city))
 
-    simple_address, _ = address_parser.parse(address, applicant)
-    lt, lg =  coordinate_manager.get_coordinates(simple_address, city)   
-    if all(lt, lg):
-        hh_dict[file_id] = Delivery_Household(applicant, None, family_size, lt, lg)
-
+a2018routes.set_hh_dict(hh_dict)
 a2018routes.get_status()
-a2018routes.get_route_collection(hh_dict)
 a2018routes.sort_method()
 a2018routes.create_route_db('2018.db')
 a2018routes.log_route_in_db()
