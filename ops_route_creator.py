@@ -1,6 +1,8 @@
 import sqlite3
 from basket_sorting_Geocodes import Delivery_Household
 from basket_sorting_Geocodes import Delivery_Routes
+from basket_sorting_Geocodes import Route_Database
+from basket_sorting_Geocodes import Delivery_Household_Collection 
 from collections import namedtuple
 from address_parser_and_geocoder import Coordinates  
 from address_parser_and_geocoder import SQLdatabase
@@ -18,13 +20,19 @@ Hello.  I am the deliverator.  I am here to create routes
 this script will run through a l2f export file that has been cleaned up
 after iterative address fixing passes and quality control via the
 address_parser... script and careful digesting of logs.
-It will find the geocoordinates of each hh and create a datastructure of 
-Delivery_Household's to feed to the Delivery_Routes class for routing
 
-TO DO: refactor basket_sorting... to separate out the log to db stuff
-into a separte route db class
-also add an iter method to the Delivery_Routes Class so we can cycle through
-it and drop the routes into a DB
+open the csv and strip out the households line by line
+log them into a database in the correct structure for later
+
+run through the households in the database and add them to a
+Delivery_Household_Collection
+
+iterate through the collection of households to create routes
+log the routes in the database in a separate table
+
+the database will then yeild the materials necessary to make the route cards
+and should be more portable
+
 '''
 
 address_parser = AddressParser() # I strip out extraneous junk from address strings
@@ -32,16 +40,14 @@ address_parser = AddressParser() # I strip out extraneous junk from address stri
 dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
 dbase.connect_to('Address.db', create=True) # testing = atest.db
     
-fnames = Field_Names('2018sourceb.csv') # I am header names
+fnames = Field_Names('2018sourcec.csv') # I am header names
 fnames.init_index_dict() 
-export_file = Export_File_Parser('2018sourceb.csv',fnames.ID) # I open a csv 
+export_file = Export_File_Parser('2018sourcec.csv',fnames.ID) # I open a csv 
     # for testing us test_export.csv
 export_file.open_file()
 
 a2018routes = Delivery_Routes(7, 1) 
-
-
-hh_dict = {}
+delivery_households = Delivery_Household_Collection()
 
 for line in export_file: # I am a csv object
     line_object = Visit_Line_Object(line,fnames.ID)
@@ -53,15 +59,15 @@ for line in export_file: # I am a csv object
         if simple_address:
             lt, lg =  dbase.get_coordinates(simple_address, city)   
             if all([lt, lg]):
-                hh_dict[applicant] = Delivery_Household(applicant, None, family_size, lt, lg)
+                delivery_households.add_household(applicant, None, family_size, lt, lg)
     except:
-        print('error with {} {}'.format(address, city))
+        print('error attempting to get geocodes from db with {} {}'.format(address, city))
 
-a2018routes.set_hh_dict(hh_dict)
-a2018routes.get_status()
-a2018routes.sort_method()
-a2018routes.create_route_db('2018.db')
-a2018routes.log_route_in_db()
+a2018routes.sort_method(delivery_households)
+for house in delivery_households:
+    print(house.return_hh())
+    # insert into database methods go here
+
 
 
 
