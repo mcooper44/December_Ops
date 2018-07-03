@@ -37,6 +37,7 @@ def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points 
     on the earth (specified in decimal degrees)
+    Thanks Stack Overflow!
     """
     # convert decimal degrees to radians 
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -72,24 +73,45 @@ class Route_Database():
                              TEXT, diet TEXT)''')
             self.conn.commit()
 
-    def add_route(self):
+    def add_route(self, file_id, rn, rl):
         '''
         logs a route in the database
         '''
-        pass
-
-    def add_family(self):
+        db_tple = (file_id, rn, rl)
+        self.cur.execute("INSERT INTO routes VALUES (?, ?, ?)", db_tple)
+        self.conn.commit()   
+        
+    def add_family(self, family_tple):
         '''
         this adds a household to the applicants table
         '''
-        pass
-
+        self.cur.execute("INSERT INTO applicants VALUES (?,?,?,?,?,?,?,?,?,?)",
+                         family_tple)
+        self.conn.commit()
+        
     def __iter__():
         '''
-        returns all of the combined route and address information when called
-        upon in a structured way that can be used to generate route cards
+        returns a package of tuples from the database for each household that
+        has been logged.
+        the package is a tuple of household, route info tuples
+        
         '''
-        pass
+        self.cur.execute("SELECT * FROM applicants")
+        applicants = self.cur.fetchall()
+        for household in applicants:
+            fid = household[0]
+            self.cur.execute("SELECT * FROM routes WHERE file_id = ?",(fid,))
+            rt_tple = self.cur.fetchone()
+            package = (household, rt_tple)
+            yield package
+
+    def close_db(self):
+        '''
+        closes db connection
+
+        '''
+        self.conn.close()
+        print('db connection closed')
 
 class Delivery_Household():
     '''
@@ -133,6 +155,12 @@ class Delivery_Household():
         '''
         return all([self.route_number, self.route_letter])
     
+    def return_route(self):
+        '''
+        returns a tuple of file id and routing info for the household
+        '''
+        return (self.main_app_ID ,self.route_number, self.route_letter)
+
 class Delivery_Household_Collection():
     '''
     A collection of Delivery_Household() objects
@@ -301,6 +329,8 @@ class Delivery_Routes():
                 # data structure of routes in this class?  We can just iterate
                 # through the Delivery_Household_Collection and strip out the
                 # necessary information
+                
+                # this step records the routes on the households
                 households.label_route(r_key, applicant_route)
                 route_counter += 1
         #self.route_collection = routes
