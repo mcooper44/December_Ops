@@ -54,18 +54,27 @@ for line in export_file: # I am a csv object
     address, city, _ = line_object.get_address()
     applicant = line_object.get_applicant_ID()
     family_size = line_object.visit_household_Size
+    add2 = None
+    diet = None
+    email = None
+    phone = None
     try:
         simple_address, _ = address_parser.parse(address, applicant)
         if simple_address:
             lt, lg =  dbase.get_coordinates(simple_address, city)   
             if all([lt, lg]):
+                # insert into database or jump to building households
+                # delivery households need to hold more data points if they
+                # will be a structure to hand data over to the delivery cards
+                # et al.
                 delivery_households.add_household(applicant, None, family_size, lt, lg)
     except:
         print('error attempting to get geocodes from db with {} {}'.format(address, city))
 
 a2018routes.sort_method(delivery_households)
 for house in delivery_households:
-    print(house.return_hh())
+    print(house.return_route())
+
     # insert into database methods go here
 
 
