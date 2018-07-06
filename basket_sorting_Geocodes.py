@@ -64,11 +64,11 @@ class Route_Database():
         if self.path_name:
             self.conn = sqlite3.connect(path_name)
             self.cur = self.conn.cursor()
-            self.cur.execute('''CREATE TABLE IF NOT EXISTS routes (file_id INT, route_number INT,
-                       route_letter TEXT)''')
+            self.cur.execute('''CREATE TABLE IF NOT EXISTS routes (file_id INT
+                             UNIQUE, route_number INT, route_letter TEXT)''')
             self.conn.commit()
             self.cur.execute('''CREATE TABLE IF NOT EXISTS applicants (file_id
-                             INT, f_name TEXT, l_name TEXT, family_size INT, phone TEXT,
+                             INT UNIQUE, f_name TEXT, l_name TEXT, family_size INT, phone TEXT,
                              email TEXT, address_1 TEXT, address_2 TEXT, city
                              TEXT, diet TEXT)''')
             self.conn.commit()
@@ -78,18 +78,19 @@ class Route_Database():
         logs a route in the database
         '''
         db_tple = (file_id, rn, rl)
-        self.cur.execute("INSERT INTO routes VALUES (?, ?, ?)", db_tple)
+        self.cur.execute("INSERT OR IGNORE INTO routes VALUES (?, ?, ?)", db_tple)
         self.conn.commit()   
         
     def add_family(self, family_tple):
         '''
         this adds a household to the applicants table
         '''
-        self.cur.execute("INSERT INTO applicants VALUES (?,?,?,?,?,?,?,?,?,?)",
-                         family_tple)
+        print(family_tple)
+        self.cur.execute("INSERT OR IGNORE INTO applicants VALUES \
+                         (?,?,?,?,?,?,?,?,?,?)",family_tple)
         self.conn.commit()
         
-    def __iter__():
+    def __iter__(self):
         '''
         returns a package of tuples from the database for each household that
         has been logged.
@@ -120,7 +121,7 @@ class Delivery_Household():
     Decisions need to be made regarding keying off applicant ID or HH_ID and 
     what implications that may have for creating errors
     '''
-    def __init__(self, file_id, hh_id, family_size, lat, lng, rn=None, rl=None):
+    def __init__(self, file_id, hh_id, family_size, lat, lng, summary, rn=None, rl=None):
         self.main_app_ID = file_id
         self.household_ID = hh_id
         self.hh_size = family_size
@@ -128,10 +129,12 @@ class Delivery_Household():
         self.geo_tuple = Geolocation(float(lat), float(lng)) 
         self.route_number = rn
         self.route_letter = rl
+        self.summary = summary
 
     def return_hh(self):
         '''
-        returns the input values and route
+        returns the input values needed to sort a route
+        and the route number and letter
         '''
         lat, lng = self.geo_tuple
         return (self.main_app_ID, 
@@ -159,7 +162,13 @@ class Delivery_Household():
         '''
         returns a tuple of file id and routing info for the household
         '''
-        return (self.main_app_ID ,self.route_number, self.route_letter)
+        return (self.main_app_ID, self.route_number, self.route_letter)
+    
+    def return_summary(self):
+        '''
+        returns the HH summary.  Data needed to put on the route card
+        '''
+        return self.summary
 
 class Delivery_Household_Collection():
     '''
@@ -171,13 +180,13 @@ class Delivery_Household_Collection():
         self.hh_dict = {}
         self.fids_routed = set()
 
-    def add_household(self, file_id, hh_id, family_size, lat, lng):
+    def add_household(self, file_id, hh_id, family_size, lat, lng, summary):
         '''
         add a household object to the dictionary 
         '''
         self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size,
-                                                   lat, lng)
-    def HH_set(self):
+                                                   lat, lng, summary)
+    def get_HH_set(self):
         '''
         returns a set of file id's
         '''
@@ -202,13 +211,18 @@ class Delivery_Household_Collection():
             fid, lttr = fid_lttr
             self.hh_dict[fid].add_routing(route_key, lttr)
     
-    def return_size(self, fid):
+    def get_size(self, fid):
         '''
         returns the family size of a Delivery_Household in the dictionary
         '''
-        fam_object = self.hh_dict.get(fid, 'None')
-        return fam_object.hh_size
+        return self.hh_dict[fid].hh_size
 
+    def get_summary(self, fid):
+        '''
+        gets the summary data needed to print a delivery card
+        '''
+        return self.hh_dict[fid].return_summary()
+        
 
     def __iter__(self):
         for hh in self.hh_dict:
@@ -308,7 +322,7 @@ class Delivery_Routes():
                         if not households.has_been_routed(fam): # if we haven't sorted them into a route yet
                             # TODO we need a method to access the HH objects data
                             # here
-                            fam_size = households.return_size(fam) # determine family size
+                            fam_size = households.get_size(fam) # determine family size
                             box_num = box_mask[fam_size] # determine number of boxes
                             # do math to determine if we can add them to the route
                             # then if there are still more families at this distance we need to pop the one we just added
