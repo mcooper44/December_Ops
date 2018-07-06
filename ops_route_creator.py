@@ -37,9 +37,11 @@ and should be more portable
 
 address_parser = AddressParser() # I strip out extraneous junk from address strings
 
-dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-dbase.connect_to('Address.db', create=True) # testing = atest.db
-    
+address_dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
+address_dbase.connect_to('Address.db', create=True) # testing = atest.db
+
+route_database = Route_Database('2018rdb.db')
+
 fnames = Field_Names('2018sourcec.csv') # I am header names
 fnames.init_index_dict() 
 export_file = Export_File_Parser('2018sourcec.csv',fnames.ID) # I open a csv 
@@ -49,35 +51,62 @@ export_file.open_file()
 a2018routes = Delivery_Routes(7, 1) 
 delivery_households = Delivery_Household_Collection()
 
+# open the source file and parse the households out of it
+
 for line in export_file: # I am a csv object
     line_object = Visit_Line_Object(line,fnames.ID)
-    address, city, _ = line_object.get_address()
-    applicant = line_object.get_applicant_ID()
-    family_size = line_object.visit_household_Size
-    add2 = None
-    diet = None
-    email = None
-    phone = None
+    summary = line_object.get_HH_summary() # returns a named tuple
+    applicant = summary.applicant
+    address = summary.address
+    city = summary.city
+    family_size = summary.size
+    simple_address, _ = address_parser.parse(address, city) 
     try:
-        simple_address, _ = address_parser.parse(address, applicant)
-        if simple_address:
-            lt, lg =  dbase.get_coordinates(simple_address, city)   
-            if all([lt, lg]):
+        lt, lg = address_dbase.get_coordinates(simple_address, city)   
+        if all([lt, lg]):
                 # insert into database or jump to building households
                 # delivery households need to hold more data points if they
                 # will be a structure to hand data over to the delivery cards
                 # et al.
-                delivery_households.add_household(applicant, None, family_size, lt, lg)
-    except:
-        print('error attempting to get geocodes from db with {} {}'.format(address, city))
+            delivery_households.add_household(applicant, None, family_size,
+                                                  lt, lg, summary)
+    except Exception as errr:
+        print('Error attempting to find coordinates with {}. Raised:\
+              {}'.format(applicant, errr))
+
 
 a2018routes.sort_method(delivery_households)
+
 for house in delivery_households:
     print(house.return_route())
+    app, rn, rl = house.return_route()
 
-    # insert into database methods go here
+    summ = house.return_summary()
+    applicant = summ.applicant
+    fname = summ.fname
+    lname = summ.lname
+    email = summ.email
+    phone = summ.phone
+    address = summ.address
+    add2 = summ.address2
+    city = summ.city
+    family_size = summ.size
+    diet = summ.diet
 
+    route_database.add_route(app, rn, rl)
+    route_database.add_family((applicant,
+                               fname,
+                               lname,
+                               email,
+                               phone,
+                               address,
+                               add2,
+                               city,
+                               family_size,
+                               diet))
 
+for r in route_database:
+    print(r)
 
 
 
