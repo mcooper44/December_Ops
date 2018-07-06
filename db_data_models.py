@@ -1,7 +1,7 @@
 import db_parse_functions as parse_functions
 import db_tuple_collection as tuple_collection
 import csv
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, namedtuple
 
 class Field_Names():
     '''
@@ -222,10 +222,12 @@ class Visit_Line_Object():
         self.main_applicant_Age = visit_line[fnamedict['Client Age']] # Main Applicant Age
         self.main_applicant_Gender = None # Main Applicant Gender
         self.main_applicant_Phone = None # Main Applicant Phone Numbers
+        self.main_applicant_Email = None
         self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
         self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
         self.household_primary_SOI = None # Client Primary Source of Income
         self.visit_Address = visit_line[fnamedict['Address']]
+        self.visit_Address_Line2 = None
         self.visit_City = visit_line[fnamedict['City']]
         self.visit_Postal_Code = None
         self.visit_Household_ID = str(visit_line[fnamedict['Household ID']]) # Household ID - the unique file number used to identify households
@@ -245,6 +247,8 @@ class Visit_Line_Object():
                 self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
             if visit_line[fnamedict['Client Date of Birth']]:
                 self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+            if visit_line[fnamedict['Line 2']]:
+                self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
             if visit_line[fnamedict['Client Gender']]:
                 self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
             if visit_line[fnamedict['Client Phone Numbers']]:
@@ -261,6 +265,8 @@ class Visit_Line_Object():
                 self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
             if visit_line[fnamedict['Visited Agency']]:
                 self.visit_Agency = visit_line[fnamedict['Visited Agency']]
+            if visit_line[fnamedict['Client Email Addresses']]:
+                self.main_applicant_Email = visit_line[fnamedict['Client Email Addresses']]
         except:
             pass
             
@@ -280,6 +286,24 @@ class Visit_Line_Object():
             return address_3tuple
         else:
             return (False, False, False)
+
+    def get_HH_summary(self):
+        '''
+        returns a summary of the household.
+        name, address, phone, email, family size, diet
+        '''
+        visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, phone, email,\
+                               address, address2, city, size, diet')
+        return visit_sum(self.main_applicant_ID,
+        self.main_applicant_Fname,
+        self.main_applicant_Lname,
+        self.main_applicant_Phone,
+        self.main_applicant_Email,
+        self.visit_Address,
+        self.visit_Address_Line2,
+        self.visit_City,
+        self.visit_household_Size,
+        self.visit_household_Diet)
 
     def get_hh_id_number(self):
         '''
