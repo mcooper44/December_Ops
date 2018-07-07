@@ -107,9 +107,5 @@ names
 *.txt
 config.py
 December_Ops.code-workspace
-2017_address_feedstock.csv
-2018source.csv
-*.log
-2018sourceb.csv
-header_config.csv
-log.csv
+*.csv
+*.db
