@@ -49,7 +49,6 @@ def haversine(lon1, lat1, lon2, lat2):
     km = 6367 * c
     return km
 
-
 class Route_Database():
     '''
     This is a database of households sorted into neighbourhoods in one table
@@ -89,7 +88,35 @@ class Route_Database():
         self.cur.execute("INSERT OR IGNORE INTO applicants VALUES \
                          (?,?,?,?,?,?,?,?,?,?)",family_tple)
         self.conn.commit()
-        
+
+    def prev_routed(self, applicant):
+        '''
+        double checks to see if this household has been routed
+        before.
+        '''
+        self.cur.execute("SELECT * FROM routes WHERE file_id=?", (applicant,))
+        if self.cur.fetchone():
+            return True
+        else:
+            return False
+
+    def fam_prev_entered(self, applicant):
+        self.cur.execute("SELECT * FROM applicants WHERE file_id=?",
+                         (applicant,))
+        if self.cur.fetchone():
+            return True
+        else:
+            return False
+
+    def return_last_rn(self):
+        '''
+        returns the last route number in the database so that we
+        can resume the numbering sequence
+        '''
+        self.cur.execute("SELECT MAX(route_number) FROM routes LIMIT 1")
+        last_rn = self.cur.fetchone()
+        return last_rn[0]
+
     def __iter__(self):
         '''
         returns a package of tuples from the database for each household that
