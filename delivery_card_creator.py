@@ -34,26 +34,26 @@ class Delivery_Slips():
             self.worksheet = self.workbook.add_worksheet('food')
             self.worksheet.set_margins(0.25, 0.25, 0.15, 0.15)
         
-    def add_household(self,route,summary):
+    def add_household(self, route, summary):
         file_id, rn, rl = route
 
         diet = diet_parser(summary.diet) # reformat diet to cut out redundancy
-        phone = summary.phone # whatever is in the field - not the formatted number
+        phone = str(summary.phone) # whatever is in the field - not the formatted number
         # cell locations 
         hh_str = 'A{}'.format(self.l_n[1]) # string hh size
         hh_size = 'B{}'.format(self.l_n[1]) # actual hh size
         f_name = 'C{}'.format(self.l_n[1]) # first name cell location
         l_name = 'D{}'.format(self.l_n[1]) # l name cell location
-        ph_num = 'F{}'.format(self.l_n[1]) # phone number cell location
+        ph_num = 'A{}'.format(self.l_n[5]) # phone number cell location
         address = 'C{}'.format(self.l_n[2]) # street address
         addressl2 = 'C{}'.format(self.l_n[3]) # line 2 unit number et al
         ID_num_str = 'A{}'.format(self.l_n[3]) # string of Request ID 
         ID_num = 'B{}'.format(self.l_n[3]) # actual ID number
         city = 'C{}'.format(self.l_n[4])
-        postal_code = 'F{}'.format(self.l_n[3])
-        diet_str = 'A{}'.format(self.l_n[5])
+        postal_code = 'D{}'.format(self.l_n[4])
+        diet_str = 'A{}'.format(self.l_n[6])
         diet_actual = 'B{}'.format(self.l_n[5])
-        driver_str = 'A{}'.format(self.l_n[7]) # driver name string
+        driver_str = 'A{}'.format(self.l_n[8])# driver name string
         route_str = 'H{}'.format(self.l_n[1]) # Route string
         route_num = 'I{}'.format(self.l_n[1]) # Actual route number
         route_let = 'J{}'.format(self.l_n[1]) # Actual Route Letter
@@ -61,7 +61,7 @@ class Delivery_Slips():
 
         at_home_str = 'A{}'.format(self.l_n[9])
         at_yes_str = 'B{}'.format(self.l_n[9])
-        at_no_str = 'C{}'.format(self.l_n[9])
+        #at_no_str = 'C{}'.format(self.l_n[9])
         new_add_str = 'E{}'.format(self.l_n[9])
         left_hamper = 'A{}'.format(self.l_n[10])
         left_w_y_str = 'B{}'.format(self.l_n[10])
@@ -69,17 +69,17 @@ class Delivery_Slips():
         left_with_str = 'E{}'.format(self.l_n[10])
         
         # write client info to worksheet
-        self.worksheet.write(hh_str, '# of Persons')
+        self.worksheet.write(hh_str, '# of Persons:')
         self.worksheet.write(hh_size, summary.size)  #hh size
         self.worksheet.write(f_name, summary.fname)    #  first name
         self.worksheet.write(l_name, summary.lname)    # last name
-        self.worksheet.write(ph_num, phone) # write the first phone number we have
+        self.worksheet.write(ph_num, 'PHONE: {}'.format(phone)) # write the first phone number we have
         self.worksheet.write(address, summary.address) # address
         self.worksheet.write(ID_num_str, 'CHRISTMAS ID#') 
         self.worksheet.write(ID_num, summary.applicant) # ID number
         self.worksheet.write(city, summary.city) # city
         self.worksheet.write(postal_code, '_') #postal code
-        self.worksheet.write(diet_str, 'SPECIAL DIET:')
+        self.worksheet.write(diet_str, 'SPECIAL DIET: {}'.format(diet))
         self.worksheet.write(diet_actual, diet) # diet issues/preferences
         self.worksheet.write(route_str, 'ROUTE:')
         self.worksheet.write(route_num, rn)
@@ -88,11 +88,11 @@ class Delivery_Slips():
         # Driving related text strings
         self.worksheet.write(driver_str, 'DRIVER NAME:_______________________________________________________________________')
         self.worksheet.write(at_home_str, 'AT HOME:')
-        self.worksheet.write(at_yes_str, 'YES')
-        self.worksheet.write(at_no_str, 'NO')
+        self.worksheet.write(at_yes_str, 'YES / NO ')
+        #self.worksheet.write(at_no_str, 'NO')
         self.worksheet.write(new_add_str, 'NEW ADDRESS: __________________________________')            
         self.worksheet.write(left_hamper, 'LEFT HAMPER:')
-        self.worksheet.write(left_w_y_str, 'YES')
+        self.worksheet.write(left_w_y_str, 'YES / NO')
         self.worksheet.write(left_w_n_str, 'NO')
         self.worksheet.write(left_with_str, 'WITH: __________________________________________')
 
