@@ -32,7 +32,7 @@ box_mask = {'0': 1,
             '17':4,
             '18':4
             }
-
+not been recorded as a HH
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points 
@@ -49,10 +49,39 @@ def haversine(lon1, lat1, lon2, lat2):
     km = 6367 * c
     return km
 
+class Route_Summary():
+    '''
+    A central collection of relevant information that is helpful
+    on the dock
+    '''
+    def __init__(self, rn):
+        self.route = rn # route number
+        self.streets = set() # set of streets
+        self.neighbourhood = [] # the City Neighbourhood(s) the route hits
+        self.applicant_list = [] # list of file ids
+        self.sizes = [] # list of family sizes
+        self.letter_map = {} # Mapping of route letter to family size and diet
+        self.boxes = 0
+        
+    def add_household(self, fid, family_size, diet, letter, street, hood):
+        '''
+        adds household data to the data structure as some other method
+        iterates through a range of routes.
+        '''
+        self.applicant_list.append(fid)
+        self.sizes.append(family_size)
+        self.letter_map[fid] = 'Box: {} Family: {} Diet: {}'.format(letter,
+                                                               family_size,
+                                                               diet)
+        self.streets.add(street)
+        self.neighbourhood.append(hood)
+        self.boxes += 1
+
 class Route_Database():
     '''
-    This is a database of households sorted into neighbourhoods in one table
-    and households sorted into routes in another table
+    This is a database of households sorted into neighbourhoods in one table,
+    households sorted into routes in another table, 
+    family members in a third
     It is the central database that will recieve routes, reproduce them
     and return route specific information when needed
     '''
@@ -60,16 +89,24 @@ class Route_Database():
         self.path_name = path_name
         self.conn = None
         self.cur = None
+        self.summary_array = {} # where we will stash summary objects
         if self.path_name:
             self.conn = sqlite3.connect(path_name)
             self.cur = self.conn.cursor()
+            # ROUTE TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS routes (file_id INT
                              UNIQUE, route_number INT, route_letter TEXT)''')
             self.conn.commit()
+            # APPLICANTS
             self.cur.execute('''CREATE TABLE IF NOT EXISTS applicants (file_id
                              INT UNIQUE, f_name TEXT, l_name TEXT, family_size INT, phone TEXT,
                              email TEXT, address_1 TEXT, address_2 TEXT, city
                              TEXT, diet TEXT)''')
+            self.conn.commit()
+            # FAMILY MEMBERS
+            self.cur.execute('''CREATE TABLE IF NOT EXISTS family
+                             (main_applicant INT, client_id INT, fname TEXT,
+                             lname TEXT, age INT)''')
             self.conn.commit()
 
     def add_route(self, file_id, rn, rl):
@@ -82,12 +119,25 @@ class Route_Database():
         
     def add_family(self, family_tple):
         '''
-        this adds a household to the applicants table
+        this adds a household (applicant name, address, contact info etc)
+        TODO: this should be renamed
         '''
-        print(family_tple)
-        self.cur.execute("INSERT OR IGNORE INTO applicants VALUES \
-                         (?,?,?,?,?,?,?,?,?,?)",family_tple)
+        self.cur.execute('''INSERT OR IGNORE INTO applicants VALUES 
+                         (?,?,?,?,?,?,?,?,?,?)''',family_tple)
         self.conn.commit()
+
+    def add_family_member(self, app_id, person):
+        '''
+        adds a family member to the family table with a tuple
+        (file id, fname, lname, age)
+        it expects to recieve a tuple created by the 
+        Person.get_base_profile() method
+        '''
+
+        five_tuple = (app_id, person[0], person[1], person[2], person[3])
+        self.cur.exectue("INSERT OR IGNORE INTO family (?,?,?,?,?)",five_tuple)
+        self.conn.commit()
+
 
     def prev_routed(self, applicant):
         '''
@@ -101,6 +151,10 @@ class Route_Database():
             return False
 
     def fam_prev_entered(self, applicant):
+        '''
+        returns True if the household has been logged in the
+        database applicants table or False
+        '''
         self.cur.execute("SELECT * FROM applicants WHERE file_id=?",
                          (applicant,))
         if self.cur.fetchone():
@@ -111,12 +165,26 @@ class Route_Database():
     def return_last_rn(self):
         '''
         returns the last route number in the database so that we
-        can resume the numbering sequence
+        can resume the numbering sequence as households are added
+        and to avoid route number collision between runs
         '''
         self.cur.execute("SELECT MAX(route_number) FROM routes LIMIT 1")
         last_rn = self.cur.fetchone()
         return last_rn[0]
 
+    def generate_route_summary(self, hh_rt_package):
+        '''
+        reaches into the database and creates a summary of each route
+        it finds and packages them into a dictionary for use in 
+        building a summary route card or for the route binder or ...?
+        call this Class as an interator and then pass the value back 
+        into this method?
+        '''
+        hh, rt = hh_rt_package
+        # break the different bits of information out and then 
+        # wrap them up in a summary object and stash them in the dictionary
+        pass
+    
     def __iter__(self):
         '''
         returns a package of tuples from the database for each household that
@@ -124,13 +192,13 @@ class Route_Database():
         the package is a tuple of household, route info tuples
         
         '''
-        self.cur.execute("SELECT * FROM applicants")
-        applicants = self.cur.fetchall()
-        for household in applicants:
-            fid = household[0]
-            self.cur.execute("SELECT * FROM routes WHERE file_id = ?",(fid,))
-            rt_tple = self.cur.fetchone()
-            package = (household, rt_tple)
+        self.cur.execute("SELECT * FROM routes SORT BY route_number")
+        rts = self.cur.fetchall()
+        for hh_route in rts:
+            fid = hh_route[0]
+            self.cur.execute("SELECT * FROM applicants WHERE file_id=?",(fid,))
+            household = self.cur.fetchone()
+            package = (household, hh_route)
             yield package
 
     def close_db(self):
@@ -144,9 +212,7 @@ class Route_Database():
 class Delivery_Household():
     '''
     a collection of datapoints needed to assemble a delivery route
-    :TO DO:
-    Decisions need to be made regarding keying off applicant ID or HH_ID and 
-    what implications that may have for creating errors
+    and the methods to output and organize all the little bits
     '''
     def __init__(self, file_id, hh_id, family_size, lat, lng, summary, rn=None, rl=None):
         self.main_app_ID = file_id
@@ -156,7 +222,8 @@ class Delivery_Household():
         self.geo_tuple = Geolocation(float(lat), float(lng)) 
         self.route_number = rn
         self.route_letter = rl
-        self.summary = summary
+        self.summary = summary # route card data
+        self.family_members = None # family members in tuples
 
     def return_hh(self):
         '''
@@ -179,6 +246,14 @@ class Delivery_Household():
         self.route_number = number
         self.route_letter = letter
 
+    def add_family_members(self, family_tuples):
+        '''
+        takes a collection of family tuples created by the Visit_Line_Object
+        class .get_family_members() method
+        these can be turned into Person() objects later if needed
+        '''
+        self.family_members = family_tuples
+
     def routed(self):
         '''
         returns True or False if it has a route number and letter designation
@@ -193,7 +268,8 @@ class Delivery_Household():
     
     def return_summary(self):
         '''
-        returns the HH summary.  Data needed to put on the route card
+        returns the HH summary.  Data needed to put on the route card like
+        name, address, etc.
         '''
         return self.summary
 
@@ -201,7 +277,7 @@ class Delivery_Household_Collection():
     '''
     A collection of Delivery_Household() objects
     This object is used to supply the Delivery_Routes class with Households to
-    sort into routes
+    sort into routes and a way of interfacing with them
     '''
     def __init__(self):
         self.hh_dict = {}
@@ -213,6 +289,16 @@ class Delivery_Household_Collection():
         '''
         self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size,
                                                    lat, lng, summary)
+    def add_hh_family(self, applicant, familytples):
+        '''
+        adds tuples of the family members to a Delivery_Household
+        using the add_family_members() method
+        '''
+        if self.hh_dict.get(applicant, False):
+            self.hh_dict[applicant].add_family_members(familytples)
+        else:
+            print('{} has not been recorded as a HH'.format(applicant))
+            
     def get_HH_set(self):
         '''
         returns a set of file id's
@@ -230,6 +316,7 @@ class Delivery_Household_Collection():
         '''
         Takes a route number and route and then labels the Delivery Household
         objects that correspond to route
+        RIP 2016 as teh year without a G
         '''
         r_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] 
         letter_map = zip(route, r_letters) # [(fid1, 'A'), (fid2, 'B')]
@@ -249,7 +336,6 @@ class Delivery_Household_Collection():
         gets the summary data needed to print a delivery card
         '''
         return self.hh_dict[fid].return_summary()
-        
 
     def __iter__(self):
         for hh in self.hh_dict:
@@ -258,38 +344,12 @@ class Delivery_Household_Collection():
 class Delivery_Routes():
     '''
     takes a collection of households and parses them into individual routes
+    TODO: Cleanup the methods
 
     '''    
     def __init__(self, max_boxes = 7, start_count = 1):
         self.max_boxes = max_boxes # max number of boxes per/route
         self.start_count = start_count # what we start counting routes at
-        self.hh_dict = None # a dictionary of Delivery_Household() objects
-        self.route_collection = None # a dictionary of all the routes and the hh they contain 1: [12345,2341234,123412,62345]
-
-    def get_status(self):
-        '''
-        returns the status of the object.  Is it ready to parse points and return a route list?
-        '''
-        if not self.hh_dict:
-            print('not ready.  please add a data source to populate the dictionary')
-        else:
-            print('ready with {}'.format(type(self.hh_dict)))
-
-    def get_route_collection(self):
-        '''
-        returns the collection of routes held in the object
-        '''
-        if self.route_collection:
-            return self.route_collection
-        else:
-            print('the routes have not been created yet')
-    
-    def set_hh_dict(self, dict_of_DH_objects):
-        '''
-        sets the datastructure from an external source
-        '''
-        self.hh_dict  = dict_of_DH_objects
-        print('Dictionary of Households set')
 
     def sort_method(self, households):
         '''
@@ -299,8 +359,8 @@ class Delivery_Routes():
         It then loops through the nearest households and based off their family size
         adds them to the route until it reaches the max_box size, upon which, the
         route is complete.  It then repeats the process will all of the subsequent 
-        households until all have been bundled into routes.  It then sets the
-        route_collection class variable = to the list of routes
+        households until all have been bundled into routes.
+        after completing a route it labels them A,B,C... etc
         '''
         max_box_count = self.max_boxes
         route_counter = self.start_count # this is where we start counting the routes
@@ -310,7 +370,6 @@ class Delivery_Routes():
         # for key in dictionary of households in the
         # Delivery_Households_Collection class...
         for applicant in households:
-            print(applicant)
             h1_lat, h1_long = applicant.geo_tuple # a tuple of (lat, lng)
             applicant_route = [] # the working container that we will then add to the route dictionary
             size = str(applicant.hh_size) # turn the size into a string so we can...
@@ -347,8 +406,6 @@ class Delivery_Routes():
                     # now we need to iterate through the list of HH at this distance.
                     for fam in distance_hh_dictionary[key]: # for the individual or family in the list of households at this distance
                         if not households.has_been_routed(fam): # if we haven't sorted them into a route yet
-                            # TODO we need a method to access the HH objects data
-                            # here
                             fam_size = households.get_size(fam) # determine family size
                             box_num = box_mask[fam_size] # determine number of boxes
                             # do math to determine if we can add them to the route
@@ -365,7 +422,6 @@ class Delivery_Routes():
             if applicant_route:
                 print('we have iterated and made a route! It is {}'.format(applicant_route))
                 r_key = str(route_counter)
-                #routes[r_key] = applicant_route
                 # if we record what route each HH is in do we need a separate
                 # data structure of routes in this class?  We can just iterate
                 # through the Delivery_Household_Collection and strip out the
@@ -374,46 +430,3 @@ class Delivery_Routes():
                 # this step records the routes on the households
                 households.label_route(r_key, applicant_route)
                 route_counter += 1
-        #self.route_collection = routes
-   
-    def create_route_db(self, db_name):
-        '''
-        create a database to dump values into
-        '''
-        self.route_db = db_name
-        self.conn = sqlite3.connect(db_name)
-        self.cur = self.conn.cursor()
-        self.cur.execute('''CREATE TABLE routes (file_id INT PRIMARY KEY, route_number INT,
-                       route_letter TEXT)''')
-        self.conn.commit()
-        self.conn.close()
-
-
-    def log_route_in_db(self, db_name=None):
-        '''
-        This method logs the route dictionary into a database for portability etc.
-        r_num = route #
-        r_list = [fileid1, fileid2, ...]
-        db_name allows you to override the last db connected to
-        '''
-        r_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
-        
-        if db_name:
-            self.route_db = db_name
-        self.conn = sqlite3.connect(self.route_db)
-        self.cur = self.conn.cursor()
-        print('connection to {} established'.format(self.route_db))
-        
-        for r_number in self.route_collection.keys():
-            fids = self.route_collection[r_number]
-            letter_map = zip(fids, r_letters) # [(fid1, 'A'), (fid2, 'B')]
-
-            for fid_lttr in letter_map:
-                db_tple = (fid_lttr[0], # file ID
-                           r_number,     # route number
-                           fid_lttr[1])   # route letter
-                self.cur.execute("INSERT INTO routes VALUES (?, ?, ?)", db_tple)
-                self.conn.commit()   
-        self.conn.close()
-
-
