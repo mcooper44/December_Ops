@@ -11,6 +11,14 @@ class Field_Names():
     def __init__(self, config_file):
         self.config_file= config_file # path to the config file
         self.ID = dict() # a dictionary of field name : index number as int()
+        self.file_headers = None
+
+        with open(self.config_file) as f:
+            name_ID_reader = csv.reader(f)
+            self.file_headers = next(name_ID_reader, None)
+            for col_header in self.file_headers:
+                col_header_index = self.file_headers.index(col_header)
+                self.ID[col_header] = col_header_index
 
     def init_index_dict(self):
         '''
@@ -19,12 +27,53 @@ class Field_Names():
         varioius fields are.
         param config_file should be the file
         '''
-        with open(self.config_file) as f:
-            name_ID_reader = csv.reader(f)
-            file_header = next(name_ID_reader, None)
-            for col_header in file_header:
-                col_header_index = file_header.index(col_header)
-                self.ID[col_header] = col_header_index
+        # this is method depreciated
+        pass
+    
+    def return_family_subslice_len(self):
+        '''
+        returns the size of the chunk that each family members takes up
+        at the end of the file.  This is useful to know when clipping family
+        members out of the Visit_Line
+        '''
+        return self.ID['HH Mem 2- ID'] - self.ID['HH Mem 1- ID']
+    
+    def return_fam_header_indexes(self):
+        '''
+        returns a dictionary that can be used to parse out the datapoints
+        from a slice of the visit line containing family details.
+        This will help automate the search for the relevant info
+        and not require manual calibration of parsing functions to 
+        use the correct index
+        '''
+        fam_hd = {'ID' : 0,
+                'lname': None,
+                'fname': None,
+                'dob': None,
+                'age': None,
+                'gender': None,
+                'ethnicity': None,
+                'self_ident': None,
+                'relationship': None
+                 }
+
+        targets = ['HH Mem 1- Last Name','HH Mem 1- First Name',
+                   'HH Mem 1- Date of Birth', 'HH Mem 1- Age',
+                   'HH Mem 1- Gender','HH Mem 1- Ethnicities',
+                   'HH Mem 1- Self-Identifies As','HH Mem 1- Relationship']
+
+        reference = self.file_headers.index('HH Mem 1- ID')
+        d_t = list(fam_hd.keys())
+        dx = 0
+ 
+        for k in d_t[1:]:
+            try:
+                fam_hd[k] = self.file_headers.index(targets[dx]) - reference
+                dx += 1
+            except:
+                dx += 1
+        
+        return fam_hd
 
 class Person():
     '''
@@ -60,6 +109,13 @@ class Person():
 
     def __repr__(self):
         return 'Person: {} {} {}'.format(self.person_ID, self.person_Fname, self.person_Lname)
+
+    def get_base_profile(self):
+        '''
+        returns a tuple of (ID, Fname, Lname, Age)
+        '''
+        return (self.person_ID, self.person_Fname, self.person_Lname,
+                self.person_Age)
 
     def Get_Self_Ident_Profile_Tuple(self):
         '''
@@ -209,7 +265,12 @@ class Visit_Line_Object():
     for structuring it, so that person, HH and Visit objects can be created
     
     it also has a flag to indicate if there are xmas features to extract
-    and provides methods to do so if needed #TO DO
+    and provides methods to do so if needed
+    :param: visit_line = a line from a csv
+    :param: fnamedict = a dictionary of headernames: index number - it is used
+    to reference where data points are on the visit_line
+    :param: december_flag = a marker to toggle looking for Christmas related
+    headers
 
     '''    
     
@@ -230,7 +291,7 @@ class Visit_Line_Object():
         self.visit_Address_Line2 = None
         self.visit_City = visit_line[fnamedict['City']]
         self.visit_Postal_Code = None
-        self.visit_Household_ID = str(visit_line[fnamedict['Household ID']]) # Household ID - the unique file number used to identify households
+        self.visit_Household_ID = None  # Household ID - the unique file number used to identify households
         self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
         self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
@@ -239,36 +300,39 @@ class Visit_Line_Object():
         self.visit_Agency = None # organization that provided services
         self.HH_main_applicant_profile = None
         self.HH_family_members_profile = None      
+        self.xmas_ID = None
+        self.xmas_food_provided = None
+        self.xmas_items_provided = None
+        self.xmas_notes = None
+        self.xmas_application_site = None
+
         
-        try:
-            if visit_line[fnamedict['Client First Name']]:
-                self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
-            if visit_line[fnamedict['Client Last Name']]:
-                self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
-            if visit_line[fnamedict['Client Date of Birth']]:
-                self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
-            if visit_line[fnamedict['Line 2']]:
-                self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
-            if visit_line[fnamedict['Client Gender']]:
-                self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
-            if visit_line[fnamedict['Client Phone Numbers']]:
-                self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
-            if visit_line[fnamedict['Client Primary Income Source']]:
-                self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']]
-            if visit_line[fnamedict['Postal Code']]:
-                self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
-            if visit_line[fnamedict['Household ID']]:
-                self.visit_Household_ID = str(visit_line[fnamedict['Household ID']])
-            if visit_line[fnamedict['Referrals Provided']]:
-                self.visit_Referral = visit_line[fnamedict['Referrals Provided']] # Referrals Provided
-            if visit_line[fnamedict['HH Mem 1- ID']:]:
-                self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
-            if visit_line[fnamedict['Visited Agency']]:
-                self.visit_Agency = visit_line[fnamedict['Visited Agency']]
-            if visit_line[fnamedict['Client Email Addresses']]:
-                self.main_applicant_Email = visit_line[fnamedict['Client Email Addresses']]
-        except:
-            pass
+        if fnamedict.get('Client First Name', False):
+            self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
+        if fnamedict.get('Client Last Name', False):
+            self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
+        if fnamedict.get('Client Date of Birth', False):
+            self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+        if fnamedict.get('Line 2', False):
+            self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
+        if fnamedict.get('Client Gender', False):
+            self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
+        if visit_line[fnamedict['Client Phone Numbers']]:
+            self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
+        if fnamedict.get('Client Primary Income Source',False):
+            self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']]
+        if fnamedict.get('Postal Code', False):
+            self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
+        if fnamedict.get('Household ID', False):
+            self.visit_Household_ID = str(visit_line[fnamedict['Household ID']])
+        if fnamedict.get('Referrals Provided', False):
+            self.visit_Referral = visit_line[fnamedict['Referrals Provided']] # Referrals Provided
+        if fnamedict.get('HH Mem 1- ID', False):
+            self.visit_Family_Slice = visit_line[fnamedict['HH Mem 1- ID']:]
+        if fnamedict.get('Visited Agency', False):
+            self.visit_Agency = visit_line[fnamedict['Visited Agency']]
+        if fnamedict.get('Client Email Addresses', False):
+            self.main_applicant_Email = visit_line[fnamedict['Client Email Addresses']]
             
         if december_flag:
             self.xmas_ID = visit_line[fnamedict['Request ID']]
@@ -333,10 +397,8 @@ class Visit_Line_Object():
         '''
         returns boolian value indicating False for single people, True for families
         '''
-        if self.visit_household_Size == 1:
-            return False
-        else:
-            return True
+        
+        return int(self.visit_household_Size) > 1
 
     def get_main_applicant(self):
         '''
@@ -351,15 +413,21 @@ class Visit_Line_Object():
                 self.main_applicant_Ethnicity,
                 self.main_applicant_Self_Identity)
 
-    def get_family_members(self):
+    def get_family_members(self,  header_object):
         '''
         return a list of 
         family members sliced into tuples formatted to create Person() objects        
-        
+        :param: header_object is a Field_Names object and we use
+        the .return_family_sublice_len() method to find how long the 
+        family member chunks are. This is important to know so we can
+        correctly cut the line into the correct size lengths.
         '''
-        tuple_list_of_family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice)
-        
-        return tuple_list_of_family_members
+        sub_slice_len = header_object.return_family_subslice_len()
+        h_d = header_object.return_fam_header_indexes()
+        family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice,
+                                                                sub_slice_len,
+                                                                h_d)
+        return family_members
 
     def is_hamper(self):
         '''
