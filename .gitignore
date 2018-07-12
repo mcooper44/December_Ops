@@ -109,3 +109,5 @@ config.py
 December_Ops.code-workspace
 *.csv
 *.db
+*.xlsx
+
