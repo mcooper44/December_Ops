@@ -32,7 +32,7 @@ box_mask = {'0': 1,
             '17':4,
             '18':4
             }
-not been recorded as a HH
+
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points 
@@ -135,7 +135,7 @@ class Route_Database():
         '''
 
         five_tuple = (app_id, person[0], person[1], person[2], person[3])
-        self.cur.exectue("INSERT OR IGNORE INTO family (?,?,?,?,?)",five_tuple)
+        self.cur.execute("INSERT OR IGNORE INTO family VALUES (?,?,?,?,?)", five_tuple)
         self.conn.commit()
 
 
