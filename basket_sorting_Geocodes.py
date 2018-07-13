@@ -1,6 +1,8 @@
 from collections import namedtuple
 from collections import defaultdict
+from collections import Counter
 from math import radians, cos, sin, asin, sqrt
+from operator import attrgetter
 import csv
 import sqlite3
 import logging
@@ -57,25 +59,29 @@ class Route_Summary():
     def __init__(self, rn):
         self.route = rn # route number
         self.streets = set() # set of streets
-        self.neighbourhood = [] # the City Neighbourhood(s) the route hits
+        self.neighbourhood = None # the City Neighbourhood(s) the route hits
         self.applicant_list = [] # list of file ids
         self.sizes = [] # list of family sizes
         self.letter_map = {} # Mapping of route letter to family size and diet
-        self.boxes = 0
+        self.boxes = Counter() # Family size Counter
         
-    def add_household(self, fid, family_size, diet, letter, street, hood):
+    def add_household(self, sum_tp):
         '''
         adds household data to the data structure as some other method
         iterates through a range of routes.
+        Uses the 
         '''
+        fid, family_size, diet, letter, street, hood = sum_tp
+        
         self.applicant_list.append(fid)
         self.sizes.append(family_size)
         self.letter_map[fid] = 'Box: {} Family: {} Diet: {}'.format(letter,
                                                                family_size,
                                                                diet)
         self.streets.add(street)
-        self.neighbourhood.append(hood)
-        self.boxes += 1
+        if hood:
+            self.neighbourhood = [].append(hood)
+        self.boxes.update(str(family_size))
 
 class Route_Database():
     '''
@@ -155,8 +161,18 @@ class Route_Database():
         returns True if the household has been logged in the
         database applicants table or False
         '''
-        self.cur.execute("SELECT * FROM applicants WHERE file_id=?",
-                         (applicant,))
+        self.cur.execute("SELECT * FROM applicants WHERE file_id=?",(applicant,))
+        if self.cur.fetchone():
+            return True
+        else:
+            return False
+
+    def fam_member_prev_entered(self, person):
+        '''
+        returns True if the family member has been logged in 
+        the database family table
+        '''
+        self.cur.execute("SELECT * FROM family WHERE client_id=?",(person,))
         if self.cur.fetchone():
             return True
         else:
@@ -172,19 +188,7 @@ class Route_Database():
         last_rn = self.cur.fetchone()
         return last_rn[0]
 
-    def generate_route_summary(self, hh_rt_package):
-        '''
-        reaches into the database and creates a summary of each route
-        it finds and packages them into a dictionary for use in 
-        building a summary route card or for the route binder or ...?
-        call this Class as an interator and then pass the value back 
-        into this method?
-        '''
-        hh, rt = hh_rt_package
-        # break the different bits of information out and then 
-        # wrap them up in a summary object and stash them in the dictionary
-        pass
-    
+   
     def __iter__(self):
         '''
         returns a package of tuples from the database for each household that
@@ -222,9 +226,10 @@ class Delivery_Household():
         self.geo_tuple = Geolocation(float(lat), float(lng)) 
         self.route_number = rn
         self.route_letter = rl
-        self.summary = summary # route card data
+        self.neighbourhood = None
+        self.summary = summary # route card data with address et al.
         self.family_members = None # family members in tuples
-
+        
     def return_hh(self):
         '''
         returns the input values needed to sort a route
@@ -243,7 +248,7 @@ class Delivery_Household():
         '''
         a method to add a route number and letter to the household
         '''
-        self.route_number = number
+        self.route_number = int(number)
         self.route_letter = letter
 
     def add_family_members(self, family_tuples):
@@ -273,6 +278,20 @@ class Delivery_Household():
         '''
         return self.summary
 
+    def return_card_summary(self):
+        '''
+        returns (fid, family_size, diet, letter, street, hood)
+        for use in the card summary object that will help create
+        a summary of all the households in the route
+        and go to the head of the stack of route cards
+        '''
+        return (self.main_app_ID, 
+                self.hh_size, 
+                self.summary.diet, 
+                self.route_letter, 
+                self.summary.address,
+                self.neighbourhood)
+
 class Delivery_Household_Collection():
     '''
     A collection of Delivery_Household() objects
@@ -282,6 +301,7 @@ class Delivery_Household_Collection():
     def __init__(self):
         self.hh_dict = {}
         self.fids_routed = set()
+        self.route_summaries = {} # summarized routes rn: summary_objects
 
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary):
         '''
@@ -298,7 +318,17 @@ class Delivery_Household_Collection():
             self.hh_dict[applicant].add_family_members(familytples)
         else:
             print('{} has not been recorded as a HH'.format(applicant))
-            
+    
+    def add_to_route_summary(self, rn, r_summary):
+        '''
+        adds a household to a Route_Summary() object
+        an object that will be used to create a summary
+        card to put at the head of a route stack
+    
+        r_summary is tuple (fid, family_size, diet, letter, street, hood)
+        '''
+        self.route_summaries[rn].add_household(r_summary)
+
     def get_HH_set(self):
         '''
         returns a set of file id's
@@ -316,15 +346,25 @@ class Delivery_Household_Collection():
         '''
         Takes a route number and route and then labels the Delivery Household
         objects that correspond to route
-        RIP 2016 as teh year without a G
+        RIP 2017 as teh year without a G
+        It also creates a Route_Summary() for the route
+        and adds each HH in the route to it
+        The Route_Summary() takes a tuple
+        (fid, family_size, diet, letter, street, hood)
+
         '''
         r_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] 
         letter_map = zip(route, r_letters) # [(fid1, 'A'), (fid2, 'B')]
 
+        #create a route_summary object
+        self.route_summaries[route_key] = Route_Summary(route_key)
+
         for fid_lttr in letter_map:
             fid, lttr = fid_lttr
             self.hh_dict[fid].add_routing(route_key, lttr)
-    
+            rt_hh = self.hh_dict[fid].return_card_summary()
+            self.route_summaries[route_key].add_household(rt_hh)
+
     def get_size(self, fid):
         '''
         returns the family size of a Delivery_Household in the dictionary
@@ -334,12 +374,19 @@ class Delivery_Household_Collection():
     def get_summary(self, fid):
         '''
         gets the summary data needed to print a delivery card
+        name,file id, address, phone, diet etc.
         '''
         return self.hh_dict[fid].return_summary()
 
     def __iter__(self):
         for hh in self.hh_dict:
             yield self.hh_dict[hh]
+
+    def route_iter(self):
+        for hh in (sorted(self.hh_dict.values(),
+                          key=attrgetter('route_number','route_letter'))):
+            yield hh
+
 
 class Delivery_Routes():
     '''
@@ -420,7 +467,7 @@ class Delivery_Routes():
                                 logging.info('{} {} {} {}'.format(applicant, route_counter, fam, key))
             
             if applicant_route:
-                print('we have iterated and made a route! It is {}'.format(applicant_route))
+                logging.info('we have iterated and made a route! It is {}'.format(applicant_route))
                 r_key = str(route_counter)
                 # if we record what route each HH is in do we need a separate
                 # data structure of routes in this class?  We can just iterate
