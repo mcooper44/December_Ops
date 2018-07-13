@@ -3,26 +3,18 @@ def hamper_type_parser(days_of_food):
     takes the days of food provided by L2F and attempts to guess at the hamper type
     typically 1 = baby hamper + no food, and 3 = full food hamper
     '''
-    if days_of_food == 1:    
-        return False
-    else:
-        return True
-
+    return days_of_food > 1
+        
 def diet_parser(diet_string):
     '''
     this function returns the string of redundant dietary conditions
     minus the redundant conditions
     '''
-    diet = str() # what will be returned
     diet_conditions = set(diet_string.split(',')) # a unique list of conditions split on the commas
     if 'Other' in diet_conditions:
         diet_conditions.remove('Other') # we don't want this because it has zero information
 
-    for condition in diet_conditions: # for each issue/preference
-        if condition: # if it's not blank
-            diet = '{} {}'.format(diet, condition)  # add it to the string that will be returned
-
-    return diet.strip()
+    return ', '.join(diet_conditions)
 
 def extract_families_into_list_slices(l,n):
     '''
