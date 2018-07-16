@@ -194,8 +194,11 @@ class Route_Database():
         '''
         self.cur.execute("SELECT MAX(route_number) FROM routes LIMIT 1")
         last_rn = self.cur.fetchone()
-        return last_rn[0]
-
+        
+        if last_rn[0]:
+            return last_rn[0]
+        else:
+            return 1
    
     def __iter__(self):
         '''
@@ -237,7 +240,7 @@ class Delivery_Household():
         self.neighbourhood = hood
         self.summary = summary # route card data with address et al. created by the visit line object
         self.family_members = None # family members in tuples
-        
+    
     def return_hh(self):
         '''
         returns the input values needed to sort a route
@@ -333,7 +336,7 @@ class Delivery_Household_Collection():
         adds a household to a Route_Summary() object
         an object that will be used to create a summary
         card to put at the head of a route stack
-    
+         
         r_summary is tuple (fid, family_size, diet, letter, street, hood)
         '''
         self.route_summaries[rn].add_household(r_summary)
@@ -417,9 +420,11 @@ class Delivery_Routes():
         route is complete.  It then repeats the process will all of the subsequent 
         households until all have been bundled into routes.
         after completing a route it labels them A,B,C... etc
+        :route_counter: where to start number routes
         '''
         max_box_count = self.max_boxes
-        route_counter = self.start_count # this is where we start counting the routes
+        route_counter = self.start_count
+        #route_counter = self.start_count # this is where we start counting the routes
         routes = {} # labeled routes and the families they contain
         assigned = set() # container to add hh that have been assigned
         print('starting sort_method')
