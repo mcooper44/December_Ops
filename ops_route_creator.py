@@ -16,6 +16,8 @@ from db_data_models import Visit_Line_Object
 from db_data_models import Export_File_Parser 
 from db_data_models import Person
 
+from kw_neighbourhoods import Neighbourhoods
+
 from delivery_card_creator import Delivery_Slips
 
 
@@ -63,6 +65,9 @@ export_file.open_file()
 a2018routes = Delivery_Routes(7, 1) 
 delivery_households = Delivery_Household_Collection()
 
+k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
+k_w.extract_shapes() # get shapes ready to test points
+
 slips = Delivery_Slips('2018_test.xlsx')
 
 # open the source file and parse the households out of it
@@ -82,8 +87,11 @@ for line in export_file: # I am a csv object
         lt, lg = address_dbase.get_coordinates(simple_address, city)   
         if all([lt, lg]):
             # insert base information needed to build a route and card
+            n_hood = k_w.find_in_shapes(lt, lg)
+            ops_logger.info('{} is in this neighbourhood: {}'.format(applicant,
+                                                                    n_hood))
             delivery_households.add_household(applicant, None, family_size,
-                                                  lt, lg, summary)
+                                                  lt, lg, summary, n_hood)
             ops_logger.info('{} has lat {} lng {}'.format(applicant, lt, lg))
         else:
             ops_logger.error('{} has no geocodes and will not be included in the routes'.format(applicant))
@@ -110,37 +118,40 @@ a2018routes.sort_method(delivery_households)
 
 # populate the database with summary and route data
 for house in delivery_households:
-    app, rn, rl = house.return_route()
+    applicant, rn, rl = house.return_route()
 
     summ = house.return_summary()
     # parse out the summary data
-    applicant = summ.applicant
     fname = summ.fname
     lname = summ.lname
     email = summ.email
-    phone = summ.phone
+    phone = None  # ', '.join(summ.phone)
     address = summ.address
     add2 = summ.address2
     city = summ.city
     family_size = summ.size
     diet = summ.diet
+    n_hd = house.neighbourhood
     card_sum = None
+    app_tupe = (applicant,
+                fname,
+                lname,
+                email,
+                phone,
+                address,
+                add2,
+                city,
+                family_size,
+                diet,
+                n_hd,)
+    ops_logger.info('{}'.format(app_tupe))                              
     if not route_database.prev_routed(applicant):
-        route_database.add_route(app, rn, rl)
+        route_database.add_route(applicant, rn, rl)
         ops_logger.info('{} has been added to rt db'.format(applicant))
     else:
         ops_logger.error('{} has been added to route db already'.format(applicant)) 
     if not route_database.fam_prev_entered(applicant):
-        route_database.add_family((applicant,
-                               fname,
-                               lname,
-                               email,
-                               phone,
-                               address,
-                               add2,
-                               city,
-                               family_size,
-                               diet))
+        route_database.add_family(app_tupe)
         ops_logger.info('{} has been logged to applicants db'.format(applicant))
     else:
         ops_logger.error('{} has prev. been logged to applicants db'.format(applicant)) 
