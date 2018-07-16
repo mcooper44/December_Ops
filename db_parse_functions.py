@@ -1,3 +1,14 @@
+def itr_joiner(list_etc):
+    '''
+    takes the value of a field that could potentially have many different items
+    in it and represents them as a string that looks nicer when it's printed
+    '''
+    try:
+        return ', '.join([str(x) for x in set(list_etc)])
+    except:
+        return list_etc
+
+
 def hamper_type_parser(days_of_food):
     '''
     takes the days of food provided by L2F and attempts to guess at the hamper type
