@@ -15,18 +15,21 @@ class Neighbourhoods():
     structure that can be used to determine which neighbourhood a given
     set of coodinates falls within
     '''
-    def __init__(self):
-        self.db = None
+    def __init__(self, path_to_tdb):
+        self.db = TinyDB(path_to_tdb)
         self.kw_neighbourhoods = None
         self.nhood_shapes = {}
+            # avoid the new to manually open and set
+        if self.db:
+            self.kw_neighbourhoods = self.db.all()
 
     def open_tinydb(self, path_to_tdb):
         '''
-        initalize the tinydb object
+        initalize a new tinydb object
         '''
         self.db = TinyDB(path_to_tdb)
 
-    def set_kw_neighbourhoods(self):
+    def set_neighbourhoods(self):
         '''
         pull all the data out of the json tinydb file
         '''
