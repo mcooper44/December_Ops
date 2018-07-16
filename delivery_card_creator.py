@@ -3,6 +3,7 @@ This file opens a database of households and routes and generates delivery
 slips for printing.
 """
 import xlsxwriter
+from db_parse_functions import itr_joiner
 #http://xlsxwriter.readthedocs.io/format.html
 
 
@@ -38,7 +39,7 @@ class Delivery_Slips():
         file_id, rn, rl = route
 
         diet = summary.diet
-        phone = summary.phone
+        phone = itr_joiner(summary.phone)
         # cell locations 
         hh_str = 'A{}'.format(self.l_n[1]) # string hh size
         hh_size = 'B{}'.format(self.l_n[1]) # actual hh size
@@ -140,28 +141,29 @@ class Delivery_Slips():
         '''
         rn = summary.route
         box_count = summary.boxes
-        family_count = ['{} familys of {}'.format(box_count[x], x) for x in \
+        family_count = ['{} household(s) of {}'.format(box_count[x], x) for x in \
                                   box_count]
         street_set = summary.streets
-        hood = summary.neighbourhood
+        hood = itr_joiner(summary.neighbourhood)
         applicant_list = summary.applicant_list
         size_counter = summary.sizes
         letter_map = summary.letter_map # 'Box: A Family: 3 Diet: Halal
         
         # locations written as strings
         rn_loc = 'A{}'.format(self.l_n[1]) # route number
-        #box_num_loc = 'G{}'.format(self.l_n[1]) # num of boxes One: 2, Two: 1
         hood_loc = 'A{}'.format(self.l_n[2]) # neighbourhood
-        #num_hh_loc = 'C{}'.format(self.l_n[1]) # Number of familes
         # locations with titles and separate string writes
         street_title_loc = 'A{}'.format(self.l_n[3]) # STREETS: 
+        family_title_loc = 'C{}'.format(self.l_n[3]) # FAMILIES
+        box_summary_loc = 'H{}'.format(self.l_n[3]) # BOX SUMMARY
 
         # write client info to worksheet
         self.worksheet.write(rn_loc, 'Route: {}'.format(rn))
-        #self.worksheet.write(box_num_loc,'Family Sizes: {}'.format(family_count))
-        self.worksheet.write(hood_loc, 'Neighbourhood(s): {}'.format(str(hood)))
+        self.worksheet.write(hood_loc, 'Neighbourhood(s):{}'.format(str(hood)))
         self.worksheet.write(street_title_loc, 'STREETS:')
-        
+        self.worksheet.write(family_title_loc, 'HOUSEHOLDS:')
+        self.worksheet.write(box_summary_loc, 'SUMMARY OF BOXES')
+
         s_c = self.l_n[4]
         for street in street_set:
             self.worksheet.write('A{}'.format(s_c), street, self.cell_format_size)
