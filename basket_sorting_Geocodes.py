@@ -11,6 +11,14 @@ import datetime
 logging.basicConfig(filename='Logging/route_sorting.log',level=logging.INFO)
 logging.info('Running new session {}'.format(datetime.datetime.now()))
 
+sort_log = logging.getLogger('sort')
+sort_log.setLevel(logging.INFO)
+sort_log_frmt = logging.Formatter('%(message)s')
+sort_log_file_handler = logging.FileHandler('Logging/sort.log')
+sort_log_file_handler.setFormatter(sort_log_frmt)
+sort_log.addHandler(sort_log_file_handler)
+sort_log.info('Running new session: {}'.format(datetime.datetime.now()))
+
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
 
@@ -464,11 +472,9 @@ class Delivery_Routes():
                                 boxes += box_num
                                 assigned.add(fam) # add them to the assigned list
                                 applicant_route.append(fam) # add them to the route
-                                # log the info for verification later household 1, route number, family added to route, distance from H1
-                                logging.info('{} {} {} {}'.format(applicant, route_counter, fam, key))
             
             if applicant_route:
-                logging.info('we have iterated and made a route! It is {}'.format(applicant_route))
+                sort_log.info('we have iterated and made a route! It is {}'.format(applicant_route))
                 r_key = str(route_counter)
                 # if we record what route each HH is in do we need a separate
                 # data structure of routes in this class?  We can just iterate

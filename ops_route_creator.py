@@ -1,6 +1,7 @@
 import sqlite3
 from collections import namedtuple
 import logging
+from datetime import datetime
 
 from basket_sorting_Geocodes import Delivery_Household
 from basket_sorting_Geocodes import Delivery_Routes
@@ -30,7 +31,23 @@ ops_logger_formatter = logging.Formatter('%(message)s')
 ops_log_file_handler = logging.FileHandler('Logging/ops.log')
 ops_log_file_handler.setFormatter(ops_logger_formatter)
 ops_logger.addHandler(ops_log_file_handler)
+ops_logger.info('Running new session {}'.format(datetime.now()))
 
+nr_logger = logging.getLogger('nr') # not routed
+nr_logger.setLevel(logging.INFO)
+nr_logger_formatter = logging.Formatter('%(message)s')
+nr_log_file_handler = logging.FileHandler('Logging/nr.log')
+nr_log_file_handler.setFormatter(ops_logger_formatter)
+nr_logger.addHandler(nr_log_file_handler)
+nr_logger.info('Running new session {}'.format(datetime.now()))
+
+add_log = logging.getLogger('add') # address related
+add_log.setLevel(logging.INFO)
+add_log_formatter = logging.Formatter('%(message)s')
+add_log_file_handler = logging.FileHandler('Logging/add.log')
+add_log_file_handler.setFormatter(add_log_formatter)
+add_log.addHandler(add_log_file_handler)
+add_log.info('Running new session {}'.format(datetime.now()))
 '''
 Hello.  I am the deliverator.  I am here to create routes
 this script will run through a l2f export file that has been cleaned up
@@ -88,16 +105,15 @@ for line in export_file: # I am a csv object
         if all([lt, lg]):
             # insert base information needed to build a route and card
             n_hood = k_w.find_in_shapes(lt, lg)
-            ops_logger.info('{} is in this neighbourhood: {}'.format(applicant,
+            add_log.info('{} is in this neighbourhood: {}'.format(applicant,
                                                                     n_hood))
             delivery_households.add_household(applicant, None, family_size,
                                                   lt, lg, summary, n_hood)
-            ops_logger.info('{} has lat {} lng {}'.format(applicant, lt, lg))
+            add_log.info('{} has lat {} lng {}'.format(applicant, lt, lg))
         else:
-            ops_logger.error('{} has no geocodes and will not be included in the routes'.format(applicant))
+            nr_logger.error('{} has no geocodes and will not be included in the routes'.format(applicant))
     except Exception as errr:
-        print('Error attempting to find coordinates with {}. Raised:\
-              {}'.format(applicant, errr))
+        nr_logger.error('{} has raised {} and was not routed'.format(applicant, errr))
 
     # add individual details for each family member to the d_h object
     # if present.
@@ -108,7 +124,7 @@ for line in export_file: # I am a csv object
             delivery_households.add_hh_family(applicant, family)
             ops_logger.info('{} has family and they have been stored in dhh object'.format(applicant))
     except Exception as oops:
-        print('attempting to deal with family for {} but encountered {}'.format(applicant, oops))
+        nr_logger.error('{} has family, but they were not stored in dhh object, due to {}'.format(applicant, oops))
 
 
 # Sort the Households into Routes and 
