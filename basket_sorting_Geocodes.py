@@ -59,7 +59,7 @@ class Route_Summary():
     def __init__(self, rn):
         self.route = rn # route number
         self.streets = set() # set of streets
-        self.neighbourhood = None # the City Neighbourhood(s) the route hits
+        self.neighbourhood = [] # the City Neighbourhood(s) the route hits
         self.applicant_list = [] # list of file ids
         self.sizes = [] # list of family sizes
         self.letter_map = {} # Mapping of route letter to family size and diet
@@ -80,7 +80,7 @@ class Route_Summary():
                                                                diet)
         self.streets.add(street)
         if hood:
-            self.neighbourhood = [].append(hood)
+            self.neighbourhood.append(hood)
         self.boxes.update(str(family_size))
 
 class Route_Database():
@@ -107,7 +107,7 @@ class Route_Database():
             self.cur.execute('''CREATE TABLE IF NOT EXISTS applicants (file_id
                              INT UNIQUE, f_name TEXT, l_name TEXT, family_size INT, phone TEXT,
                              email TEXT, address_1 TEXT, address_2 TEXT, city
-                             TEXT, diet TEXT)''')
+                             TEXT, diet TEXT, neighbourhood TEXT)''')
             self.conn.commit()
             # FAMILY MEMBERS
             self.cur.execute('''CREATE TABLE IF NOT EXISTS family
@@ -129,7 +129,7 @@ class Route_Database():
         TODO: this should be renamed
         '''
         self.cur.execute('''INSERT OR IGNORE INTO applicants VALUES 
-                         (?,?,?,?,?,?,?,?,?,?)''',family_tple)
+                         (?,?,?,?,?,?,?,?,?,?,?)''',family_tple)
         self.conn.commit()
 
     def add_family_member(self, app_id, person):
@@ -218,7 +218,7 @@ class Delivery_Household():
     a collection of datapoints needed to assemble a delivery route
     and the methods to output and organize all the little bits
     '''
-    def __init__(self, file_id, hh_id, family_size, lat, lng, summary, rn=None, rl=None):
+    def __init__(self, file_id, hh_id, family_size, lat, lng, summary, hood, rn=None, rl=None):
         self.main_app_ID = file_id
         self.household_ID = hh_id
         self.hh_size = family_size
@@ -226,8 +226,8 @@ class Delivery_Household():
         self.geo_tuple = Geolocation(float(lat), float(lng)) 
         self.route_number = rn
         self.route_letter = rl
-        self.neighbourhood = None
-        self.summary = summary # route card data with address et al.
+        self.neighbourhood = hood
+        self.summary = summary # route card data with address et al. created by the visit line object
         self.family_members = None # family members in tuples
         
     def return_hh(self):
@@ -303,12 +303,13 @@ class Delivery_Household_Collection():
         self.fids_routed = set()
         self.route_summaries = {} # summarized routes rn: summary_objects
 
-    def add_household(self, file_id, hh_id, family_size, lat, lng, summary):
+    def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
+                      hood, rn=None, rl=None):
         '''
         add a household object to the dictionary 
         '''
-        self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size,
-                                                   lat, lng, summary)
+        self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size, lat, lng, summary, hood, rn, rl)
+    
     def add_hh_family(self, applicant, familytples):
         '''
         adds tuples of the family members to a Delivery_Household
