@@ -110,4 +110,5 @@ December_Ops.code-workspace
 *.csv
 *.db
 *.xlsx
-
+*.swp
+*.py.swp
