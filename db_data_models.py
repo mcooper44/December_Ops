@@ -353,21 +353,25 @@ class Visit_Line_Object():
 
     def get_HH_summary(self):
         '''
-        returns a summary of the household.
-        name, address, phone, email, family size, diet
+        returns a named tuple summary of the household for use in the route sorting 
+        pipeline. this summary is inserted into the household object in the
+        basket_sorting script and provides access to the key bits of data that we need 
+        to construct a route card
+        (applicant, fname, lname, fam size, phone, email, address1, address2,
+        city, diet)
         '''
-        visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, phone, email,\
-                               address, address2, city, size, diet')
+        visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, size, phone, email,\
+                               address, address2, city, diet')
         return visit_sum(self.main_applicant_ID,
-        self.main_applicant_Fname,
-        self.main_applicant_Lname,
-        self.main_applicant_Phone,
-        self.main_applicant_Email,
-        self.visit_Address,
-        self.visit_Address_Line2,
-        self.visit_City,
-        self.visit_household_Size,
-        self.visit_household_Diet)
+                         self.main_applicant_Fname,
+                         self.main_applicant_Lname,
+                         self.visit_household_Size,
+                         self.main_applicant_Phone,
+                         self.main_applicant_Email,
+                         self.visit_Address,
+                         self.visit_Address_Line2,
+                         self.visit_City, 
+                         self.visit_household_Diet)
 
     def get_hh_id_number(self):
         '''
