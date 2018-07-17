@@ -89,7 +89,7 @@ class Route_Summary():
         self.streets.add(street)
         if hood:
             self.neighbourhood.append(hood)
-        self.boxes.update(str(family_size))
+        self.boxes.update([str(family_size)]) # add as list not just str
 
 class Route_Database():
     '''

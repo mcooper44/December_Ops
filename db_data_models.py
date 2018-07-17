@@ -275,7 +275,7 @@ class Visit_Line_Object():
     '''    
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
-        self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
+        self.visit_Date = None
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
         self.main_applicant_Lname = None
@@ -299,14 +299,16 @@ class Visit_Line_Object():
         self.visit_Family_Slice = None
         self.visit_Agency = None # organization that provided services
         self.HH_main_applicant_profile = None
-        self.HH_family_members_profile = None      
+        self.HH_family_members_profile = None
+        self.food = None
         self.xmas_ID = None
         self.xmas_food_provided = None
         self.xmas_items_provided = None
         self.xmas_notes = None
         self.xmas_application_site = None
 
-        
+        if fnamedict.get('Visit Date', False):
+            self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         if fnamedict.get('Client First Name', False):
             self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
         if fnamedict.get('Client Last Name', False):
@@ -333,7 +335,9 @@ class Visit_Line_Object():
             self.visit_Agency = visit_line[fnamedict['Visited Agency']]
         if fnamedict.get('Client Email Addresses', False):
             self.main_applicant_Email = visit_line[fnamedict['Client Email Addresses']]
-            
+        if fnamedict.get('Foods Provided', False):
+            self.food = visit_line[fnamedict['Foods Provided']]
+
         if december_flag:
             self.xmas_ID = visit_line[fnamedict['Request ID']]
             self.xmas_food_provided = visit_line[fnamedict['Foods Provided']]
@@ -439,6 +443,15 @@ class Visit_Line_Object():
         when the class is initialized, a helper function figures this out
         '''
         return self.visit_food_hamper_type # True or False
+    
+    def is_christmas_hamper(self):
+        '''
+        performs a check to see if this is a Christmas Export
+        return True if so, or False
+        '''
+        if self.food:
+            return 'Christmas Hamper|Emergency Hampers' in self.food
+
 
     def get_household_type(self, relationship_collection):
         '''
