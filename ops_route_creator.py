@@ -16,6 +16,7 @@ from db_data_models import Field_Names
 from db_data_models import Visit_Line_Object
 from db_data_models import Export_File_Parser 
 from db_data_models import Person
+from db_parse_functions import itr_joiner
 
 from kw_neighbourhoods import Neighbourhoods
 
@@ -69,6 +70,7 @@ and should be more portable
 '''
 
 address_parser = AddressParser() # I strip out extraneous junk from address strings
+coordinate_manager = Coordinates()
 
 address_dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
 address_dbase.connect_to('Address.db', create=True) # testing = atest.db
@@ -90,74 +92,101 @@ slips = Delivery_Slips('2018_test.xlsx')
 # open the source file and parse the households out of it
 # store the main applicant info, address etc. as well as family member details
 # for use later if needed.
+# NB: the export file needs to be cleaned and should only include HH
+# that have requested services from us.  This script will just strip
+# all the HH from the file and make route cards for them.
 
 for line in export_file: # I am a csv object
     line_object = Visit_Line_Object(line,fnames.ID)
+    # use is_xmas in a control block to determine if we should 
+    # run the try blocks
+    is_xmas = line_object.is_christmas_hamper()
+    # extract summary from the visit line
+    # this will be inserted into a HH object and provides the key
+    # bits of info that we need to build a route card
     summary = line_object.get_HH_summary() # returns a named tuple
+    
     applicant = summary.applicant
     address = summary.address
     city = summary.city
     family_size = summary.size
-    simple_address, _ = address_parser.parse(address, city) 
-   
-    try:
-        lt, lg = address_dbase.get_coordinates(simple_address, city)   
-        if all([lt, lg]):
-            # insert base information needed to build a route and card
-            n_hood = k_w.find_in_shapes(lt, lg)
-            add_log.info('{} is in this neighbourhood: {}'.format(applicant,
-                                                                    n_hood))
-            delivery_households.add_household(applicant, None, family_size,
-                                                  lt, lg, summary, n_hood)
-            add_log.info('{} has lat {} lng {}'.format(applicant, lt, lg))
-        else:
-            nr_logger.error('{} has no geocodes and will not be included in the routes'.format(applicant))
-    except Exception as errr:
-        nr_logger.error('{} has raised {} and was not routed'.format(applicant, errr))
+    simple_address = None
+    if is_xmas:
+        try:
+            simple_address, _ = address_parser.parse(address, applicant) 
+        except Exception as a_err:
+            add_log.error('{} raised {} from {}'.format(applicant, a_err, address))
+            nr_logger.error('{} raised an error during address parse'.format(applicant))
+        try:
+            lt, lg = address_dbase.get_coordinates(simple_address, city)   
+            if all([lt, lg]):
+                # insert base information needed to build a route and card
+                n_hood = k_w.find_in_shapes(lt, lg)
+                add_log.info('{} is in this neighbourhood: {}'.format(applicant,
+                                                                        n_hood))
+                # create a HH object and insert the summary we need to build 
+                # a route (lt, lg)a route card(summary). and later a route summary (n_hood)
+                delivery_households.add_household(applicant, None, family_size,
+                                                      lt, lg, summary, n_hood)
+                add_log.info('{} has lat {} lng {}'.format(applicant, lt, lg))
+            else:
+                # try and geocode the address
+                address_for_api = '{} {} Ontario, Canada'.format(simple_address, city)
+                coding_result = coordinate_manager.lookup(address_for_api)
+                if coding_result:
+                    pass
+                else:
+                    nr_logger.error('{} yielded no geocodes and will not be routed'.format(applicant))
+        except Exception as errr:
+            nr_logger.error('{} has raised {} and was not routed'.format(applicant, errr))
 
-    # add individual details for each family member to the d_h object
-    # if present.
-    try:
-        if line_object.has_family():
-            family = line_object.get_family_members(fnames) # returns [tuples]
-            # ID, fname, lname, dob, age, gender, ethno, disability
-            delivery_households.add_hh_family(applicant, family)
-            ops_logger.info('{} has family and they have been stored in dhh object'.format(applicant))
-    except Exception as oops:
-        nr_logger.error('{} has family, but they were not stored in dhh object, due to {}'.format(applicant, oops))
-
+        # add individual details for each family member to the d_h object
+        # if present.
+        try:
+            if line_object.has_family():
+                family = line_object.get_family_members(fnames) # returns [tuples]
+                # ID, fname, lname, dob, age, gender, ethno, disability
+                delivery_households.add_hh_family(applicant, family)
+                ops_logger.info('{} has family and they have been stored in dhh object'.format(applicant))
+        except Exception as oops:
+            nr_logger.error('{} has family, but they were not stored in dhh object, due to {}'.format(applicant, oops))
+    else:
+        nr_logger.info('{} was not routed. Is it a xmas hamper?'.format(applicant))
 
 # Sort the Households into Routes and 
 # pass the route numbers and labels back into the delivery households
 # object
-a2018routes.sort_method(delivery_households)
+starting_rn = route_database.return_last_rn() # find last rn
+a2018routes.start_count = int(starting_rn) # reset rn to resume from last route
+a2018routes.sort_method(delivery_households) # start sorting
 
 # populate the database with summary and route data
 for house in delivery_households:
     applicant, rn, rl = house.return_route()
-
-    summ = house.return_summary()
+    # get the summary from the HH object
+    # created by the visit_line
+    summ = house.return_summary()  
     # parse out the summary data
     fname = summ.fname
     lname = summ.lname
     email = summ.email
-    phone = None  # ', '.join(summ.phone)
+    phone = itr_joiner(summ.phone)
     address = summ.address
     add2 = summ.address2
     city = summ.city
     family_size = summ.size
     diet = summ.diet
     n_hd = house.neighbourhood
-    card_sum = None
+    # add household to the summary data
     app_tupe = (applicant,
                 fname,
                 lname,
-                email,
+                family_size,
                 phone,
+                email,
                 address,
                 add2,
                 city,
-                family_size,
                 diet,
                 n_hd,)
     ops_logger.info('{}'.format(app_tupe))                              
@@ -187,19 +216,21 @@ for house in delivery_households:
 
 
 # lets print some slips!
-# TODO
 
-current_rt = 0
+current_rt =   int(starting_rn) - 1 # to keep track of the need to print a summary card or not
 for house in delivery_households.route_iter():
     rt =  house.return_route() # the route info
     summ = house.return_summary() # the HH info (name, address etc.)
     
     rt_str = str(rt[1]) # because the route number is an int
-    if rt[1] > current_rt:
+    if rt[1] > current_rt: # if we have the next route number
         rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
         if rt_card_summary:
+            # add a summary card
             slips.add_route_summary_card(rt_card_summary)
             current_rt += 1
+        else:
+            ops_logger.error('we missed a route card summary for rn {}'.format(rt))
     slips.add_household(rt, summ) # adds another card to the file
     ops_logger.info('{} added to card stack'.format(rt))
 
