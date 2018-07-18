@@ -21,7 +21,7 @@ from db_parse_functions import itr_joiner
 from kw_neighbourhoods import Neighbourhoods
 
 from delivery_card_creator import Delivery_Slips
-
+from delivery_binder import Binder_Sheet
 
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
@@ -216,28 +216,38 @@ for house in delivery_households:
 
 
 # lets print some slips!
+# and the delivery binder
+
+route_binder = Binder_Sheet('2018_route_binder.xlsx')
 
 current_rt =   int(starting_rn) - 1 # to keep track of the need to print a summary card or not
 for house in delivery_households.route_iter():
     rt =  house.return_route() # the route info
     summ = house.return_summary() # the HH info (name, address etc.)
     
-    rt_str = str(rt[1]) # because the route number is an int
+
+    rt_str = str(rt[1]) # because the route number is an int 
+    rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
     if rt[1] > current_rt: # if we have the next route number
-        rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
+
         if rt_card_summary:
             # add a summary card
             slips.add_route_summary_card(rt_card_summary)
             current_rt += 1
+
+            route_binder.add_route(rt_card_summary)
+            ops_logger.info('{} added to route_binder'.format(rt[1]))
         else:
             ops_logger.error('we missed a route card summary for rn {}'.format(rt))
     slips.add_household(rt, summ) # adds another card to the file
     ops_logger.info('{} added to card stack'.format(rt))
 
+
+
 route_database.close_db()
 address_dbase.close_db()
 slips.close_worksheet()
-
+route_binder.close_worksheet()
 
 
 
