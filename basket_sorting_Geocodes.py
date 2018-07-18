@@ -72,7 +72,7 @@ class Route_Summary():
         self.sizes = [] # list of family sizes
         self.letter_map = {} # Mapping of route letter to family size and diet
         self.boxes = Counter() # Family size Counter
-        
+        self.letters = [] 
     def add_household(self, sum_tp):
         '''
         adds household data to the data structure as some other method
@@ -81,6 +81,7 @@ class Route_Summary():
         '''
         fid, family_size, diet, letter, street, hood = sum_tp
         
+        self.letters.append(letter)
         self.applicant_list.append(fid)
         self.sizes.append(family_size)
         self.letter_map[fid] = 'Box: {} Family: {} Diet: {}'.format(letter,
