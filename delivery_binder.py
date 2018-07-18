@@ -19,25 +19,28 @@ class Binder_Sheet():
         self.cell_format_size = None
         self.route_cell_size = None
         self.wrap = None
-        self.off_set = 8 # was 14
+        self.off_set = 8 # how many lines is the block we are writing out
         self.spot_counter = 0
+        self.title_flag = True
         self.l_n = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
         
         if self.workbook:
             self.worksheet = self.workbook.add_worksheet('route_binder')
-            self.worksheet.set_margins(0.1, 0.1, 2, 0.25) # L,R,T,B
-            self.worksheet.set_column(0, 0, 6.5) # col A
+            self.worksheet.set_margins(0.2, 0.2, 0.75, 0.75) # L,R,T,B
+            self.worksheet.set_header('', {'margin': 0.29})
+            self.worksheet.set_footer('', {'margin': 0.29})
+            self.worksheet.set_column(0, 0, 5) # col A
             self.worksheet.set_column(1, 1, 17) # col B
-            self.worksheet.set_column(2, 2, 9) # col C
+            self.worksheet.set_column(2, 2, 8) # col C
             self.worksheet.set_column(3, 3, 8.15) # col D
-            self.worksheet.set_column(4, 4, 32) # col E
+            self.worksheet.set_column(4, 4, 28) # col E
             self.worksheet.set_column(5, 10, 10) # col F:K
             
             self.cell_format_size = self.workbook.add_format()
             self.cell_format_size.set_font_size(9) # for writing the address list
 
             self.route_cell_size = self.workbook.add_format()
-            self.route_cell_size.set_font_size(36)
+            self.route_cell_size.set_font_size(24)
             
             self.wrap = self.workbook.add_format()
             self.wrap.set_text_wrap()
@@ -55,18 +58,19 @@ class Binder_Sheet():
                                                     self.l_n[8]),'')
         self.worksheet.merge_range('C{}:C{}'.format(self.l_n[2],
                                                     self.l_n[8]),rn, self.route_cell_size)
-        
-        self.worksheet.write('A{}'.format(self.l_n[1]), 'DATE', self.wrap)
-        self.worksheet.write('B{}'.format(self.l_n[1]), 'DRIVER NAME', self.wrap)
-        self.worksheet.write('C{}'.format(self.l_n[1]), 'ROUTE NUMBER', self.wrap)
-        self.worksheet.write('D{}'.format(self.l_n[1]), 'ROUTE LETTER', self.wrap)
-        self.worksheet.write('E{}'.format(self.l_n[1]), 'ROUTE DETAILS', self.wrap)
-        self.worksheet.write('F{}'.format(self.l_n[1]), 'DELIVERED', self.wrap)
-        self.worksheet.write('G{}'.format(self.l_n[1]), 'RETURNED', self.wrap)
-        self.worksheet.write('H{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
-        self.worksheet.write('I{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
-        self.worksheet.write('J{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
-        self.worksheet.write('K{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
+        if self.title_flag:
+            self.worksheet.write('A{}'.format(self.l_n[1]), 'DATE', self.wrap)
+            self.worksheet.write('B{}'.format(self.l_n[1]), 'DRIVER NAME', self.wrap)
+            self.worksheet.write('C{}'.format(self.l_n[1]), 'ROUTE NUMBER', self.wrap)
+            self.worksheet.write('D{}'.format(self.l_n[1]), 'ROUTE LETTER', self.wrap)
+            self.worksheet.write('E{}'.format(self.l_n[1]), 'ROUTE DETAILS', self.wrap)
+            self.worksheet.write('F{}'.format(self.l_n[1]), 'DELIVERED', self.wrap)
+            self.worksheet.write('G{}'.format(self.l_n[1]), 'RETURNED', self.wrap)
+            self.worksheet.write('H{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
+            self.worksheet.write('I{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
+            self.worksheet.write('J{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
+            self.worksheet.write('K{}'.format(self.l_n[1]), 'RE-ROUTED WITH', self.wrap)
+            self.title_flag = False
         # write route number
         # self.worksheet.write('C{}'.format(l_n[2]), rn, self.route_cell_size)
 
@@ -84,7 +88,8 @@ class Binder_Sheet():
         self.spot_counter += 1 # move the spot up one
         
         if self.spot_counter == 4: # if there are four spots on the page
-            self.off_set -= 8 # change the offset to start on the next page
+            self.title_flag = True
+            self.off_set += 0 # change the offset to start on the next page
             
             self.l_n[1] += self.off_set
             self.l_n[2] += self.off_set
@@ -102,7 +107,7 @@ class Binder_Sheet():
             self.l_n[14] += self.off_set
             
             self.spot_counter = 0 # start counting from zero
-            self.off_set += 8 # reset the offset and procede as normal
+            self.off_set -= 0 # reset the offset and procede as normal
             
         else: # use the existing offset because we haven't reached the end of the page
                         
