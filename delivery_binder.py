@@ -165,6 +165,12 @@ class Office_Sheet():
                     self.headers.append('Family Mem {}- {}'.format(num, head))
     
     def add_line(self, route, summary, family):    
+        '''
+        add an entry to the ops sheet so staff can find details
+        about routes when people are calling
+        lists route #, letter, name of main app and family members
+        in the HH
+        '''
         _, rn, rl = route
         # ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity
         if self.title_flag:
