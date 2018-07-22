@@ -1,3 +1,4 @@
+#!/usr/bin/python3.6
 """
 This will create an excel file that can be used to print out sheets we will use to sign up
 people for gift appointments

@@ -1,3 +1,5 @@
+#!/usr/bin/python3.6
+
 from collections import defaultdict
 import os
 import csv

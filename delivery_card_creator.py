@@ -36,62 +36,45 @@ class Delivery_Slips():
             self.cell_format_size.set_font_size(8) # for writing the address list
 
     def add_household(self, route, summary):
+        '''
+        takes a route (file ID, Route Number, Route Letter) and a summary
+        in the form of a named tuple created by the visit line object
+        (applicant, fname,lname,size,phone,email,address,address2,city,diet)
+        and adds that information in a structured way to the route card xlsx
+        file
+        '''
+        
         file_id, rn, rl = route
 
         diet = summary.diet
         phone = itr_joiner(summary.phone)
-        # cell locations 
-        hh_str = 'A{}'.format(self.l_n[1]) # string hh size
-        hh_size = 'B{}'.format(self.l_n[1]) # actual hh size
-        f_name = 'C{}'.format(self.l_n[1]) # first name cell location
-        l_name = 'D{}'.format(self.l_n[1]) # l name cell location
-        ph_num = 'C{}'.format(self.l_n[5]) # phone number cell location
-        address = 'C{}'.format(self.l_n[2]) # street address
-        addressl2 = 'C{}'.format(self.l_n[3]) # line 2 unit number et al
-        ID_num_str = 'A{}'.format(self.l_n[3]) # string of Request ID 
-        ID_num = 'B{}'.format(self.l_n[3]) # actual ID number
-        city = 'C{}'.format(self.l_n[4])
-        postal_code = 'D{}'.format(self.l_n[4])
-        diet_str = 'A{}'.format(self.l_n[6])
-        #diet_actual = 'B{}'.format(self.l_n[5])
-        driver_str = 'A{}'.format(self.l_n[8])# driver name string
-        route_str = 'H{}'.format(self.l_n[1]) # Route string
-        route_num = 'I{}'.format(self.l_n[1]) # Actual route number
-        route_let = 'J{}'.format(self.l_n[1]) # Actual Route Letter
-
-
-        at_home_str = 'A{}'.format(self.l_n[9])
-        at_yes_str = 'B{}'.format(self.l_n[9])
-        new_add_str = 'E{}'.format(self.l_n[9])
-        left_hamper = 'A{}'.format(self.l_n[10])
-        left_w_y_str = 'B{}'.format(self.l_n[10])
-        left_with_str = 'E{}'.format(self.l_n[10])
         
         # write client info to worksheet
-        self.worksheet.write(hh_str, '# of Persons:')
-        self.worksheet.write(hh_size, summary.size)  #hh size
-        self.worksheet.write(f_name, summary.fname)    #  first name
-        self.worksheet.write(l_name, summary.lname)    # last name
-        self.worksheet.write(ph_num, 'PHONE: {}'.format(phone)) # write the first phone number we have
-        self.worksheet.write(address, summary.address) # address
-        self.worksheet.write(ID_num_str, 'CHRISTMAS ID#') 
-        self.worksheet.write(ID_num, summary.applicant) # ID number
-        self.worksheet.write(city, summary.city) # city
-        self.worksheet.write(postal_code, '_') #postal code
-        self.worksheet.write(diet_str, 'SPECIAL DIET: {}'.format(diet))
-        #self.worksheet.write(diet_actual, diet) # diet issues/preferences
-        self.worksheet.write(route_str, 'ROUTE:')
-        self.worksheet.write(route_num, rn)
-        self.worksheet.write(route_let, rl)
-
+        self.worksheet.write('A{}'.format(self.l_n[1]), '# of Persons:')
+        self.worksheet.write('B{}'.format(self.l_n[1]), summary.size)  #hh size
+        self.worksheet.write('C{}'.format(self.l_n[1]), summary.fname)    #  first name
+        self.worksheet.write('D{}'.format(self.l_n[1]), summary.lname)    # last name
+        self.worksheet.write('C{}'.format(self.l_n[5]), 'PHONE: {}'.format(phone)) # write phone
+                                                                # number str 
+        self.worksheet.write('C{}'.format(self.l_n[2]), summary.address) # address
+        self.worksheet.write('C{}'.format(self.l_n[3]), summary.address2)
+        self.worksheet.write('A{}'.format(self.l_n[3]), 'CHRISTMAS ID#') 
+        self.worksheet.write('B{}'.format(self.l_n[3]), summary.applicant) # ID number
+        self.worksheet.write('C{}'.format(self.l_n[4]), summary.city) # city
+        self.worksheet.write('D{}'.format(self.l_n[4]), '') # postal code
+        self.worksheet.write('A{}'.format(self.l_n[6]), 'SPECIAL DIET: {}'.format(diet))
+        self.worksheet.write('H{}'.format(self.l_n[1]), 'ROUTE:')
+        self.worksheet.write('I{}'.format(self.l_n[1]), rn)
+        self.worksheet.write('J{}'.format(self.l_n[1]), rl)
+        at_home_str = 'AT HOME:    YES  /  NO               AT HOME:    YES  /  NO               AT HOME:    YES  /  NO'
+ 
         # Driving related text strings
-        self.worksheet.write(driver_str, 'DRIVER NAME(s): ATTEMPT 1_________________ ATTEMPT 2: _________________ ATTEMPT 3:_________________')
-        self.worksheet.write(at_home_str, 'AT HOME:')
-        self.worksheet.write(at_yes_str, 'YES   /   NO ')
-        self.worksheet.write(new_add_str, 'NEW ADDRESS: __________________________________')            
-        self.worksheet.write(left_hamper, 'LEFT HAMPER:')
-        self.worksheet.write(left_w_y_str, 'YES   /   NO')
-        self.worksheet.write(left_with_str, 'WITH: __________________________________________')
+        self.worksheet.write('A{}'.format(self.l_n[7]),
+                             'DRIVER(S):     ATTEMPT 1_________________ ATTEMPT 2: _________________ ATTEMPT 3:_________________ ')
+        self.worksheet.write('B{}'.format(self.l_n[8]), at_home_str)
+        self.worksheet.write('B{}'.format(self.l_n[9]), 'LEFT HAMPER:    YES  / NO      LEFT HAMPER:    YES  /  NO       LEFT HAMPER:    YES  /  NO')
+        self.worksheet.write('A{}'.format(self.l_n[10]),'LEFT HAMPER WITH: _________________________________')
+        self.worksheet.write('F{}'.format(self.l_n[10]),'NEW ADDRESS: ___________________________ ' )
 
         self.spot_counter += 1 # move the spot up one
         
@@ -116,7 +99,8 @@ class Delivery_Slips():
             self.spot_counter = 0 # start counting from zero
             self.off_set += 4 # reset the offset and procede as normal
             
-        else: # use the existing offset because we haven't reached the end of the page
+        else: # use the existing offset because we haven't reached the end 
+              # of the page
                         
             self.l_n[1] += self.off_set
             self.l_n[2] += self.off_set
@@ -140,42 +124,41 @@ class Delivery_Slips():
         to the stack
         '''
         rn = summary.route
-        box_count = summary.boxes
-        family_count = ['{} household(s) of {}'.format(box_count[x], x) for x in \
-                                  box_count]
+        box_count = summary.boxes # a Counter()
+        # write the Counter() into a string to summarize hh's
+        family_count = ['{} household(s) of {}'.format(box_count[x], x) \
+                                    for x in sorted(box_count.keys())]
         street_set = summary.streets
         hood = itr_joiner(summary.neighbourhood)
         applicant_list = summary.applicant_list
         size_counter = summary.sizes
         letter_map = summary.letter_map # 'Box: A Family: 3 Diet: Halal
         
-        # locations written as strings
-        rn_loc = 'A{}'.format(self.l_n[1]) # route number
-        hood_loc = 'A{}'.format(self.l_n[2]) # neighbourhood
-        # locations with titles and separate string writes
-        street_title_loc = 'A{}'.format(self.l_n[3]) # STREETS: 
-        family_title_loc = 'C{}'.format(self.l_n[3]) # FAMILIES
-        box_summary_loc = 'H{}'.format(self.l_n[3]) # BOX SUMMARY
-
         # write client info to worksheet
-        self.worksheet.write(rn_loc, 'Route: {}'.format(rn))
-        self.worksheet.write(hood_loc, 'Neighbourhood(s):{}'.format(str(hood)))
-        self.worksheet.write(street_title_loc, 'STREETS:')
-        self.worksheet.write(family_title_loc, 'HOUSEHOLDS:')
-        self.worksheet.write(box_summary_loc, 'SUMMARY OF BOXES')
+        self.worksheet.write('A{}'.format(self.l_n[1]), 
+                             'Route: {}'.format(rn))
+        self.worksheet.write('A{}'.format(self.l_n[2]), 
+                             'Neighbourhood(s):{}'.format(str(hood))) 
+        self.worksheet.write('A{}'.format(self.l_n[3]), 
+                             'STREETS:') # Title
+        self.worksheet.write('C{}'.format(self.l_n[3]), 
+                             'HOUSEHOLDS:') # Title
+        self.worksheet.write('H{}'.format(self.l_n[3]), 
+                             'SUMMARY OF BOXES') # Title
 
         s_c = self.l_n[4]
-        for street in street_set:
-            self.worksheet.write('A{}'.format(s_c), street, self.cell_format_size)
+        for street in street_set: # writes delivery streets
+            self.worksheet.write('A{}'.format(s_c), street, 
+                                 self.cell_format_size)
             s_c +=1
         
         lmap = self.l_n[4]
-        for hh_sum in letter_map:
+        for hh_sum in letter_map: # writes 'Box A Family: 2 Diet: Diabetic'
             self.worksheet.write('C{}'.format(lmap), letter_map[hh_sum])
             lmap += 1
         
         b_f = self.l_n[4]
-        for size_bc in family_count:
+        for size_bc in family_count:# writes '1 household(s) of 1' etc
             self.worksheet.write('H{}'.format(b_f), '{}'.format(size_bc))
             b_f += 1
 

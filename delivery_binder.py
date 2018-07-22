@@ -3,8 +3,10 @@ This script adds routes to the delivery
 route desk binder for coordinating drivers and routes
 in the cold cold month of December
 """
+import string
 import xlsxwriter
 from db_parse_functions import itr_joiner
+
 #http://xlsxwriter.readthedocs.io/format.html
 
 
@@ -14,6 +16,7 @@ class Binder_Sheet():
 
     '''
     def __init__(self, book_name):
+        self.book_name = book_name
         self.workbook = xlsxwriter.Workbook(book_name)
         self.worksheet = None
         self.cell_format_size = None
@@ -49,7 +52,7 @@ class Binder_Sheet():
 
     def add_route(self, summary):
         rn = summary.route # route number
-        street_set = summary.streets # set of streets
+        street_list= summary.street_list # list of streets
         letter_map = summary.letters # container holding 'Box: A Family: 2 Diet:'
 
         self.worksheet.merge_range('A{}:A{}'.format(self.l_n[2],
@@ -81,7 +84,7 @@ class Binder_Sheet():
             rl_c +=1
 
         s_c = self.l_n[2] # street counter
-        for street in street_set:
+        for street in street_list:
             self.worksheet.write('E{}'.format(s_c), street, self.cell_format_size)
             s_c +=1
 
@@ -128,6 +131,77 @@ class Binder_Sheet():
     
     def close_worksheet(self):
         self.workbook.close()
-        print('workbook closed')
+        print('workbook {} closed'.format(self.book_name))
 
+class Office_Sheet():
+    '''
+    Creates an xlsx file with a listing of the household details of the
+    applicant.  This is key for the operations centre to connect callers with
+    details about the route their box was sent on.
+    '''
+    def __init__(self, book_name):
+        self.book_name = book_name
+        self.workbook = xlsxwriter.Workbook(book_name)
+        self.worksheet = None
+        self.title_flag = True
+        self.l_n = 2
+        self.letters = None
+        self.headers = ['Route Number', 'Route Letter', 'File ID',
+                        'F. Name', 'L. Name', 'Address', 'City', 
+                        'Phone', 'Family Size']
+        self.fheaders = []
+        self.cells = None
+        
+        if self.workbook:
+            self.worksheet = self.workbook.add_worksheet('ops_reference')
+            a = ['{}{}'.format(x,y) for x in string.ascii_uppercase for y in \
+                 string.ascii_uppercase]
+            b = [x for x in string.ascii_uppercase]
+            self.cells = b + a
 
+            frange = range(1, 16)
+            for num in frange:
+                for head in self.headers[2:5]:
+                    self.headers.append('Family Mem {}- {}'.format(num, head))
+    
+    def add_line(self, route, summary, family):    
+        _, rn, rl = route
+        # ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity
+        if self.title_flag:
+            l_h = list(zip(self.cells, self.headers))
+            for tp in l_h:
+                l, h = tp
+                self.worksheet.write('{}1'.format(l), h)
+            self.title_flag = False
+            self.l_n += 1
+
+        self.worksheet.write('A{}'.format(self.l_n), rn)
+        self.worksheet.write('B{}'.format(self.l_n), rl)
+        self.worksheet.write('C{}'.format(self.l_n), summary.applicant) # ID number
+        self.worksheet.write('D{}'.format(self.l_n), summary.fname)    #  first name
+        self.worksheet.write('E{}'.format(self.l_n), summary.lname)    # last name
+        self.worksheet.write('F{}'.format(self.l_n), summary.address) # address 
+        self.worksheet.write('G{}'.format(self.l_n), summary.city) # city 
+        self.worksheet.write('H{}'.format(self.l_n), 'None') 
+        self.worksheet.write('I{}'.format(self.l_n), summary.size)  #hh size
+        start = 9
+        middle = 10
+        end = 11
+        if family:
+            for mem in family:
+                fmid, ln, fn  = mem[:3]
+                idh = self.cells[start]
+                fnh = self.cells[middle]
+                lnh = self.cells[end]
+            
+                self.worksheet.write('{}{}'.format(idh, self.l_n), fmid)
+                self.worksheet.write('{}{}'.format(fnh, self.l_n), fn)
+                self.worksheet.write('{}{}'.format(lnh, self.l_n), ln)
+                start += 3
+                middle += 3
+                end += 3
+        self.l_n +=1
+
+    def close_worksheet(self):
+        self.workbook.close()
+        print('workbook {} closed'.format(self.book_name))
