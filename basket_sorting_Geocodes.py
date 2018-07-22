@@ -62,17 +62,21 @@ def haversine(lon1, lat1, lon2, lat2):
 class Route_Summary():
     '''
     A central collection of relevant information that is helpful
-    on the dock
+    on the dock.
+    This object is used by the objects that print the delivery
+    binder as well as the route summary cards
     '''
     def __init__(self, rn):
         self.route = rn # route number
-        self.streets = set() # set of streets
+        self.streets = set() # set of streets for quick summary
         self.neighbourhood = [] # the City Neighbourhood(s) the route hits
         self.applicant_list = [] # list of file ids
         self.sizes = [] # list of family sizes
         self.letter_map = {} # Mapping of route letter to family size and diet
         self.boxes = Counter() # Family size Counter
         self.letters = [] 
+        self.street_list = [] # for an ordered summary of streets
+    
     def add_household(self, sum_tp):
         '''
         adds household data to the data structure as some other method
@@ -84,6 +88,7 @@ class Route_Summary():
         self.letters.append(letter)
         self.applicant_list.append(fid)
         self.sizes.append(family_size)
+        self.street_list.append(street)
         self.letter_map[fid] = 'Box: {} Family: {} Diet: {}'.format(letter,
                                                                family_size,
                                                                diet)
@@ -286,7 +291,10 @@ class Delivery_Household():
     def return_summary(self):
         '''
         returns the HH summary.  Data needed to put on the route card like
-        name, address, etc.
+        name, address, etc. in the form of a named tuple
+        (applicant, fname, lname, fam size, phone, email, address1, address2,
+        city, diet)
+            
         '''
         return self.summary
 
