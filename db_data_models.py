@@ -109,6 +109,14 @@ class Person():
 
     def __repr__(self):
         return 'Person: {} {} {}'.format(self.person_ID, self.person_Fname, self.person_Lname)
+    
+    def is_adult(self, Age = 18):
+        '''
+        return True if 18 years or older
+        or False if not
+        provide a different value for parameter Age for testing different ages
+        '''
+        return int(self.person_DOB) >= Age
 
     def get_base_profile(self):
         '''
@@ -365,7 +373,7 @@ class Visit_Line_Object():
         city, diet)
         '''
         visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, size, phone, email,\
-                               address, address2, city, diet')
+                               address, address2, city, postal, diet')
         return visit_sum(self.main_applicant_ID,
                          self.main_applicant_Fname,
                          self.main_applicant_Lname,
@@ -375,6 +383,7 @@ class Visit_Line_Object():
                          self.visit_Address,
                          self.visit_Address_Line2,
                          self.visit_City, 
+                         self.visit_Postal_Code,
                          self.visit_household_Diet)
 
     def get_hh_id_number(self):
