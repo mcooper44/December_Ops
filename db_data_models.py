@@ -116,7 +116,7 @@ class Person():
         or False if not
         provide a different value for parameter Age for testing different ages
         '''
-        return int(self.person_DOB) >= Age
+        return int(self.person_Age) >= Age
 
     def get_base_profile(self):
         '''
