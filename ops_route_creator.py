@@ -26,6 +26,8 @@ from delivery_card_creator import Delivery_Slips
 from delivery_binder import Binder_Sheet
 from delivery_binder import Office_Sheet 
 
+from sponsor_reports import Report_File
+
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
 
@@ -111,6 +113,7 @@ for line in export_file: # I am a csv object
     
     applicant = summary.applicant
     address = summary.address
+    pos_code = summary.postal
     city = summary.city
     family_size = summary.size
     simple_address = None
@@ -128,20 +131,27 @@ for line in export_file: # I am a csv object
                 add_log.info('{} is in this neighbourhood: {}'.format(applicant,
                                                                         n_hood))
                 # create a HH object and insert the summary we need to build 
-                # a route (lt, lg)a route card(summary). and later a route summary (n_hood)
-                delivery_households.add_household(applicant, None, family_size,
-                                                      lt, lg, summary, n_hood)
-                add_log.info('{} has lat {} lng {}'.format(applicant, lt, lg))
+                # a route (lt, lg)a route card(summary). 
+                # and later a route summary (n_hood)
+                delivery_households.add_household(applicant, None, 
+                                                  family_size,
+                                                  lt, lg, summary, 
+                                                  n_hood, pos_code)
+
+                add_log.info('{} has lat {} lng {}'.format(applicant, 
+                                                           lt, lg))
             else:
                 # try and geocode the address
-                address_for_api = '{} {} Ontario, Canada'.format(simple_address, city)
+                address_for_api = '{} {} Ontario, Canada'.format(simple_address,
+                                                                 city)
                 coding_result = coordinate_manager.lookup(address_for_api)
                 if coding_result:
                     pass
                 else:
                     nr_logger.error('{} yielded no geocodes and will not be routed'.format(applicant))
         except Exception as errr:
-            nr_logger.error('{} has raised {} and was not routed'.format(applicant, errr))
+            nr_logger.error('{} has raised {} and was not routed'.format(applicant, 
+                                                                         errr))
 
         # add individual details for each family member to the d_h object
         # if present.
@@ -199,7 +209,7 @@ for house in delivery_households:
     else:
         ops_logger.error('{} has been added to route db already'.format(applicant)) 
     if not route_database.fam_prev_entered(applicant):
-        route_database.add_family(app_tupe)
+        route_database.add_family(app_tupe) # add info for routecard
         ops_logger.info('{} has been logged to applicants db'.format(applicant))
     else:
         ops_logger.error('{} has prev. been logged to applicants db'.format(applicant)) 
@@ -220,9 +230,11 @@ for house in delivery_households:
 
 # lets print some slips!
 # and the delivery binder
+# and some sponsor reports
 
 route_binder = Binder_Sheet('2018_route_binder.xlsx') # 
 ops_ref = Office_Sheet('2018_operations_reference.xlsx')
+s_report = Report_File('2018_sponsor_report_text.xlsx')
 
 current_rt = int(starting_rn) - 1 # to keep track of the need to print 
                                     # a summary card or not
@@ -232,19 +244,22 @@ for house in delivery_households.route_iter():
     fam = house.family_members    
 
     ops_ref.add_line(rt, summ, fam)
-
+    ops_logger.info('Added {} in route {} to ops reference'.format(rt[0],
+                                                                   rt[1]))
+    s_report.add_household(summ, fam)
+    ops_logger.info('Added {} to sponsor report'.format(rt[0]))
     rt_str = str(rt[1]) # because the route number is an int 
+    # decide if now is the right time to insert a route summay on the stack
     rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
     if rt[1] > current_rt: # if we have the next route number
-
-        if rt_card_summary:
+        if rt_card_summary: # and the summary is there
             # add a summary card because we are at the start of a new route
             slips.add_route_summary_card(rt_card_summary)
             current_rt += 1
 
             route_binder.add_route(rt_card_summary) # add an entry to the route
-                                                    # binder
-            ops_logger.info('{} added to route_binder'.format(rt[1]))
+                                                    # binder as well
+            ops_logger.info('route {} added to stack and route_binder'.format(rt[1]))
         else:
             ops_logger.error('missed a route card summary for rn {}'.format(rt))
     slips.add_household(rt, summ) # adds another card to the file
@@ -257,5 +272,5 @@ address_dbase.close_db()
 slips.close_worksheet()
 route_binder.close_worksheet()
 ops_ref.close_worksheet() 
-
+s_report.close_worksheet()
 
