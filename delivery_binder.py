@@ -138,26 +138,30 @@ class Office_Sheet():
     Creates an xlsx file with a listing of the household details of the
     applicant.  This is key for the operations centre to connect callers with
     details about the route their box was sent on.
+    By cross referencing fid's from L2F we can determine what teh route
+    is for the hh calling in that cold week
     '''
     def __init__(self, book_name):
         self.book_name = book_name
         self.workbook = xlsxwriter.Workbook(book_name)
         self.worksheet = None
-        self.title_flag = True
-        self.l_n = 2
+        self.title_flag = True # should a title be written?
+        self.l_n = 1 # line counter
         self.letters = None
         self.headers = ['Route Number', 'Route Letter', 'File ID',
                         'F. Name', 'L. Name', 'Address', 'City', 
                         'Phone', 'Family Size']
-        self.fheaders = []
-        self.cells = None
+        self.fheaders = [] # something to hold the headers in
+        self.cells = None # something to hold the letter designators for
+                          # the workbook
         
         if self.workbook:
             self.worksheet = self.workbook.add_worksheet('ops_reference')
+            # build the headers
             a = ['{}{}'.format(x,y) for x in string.ascii_uppercase for y in \
-                 string.ascii_uppercase]
-            b = [x for x in string.ascii_uppercase]
-            self.cells = b + a
+                 string.ascii_uppercase] # AA..ZZ
+            b = [x for x in string.ascii_uppercase] # A..Z
+            self.cells = b + a # A ... ZZ
 
             frange = range(1, 16)
             for num in frange:
@@ -170,10 +174,17 @@ class Office_Sheet():
         about routes when people are calling
         lists route #, letter, name of main app and family members
         in the HH
+        route is fid, rn, rl
+        summary  the named tuple used to build the route cards
+        family is the family member summary held in the Deilvery
+        Household object  
+        (ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity)
+        the first three items of which are written to teh sheet
         '''
         _, rn, rl = route
-        # ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity
+
         if self.title_flag:
+            # write the titles
             l_h = list(zip(self.cells, self.headers))
             for tp in l_h:
                 l, h = tp
@@ -190,23 +201,24 @@ class Office_Sheet():
         self.worksheet.write('G{}'.format(self.l_n), summary.city) # city 
         self.worksheet.write('H{}'.format(self.l_n), 'None') 
         self.worksheet.write('I{}'.format(self.l_n), summary.size)  #hh size
+        # markers to march across the line and write family data
         start = 9
         middle = 10
         end = 11
-        if family:
-            for mem in family:
-                fmid, ln, fn  = mem[:3]
-                idh = self.cells[start]
+        if family: # if family is present
+            for mem in family: # for tuple in collection
+                fmid, ln, fn  = mem[:3] # use the first three fid, ln, fn
+                idh = self.cells[start] # identify the Letter index
                 fnh = self.cells[middle]
                 lnh = self.cells[end]
             
                 self.worksheet.write('{}{}'.format(idh, self.l_n), fmid)
                 self.worksheet.write('{}{}'.format(fnh, self.l_n), fn)
                 self.worksheet.write('{}{}'.format(lnh, self.l_n), ln)
-                start += 3
+                start += 3 # move forward for the next slice
                 middle += 3
                 end += 3
-        self.l_n +=1
+        self.l_n +=1 # increment for writing the next line
 
     def close_worksheet(self):
         self.workbook.close()
