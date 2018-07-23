@@ -235,7 +235,8 @@ class Delivery_Household():
     a collection of datapoints needed to assemble a delivery route
     and the methods to output and organize all the little bits
     '''
-    def __init__(self, file_id, hh_id, family_size, lat, lng, summary, hood, rn=None, rl=None):
+    def __init__(self, file_id, hh_id, family_size, lat, lng, summary, hood,
+                 postal = None, rn=None, rl=None):
         self.main_app_ID = file_id
         self.household_ID = hh_id
         self.hh_size = family_size
@@ -244,7 +245,10 @@ class Delivery_Household():
         self.route_number = rn
         self.route_letter = rl
         self.neighbourhood = hood
-        self.summary = summary # route card data with address et al. created by the visit line object
+        self.postal = postal # typically not used but may be of interest to
+                             # partners
+        self.summary = summary # route card data with address et al. 
+                               # created by the visit line object
         self.family_members = None # family members in tuples
     
     def return_hh(self):
@@ -317,12 +321,17 @@ class Delivery_Household_Collection():
     A collection of Delivery_Household() objects
     This object is used to supply the Delivery_Routes class with Households to
     sort into routes and a way of interfacing with them
+    either inserting information or asking the objects to report on what info
+    they contain
     '''
     def __init__(self):
-        self.hh_dict = {}
+        self.hh_dict = {} # this is the collection of Households
         self.fids_routed = set()
         self.route_summaries = {} # summarized routes rn: summary_objects
-
+                                  # these are the collections of information
+                                  # that are used to generate the summary
+                                  # cards that sit at the head of the route
+                                  # in the card stack
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
                       hood, rn=None, rl=None):
         '''
