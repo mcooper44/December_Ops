@@ -1,3 +1,11 @@
+'''
+Provides classes and methods for interacting with a l2f export file
+and extracting major datapoints for use in the December Ops pipeline
+or to reimplement l2f in a localized SQL database for long term 
+data and caseload projects 
+
+'''
+
 import db_parse_functions as parse_functions
 import db_tuple_collection as tuple_collection
 import csv
@@ -5,9 +13,15 @@ from collections import Counter, defaultdict, namedtuple
 
 class Field_Names():
     '''
+    Provides a way of interacting with data in the export by using the heading
+    labels
+
     Provides a way to configure the field name indexes for the file and avoids having to 
     make changes to the order of export and change lots of numbers in the different objects
+    manually.  i.e. 'Client Date of Birth' = index x, 'Client First Name' =
+    index Y
     '''
+
     def __init__(self, config_file):
         self.config_file= config_file # path to the config file
         self.ID = dict() # a dictionary of field name : index number as int()
@@ -34,7 +48,9 @@ class Field_Names():
         '''
         returns the size of the chunk that each family members takes up
         at the end of the file.  This is useful to know when clipping family
-        members out of the Visit_Line
+        members out of the Visit_Line and avoids a scenario where you need to
+        open the each file and manually determine how long the family member
+        subslices are and enter that value somewhere
         '''
         return self.ID['HH Mem 2- ID'] - self.ID['HH Mem 1- ID']
     
@@ -115,12 +131,20 @@ class Person():
         return True if 18 years or older
         or False if not
         provide a different value for parameter Age for testing different ages
+
+        This method is helpful in the December Ops pipeline for sorting
+        household members into appropriate adult/child buckets
         '''
         return int(self.person_Age) >= Age
 
     def get_base_profile(self):
         '''
         returns a tuple of (ID, Fname, Lname, Age)
+
+        this method is used for inserting family member information in a
+        Route_Database() object coded in basket sorting_Geocodes.py
+        
+        it is called in december_ops
         '''
         return (self.person_ID, self.person_Fname, self.person_Lname,
                 self.person_Age)
@@ -266,7 +290,7 @@ class Household():
 class Visit_Line_Object():
     '''
     takes a line from the csv export 
-    a visit is made up of people, organinzed in a household
+    a visit is made up of people, organized in a household
     a visit happens on a specific date and describes key services
 
     The visit line object should extract this information and provides methods
@@ -437,7 +461,8 @@ class Visit_Line_Object():
         :param: header_object is a Field_Names object and we use
         the .return_family_sublice_len() method to find how long the 
         family member chunks are. This is important to know so we can
-        correctly cut the line into the correct size lengths.
+        correctly cut the line into the correct size lengths and then slot the
+        data into tuples
         '''
         sub_slice_len = header_object.return_family_subslice_len()
         h_d = header_object.return_fam_header_indexes()
@@ -457,6 +482,9 @@ class Visit_Line_Object():
         '''
         performs a check to see if this is a Christmas Export
         return True if so, or False
+
+        it is used in the logic coded in the christmas ops pipeline 
+        to determine what to do with the line
         '''
         if self.food:
             return 'Christmas Hamper|Emergency Hampers' in self.food
@@ -533,9 +561,11 @@ class Export_File_Parser():
     with the export and getting the information we need out of it
 
     it has methods to: 
-        open a csv
-        parses the visits into visits, households and people
-        feeds the data into the database
+        open a csv file
+        and provides a way to iterate over it and create visit line objects
+        or can 
+        parse the line into visits, households and people
+        and feed the data into a database
 
     '''   
     Person_Table = dict()
