@@ -239,14 +239,14 @@ s_report = Report_File('2018_sponsor_report_text.xlsx')
 current_rt = int(starting_rn) - 1 # to keep track of the need to print 
                                     # a summary card or not
 for house in delivery_households.route_iter():
-    rt =  house.return_route() # the route info
+    rt =  house.return_route() # the route info (fid, rn, rl)
     summ = house.return_summary() # the HH info (name, address etc.)
     fam = house.family_members    
 
-    ops_ref.add_line(rt, summ, fam)
+    ops_ref.add_line(rt, summ, fam) # delivery binder
     ops_logger.info('Added {} in route {} to ops reference'.format(rt[0],
                                                                    rt[1]))
-    s_report.add_household(summ, fam)
+    s_report.add_household(summ, fam) # sponsor report
     ops_logger.info('Added {} to sponsor report'.format(rt[0]))
     rt_str = str(rt[1]) # because the route number is an int 
     # decide if now is the right time to insert a route summay on the stack

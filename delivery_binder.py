@@ -1,20 +1,31 @@
 """
-This script adds routes to the delivery
-route desk binder for coordinating drivers and routes
-in the cold cold month of December
+Contains two classses for adding sheets to the delivery binder
+and for creating a master list of all routes and the 
+household details of each route
+
+Binder_Sheet() creates an xlsx workbook and had a method to
+add a structured route summary to it block by block
+
+Office_Sheet() creates an xlsx workbook and has a method to
+add a household summary for each HH within a route
+It essentially rebuilds the source CSV with route information
+and a minimized set of household and household member info
+
 """
+
 import string
 import xlsxwriter
 from db_parse_functions import itr_joiner
-
-#http://xlsxwriter.readthedocs.io/format.html
-
 
 class Binder_Sheet():
     '''
     This class manages adding routes to the route binder
 
+    It takes summary data about the route and prints it into the book
+    to assist with coordinating deliveries
+
     '''
+
     def __init__(self, book_name):
         self.book_name = book_name
         self.workbook = xlsxwriter.Workbook(book_name)
@@ -25,13 +36,13 @@ class Binder_Sheet():
         self.off_set = 8 # how many lines is the block we are writing out
         self.spot_counter = 0
         self.title_flag = True
-        self.l_n = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        self.l_n = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
         
         if self.workbook:
             self.worksheet = self.workbook.add_worksheet('route_binder')
             self.worksheet.set_margins(0.2, 0.2, 0.75, 0.75) # L,R,T,B
-            self.worksheet.set_header('', {'margin': 0.29})
-            self.worksheet.set_footer('', {'margin': 0.29})
+            self.worksheet.set_header('', {'margin': 0.29}) # header margin
+            self.worksheet.set_footer('', {'margin': 0.29}) # footer margin
             self.worksheet.set_column(0, 0, 5) # col A
             self.worksheet.set_column(1, 1, 17) # col B
             self.worksheet.set_column(2, 2, 8) # col C
@@ -51,6 +62,16 @@ class Binder_Sheet():
             self.worksheet.set_landscape()
 
     def add_route(self, summary):
+        '''
+        distributes information from the summary and writes it into the
+        sheet in a structured way
+
+        The summary is a Route_Summary object created by and stored in 
+        a Delivery_Household_Collection class from the 
+        basket_sorting_Geocodes.py script
+
+        '''
+
         rn = summary.route # route number
         street_list= summary.street_list # list of streets
         letter_map = summary.letters # container holding 'Box: A Family: 2 Diet:'
@@ -93,41 +114,17 @@ class Binder_Sheet():
         if self.spot_counter == 4: # if there are four spots on the page
             self.title_flag = True
             self.off_set += 0 # change the offset to start on the next page
-            
-            self.l_n[1] += self.off_set
-            self.l_n[2] += self.off_set
-            self.l_n[3] += self.off_set
-            self.l_n[4] += self.off_set
-            self.l_n[5] += self.off_set
-            self.l_n[6] += self.off_set
-            self.l_n[7] += self.off_set
-            self.l_n[8] += self.off_set
-            self.l_n[9] += self.off_set
-            self.l_n[10] += self.off_set
-            self.l_n[11] += self.off_set
-            self.l_n[12] += self.off_set
-            self.l_n[13] += self.off_set
-            self.l_n[14] += self.off_set
+    
+            for x in range(1,15):
+                self.l_n[x] += self.off_set
             
             self.spot_counter = 0 # start counting from zero
             self.off_set -= 0 # reset the offset and procede as normal
             
         else: # use the existing offset because we haven't reached the end of the page
-                        
-            self.l_n[1] += self.off_set
-            self.l_n[2] += self.off_set
-            self.l_n[3] += self.off_set
-            self.l_n[4] += self.off_set
-            self.l_n[5] += self.off_set
-            self.l_n[6] += self.off_set
-            self.l_n[7] += self.off_set
-            self.l_n[8] += self.off_set
-            self.l_n[9] += self.off_set
-            self.l_n[10] += self.off_set
-            self.l_n[11] += self.off_set
-            self.l_n[12] += self.off_set
-            self.l_n[13] += self.off_set
-            self.l_n[14] += self.off_set 
+            for x in range(1,15):
+                self.l_n[x] += self.off_set
+
     
     def close_worksheet(self):
         self.workbook.close()
@@ -138,9 +135,10 @@ class Office_Sheet():
     Creates an xlsx file with a listing of the household details of the
     applicant.  This is key for the operations centre to connect callers with
     details about the route their box was sent on.
-    By cross referencing fid's from L2F we can determine what teh route
+    By cross referencing fid's from L2F we can determine what the route
     is for the hh calling in that cold week
     '''
+    
     def __init__(self, book_name):
         self.book_name = book_name
         self.workbook = xlsxwriter.Workbook(book_name)
@@ -157,12 +155,18 @@ class Office_Sheet():
         
         if self.workbook:
             self.worksheet = self.workbook.add_worksheet('ops_reference')
-            # build the headers
+            # build the header titles
+            # We can dynamically generate the needed range of them by joining
+            # cell locations AA1 with the header strings
+            # 1. First generate the cell locations by joining letters with 
+            #    Numbers
             a = ['{}{}'.format(x,y) for x in string.ascii_uppercase for y in \
                  string.ascii_uppercase] # AA..ZZ
             b = [x for x in string.ascii_uppercase] # A..Z
             self.cells = b + a # A ... ZZ
-
+            
+            # 2. Generate the family member headers by joining headers with
+            #    Family Mem etc. with numbers
             frange = range(1, 16)
             for num in frange:
                 for head in self.headers[2:5]:
@@ -170,17 +174,24 @@ class Office_Sheet():
     
     def add_line(self, route, summary, family):    
         '''
-        add an entry to the ops sheet so staff can find details
+        Add an entry to the ops sheet so staff can find details
         about routes when people are calling
+
         lists route #, letter, name of main app and family members
         in the HH
-        route is fid, rn, rl
-        summary  the named tuple used to build the route cards
-        family is the family member summary held in the Deilvery
-        Household object  
+
+        route is (fid, rn, rl) from the Delivery_Household() .return_route()
+        method
+        
+        summary is the named tuple used to build the route cards generated by
+        the Delivery_Household() .return_summary() method
+
+        family is the family member summary held in the 
+        Delivery_Household() .family_members attribute
         (ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity)
-        the first three items of which are written to teh sheet
+        the first three items of which are written to the sheet
         '''
+        
         _, rn, rl = route
 
         if self.title_flag:
@@ -221,5 +232,9 @@ class Office_Sheet():
         self.l_n +=1 # increment for writing the next line
 
     def close_worksheet(self):
+        '''
+        Closes the workbook file and ends the write process
+        '''
+        
         self.workbook.close()
         print('workbook {} closed'.format(self.book_name))

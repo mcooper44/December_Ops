@@ -4,6 +4,7 @@ to conduct their branch of the operations
 """
 import xlsxwriter
 from db_data_models import Person
+from db_parse_functions import itr_joiner
 
 def extract_special_number(notes_string, double_symbol='##'):
     '''
@@ -44,8 +45,11 @@ class Report_File():
             self.worksheet1 = self.workbook.add_worksheet('Sponsor_Report')
             self.worksheet2 = self.workbook.add_worksheet('Child_Report')
             self.worksheet1.set_margins(0.25,0.25,0.15,0.15)
+            self.worksheet1.set_column(0, 0, 24) # Col. A
+            self.worksheet1.set_column(2, 2, 4) # Col. C
+            self.worksheet1.set_column(3, 3, 25) # Col. D
             self.bold = self.workbook.add_format({'bold': True})
-    
+
 
     def add_household(self, summary, family, age_cutoff = 18): 
         '''
@@ -88,13 +92,15 @@ class Report_File():
         self.worksheet1.write('C{}'.format(self.l_n[2]), summary.address2)
         self.worksheet1.write('C{}'.format(self.l_n[3]), '{}, {}'.format(summary.city,
                                                                    summary.postal))
+        self.worksheet1.write('A{}'.format(self.l_n[4]),
+                                           itr_joiner(summary.phone))
         # title strings
         self.worksheet1.write('A{}'.format(self.l_n[5]), 'ADULTS', self.bold)
         self.worksheet1.write('D{}'.format(self.l_n[5]), 'CHILDREN', self.bold)
         self.worksheet1.write('F{}'.format(self.l_n[5]), 'AGE', self.bold)
         self.worksheet1.write('G{}'.format(self.l_n[5]), 'GENDER', self.bold)
 
-        a_c_i = self.l_n[7] # adult cell index
+        a_c_i = self.l_n[6] # adult cell index
 
         for a in adults:
             self.worksheet1.write('A{}'.format(a_c_i), '{} {}'.format(a.person_Fname,
