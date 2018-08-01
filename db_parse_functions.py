@@ -1,7 +1,19 @@
+'''
+A collection of helper functions that are used by different scripts 
+to parse or organize different bits of data contained in the lines 
+of a l2f export
+
+'''
+
+
+
 def itr_joiner(list_etc):
     '''
     takes the value of a field that could potentially have many different items
     in it and represents them as a string that looks nicer when it's printed
+
+    main use is taking a list of phone numbers and putting them in a nicer
+    format when printed
     '''
     try:
         return ', '.join([str(x) for x in set(list_etc)])

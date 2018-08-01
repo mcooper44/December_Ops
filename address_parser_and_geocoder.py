@@ -1,11 +1,13 @@
-#################################################################
-# this script provides classes to access the database of geocoded
-# address data and runs through a L2F export attempting to
-# geocode all the addressses.  It also creates error logs that
-# can be parsed later to find bad source address inputs that 
-# can be looked up and manually corrected in l2f
-# it is in need of some major refactoring love
-#################################################################
+'''
+this script provides classes and methods to access the 
+database of geocoded address data and runs through a 
+L2F export attempting to geocode all the addressses.  
+It also creates error logs that can be parsed later to find 
+bad source address inputs that can be looked up and 
+manually corrected in l2f 
+
+it is in need of some major refactoring love
+'''
 
 import csv
 import geocoder
@@ -272,7 +274,10 @@ class AddressParser():
 
 class Coordinates():
     '''
-    An object for looking up and storing geocoded address information
+    provides a method for looking up an address via the google api
+    and attributes to store information about that process
+
+    
     '''
     def __init__(self):
         self.api_key = myapikey
@@ -369,6 +374,21 @@ class Coordinates():
 
 class SQLdatabase():
     
+    '''
+    Provides methods to create and manage a SQL database of address data
+
+    'address' table collections source address data and matches with lat, lng
+    coordinates
+
+    'google_result' are key bits of data returned back about an address from
+    google.  These can be though of as the canonical values for a set lat, lng
+
+    'errors' collects source addresses that have some sort of error associated
+    with them and a way of flagging potentially bad source addresses and
+    bypassing them by fetching correct lat, lng and then pulling out the
+    correct address data via a call to the 'google_result' table
+    '''
+
     def __init__(self):
         self.conn = None
         self.cursor = None
