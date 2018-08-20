@@ -569,7 +569,7 @@ class Delivery_Routes():
         max_box_count = self.max_boxes
         route_counter = self.start_count
         #route_counter = self.start_count # this is where we start counting the routes
-        routes = {} # labeled routes and the families they contain
+        #routes = {} # labeled routes and the families they contain
         assigned = set() # container to add hh that have been assigned
         print('starting sort_method')
         # for key in dictionary of households in the

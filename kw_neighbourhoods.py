@@ -74,9 +74,8 @@ class Neighbourhoods():
 
 if __name__ == '__main__':
     print('starting')
-    kw = Neighbourhoods()
-    kw.open_tinydb('City of Waterloo and Kitchener Planning district Geometry.json')
-    kw.set_kw_neighbourhoods()
+    kw = Neighbourhoods('City of Waterloo and Kitchener Planning district Geometry.json')
+    kw.set_neighbourhoods()
     kw.extract_shapes()
     print(kw)
     lat, lng = 43.456692, -80.511280 # the hospital

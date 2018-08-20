@@ -52,7 +52,7 @@ class Delivery_Slips():
         (applicant, fname,lname,size,phone,email,address,address2,city,diet)
         '''
         
-        file_id, rn, rl = route
+        _, rn, rl = route # file_id, rn, rl
 
         diet = summary.diet
         phone = itr_joiner(summary.phone)
@@ -121,8 +121,8 @@ class Delivery_Slips():
                                     for x in sorted(box_count.keys())]
         street_set = summary.streets
         hood = itr_joiner(summary.neighbourhood)
-        applicant_list = summary.applicant_list
-        size_counter = summary.sizes
+        #applicant_list = summary.applicant_list
+        #size_counter = summary.sizes
         letter_map = summary.letter_map # 'Box: A Family: 3 Diet: Halal
         
         # write client info to worksheet

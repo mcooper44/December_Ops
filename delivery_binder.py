@@ -80,8 +80,7 @@ class Binder_Sheet():
                                                     self.l_n[8]),'')
         self.worksheet.merge_range('B{}:B{}'.format(self.l_n[2],
                                                     self.l_n[8]),'')
-        self.worksheet.merge_range('C{}:C{}'.format(self.l_n[2],
-                                                    self.l_n[8]),rn, self.route_cell_size)
+        self.worksheet.merge_range('C{}:C{}'.format(self.l_n[2], self.l_n[8]),rn, self.route_cell_size)
         if self.title_flag:
             self.worksheet.write('A{}'.format(self.l_n[1]), 'DATE', self.wrap)
             self.worksheet.write('B{}'.format(self.l_n[1]), 'DRIVER NAME', self.wrap)

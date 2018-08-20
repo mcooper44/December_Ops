@@ -615,12 +615,12 @@ class line_obj_parser():
             self.simplified_address, self.flags = self.decon_address
             self.flagged_unit = self.flags['MultiUnit']
             self.source_post_types = parse_post_types(self.simplified_address)
-            o_, o_, self.s_evf = self.source_post_types
+            _, _, self.s_evf = self.source_post_types
             if self.s_evf:
                 write_to_logs(self.applicant, self.city, 'post_parse')
 
         else:            
-            print('address error for {}. check logs for {}'.format(applicant, address))
+            print('address error for {}. check logs for {}'.format(self.applicant, self.address))
 
     def try_gc_api(self):
         '''
@@ -634,20 +634,20 @@ class line_obj_parser():
             self.coding_result = coordinate_manager.lookup(address_for_api)
             print('status is {}'.format(self.coding_result))
             if self.coding_result == None:                    
-                print('error in geocoding address on line {} for {}. check logs for {}'.format(ln_num, applicant, simplified_address))
+                print('error in geocoding address for {}. check logs for {}'.format(self.applicant, self.simplified_address))
                 # to avoid pinging google again for this bad address, we will log it as an error
                 error_tuple = (self.simplified_address, self.city, 0, 0)
                 dbase.insert_into_db('errors', error_tuple)
                     
             if self.coding_result == False:
-                raise Exception('We are at coding limit! We reached line {}'.format(ln_num))
+                raise Exception('We are at coding limit!')
                 # we are at the limit - cool down
     
         else:
             if dbase.is_error(self.simplified_address,self.city):
                 print('they are in the error table')
                 # we looked this address up, logged an error and made some database entries previously.
-                address_str_parse_logger.error('##777## {} was previously coded with errors'.format(applicant))
+                address_str_parse_logger.error('##777## {} was previously coded with errors'.format(self.applicant))
 
             if self.flagged_unit: # if the input string has a unit number and we have already coded it
                 try:
@@ -666,7 +666,7 @@ class line_obj_parser():
                                 dbase.set_unit_flag_in_db(lat, lng)
                             
                 except Exception as oops:
-                    print('Error with {} at address: {} on line {}'.format(applicant, simplified_address, ln_num))
+                    print('Error with {} at address: {}'.format(self.applicant, self.simplified_address))
                     print('It raised Error: {}'.format(oops))
             else:
                 # we have already coded it and everything is fine
@@ -741,15 +741,15 @@ class line_obj_parser():
                         dbase.insert_into_db('google_result', google_result)
                 else:
                     self.rejected = True # We can't log this as a correct address
-                    post_type_logger(self.applicant, self.source_post_types, self.google_post_types)
+                    post_type_logger(self.applicant, self.source_post_types, self.g_post_type_tp)
             else:
                     self.rejected = True # we can't log this as a correct address
                     post_type_logger(self.applicant, self.source_post_types,
-                                     self.google_post_types)
+                                     self.g_post_type_tp)
                         
         else:
             self.rejected = True # we can't log this as a correct address
-            two_city_logger(applicant, city, g_city)
+            two_city_logger(self.applicant, self.city, self.coding_result.city)
         
         if not self.error_free: 
             # so, we coded a result, but after doing that we identified errors. To avoid

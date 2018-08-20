@@ -454,7 +454,7 @@ class Visit_Line_Object():
                 self.main_applicant_Ethnicity,
                 self.main_applicant_Self_Identity)
 
-    def get_family_members(self,  header_object):
+    def get_family_members(self, header_object):
         '''
         return a list of 
         family members sliced into tuples formatted to create Person() objects        
@@ -567,6 +567,9 @@ class Export_File_Parser():
         parse the line into visits, households and people
         and feed the data into a database
 
+    file_path = path to csv file
+    header_names = a Field_Names object
+
     '''   
     Person_Table = dict()
     Household_Table = dict()
@@ -575,7 +578,8 @@ class Export_File_Parser():
     def __init__(self, file_path, header_names, start_counter_at = 1):
         self.path = file_path
         self.file_object = None # csv reader object set by open_file method
-        self.headers = header_names
+        self.headers = header_names.ID # dictionary from a Field_Names object
+        self.header_object = header_names
         self.line_counter = start_counter_at # the index for the visits 1 = visit one
         self.visit_structure = None # some sort of container yet to be determined
         self.summary_profile_object = None                
@@ -626,7 +630,7 @@ class Export_File_Parser():
                     visit_address = line_object.get_address()
                     household_id_number = line_object.get_hh_id_number()
                 if line_object.has_family():
-                    famapp = line_object.get_family_members()
+                    famapp = line_object.get_family_members(self.header_object)
                     people_in_visit.extend(famapp)
 
                 for individual in people_in_visit:
@@ -681,7 +685,7 @@ class Export_File_Parser():
 if __name__ == "__main__":
     fnames = Field_Names('header_config.csv') # open header config file
     fnames.init_index_dict() # build the dictionary of header name : index
-    L2F_2017 = Export_File_Parser('test_export.csv',fnames.ID) 
+    L2F_2017 = Export_File_Parser('test_export.csv',fnames) 
     L2F_2017.open_file() # open the file
     L2F_2017.parse_visits() # parse the visits into the different objects
     print(L2F_2017.Person_Table)
