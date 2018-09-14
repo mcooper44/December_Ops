@@ -86,13 +86,14 @@ fnames = Field_Names('2018sourcec.csv') # I am header names
 export_file = Export_File_Parser('2018sourcec.csv',fnames.ID) # I open a csv 
 export_file.open_file()
 
-a2018routes = Delivery_Routes(7, 1) 
+a2018routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
+                                     # the starting route number
 delivery_households = Delivery_Household_Collection()
 
 k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
 k_w.extract_shapes() # get shapes ready to test points
 
-slips = Delivery_Slips('2018_test.xlsx')
+slips = Delivery_Slips('2018_test.xlsx') # source file for the households
 
 # open the source file and parse the households out of it
 # store the main applicant info, address etc. as well as family member details
