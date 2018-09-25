@@ -119,7 +119,7 @@ class Delivery_Slips():
         # route
         family_count = ['{} household(s) of {}'.format(box_count[x], x) \
                                     for x in sorted(box_count.keys())]
-        street_set = summary.streets
+        street_collection = summary.street_list # .streets = set .street_list = list
         hood = itr_joiner(summary.neighbourhood)
         #applicant_list = summary.applicant_list
         #size_counter = summary.sizes
@@ -138,7 +138,8 @@ class Delivery_Slips():
                              'SUMMARY OF BOXES') # Title
 
         s_c = self.l_n[4]
-        for street in street_set: # writes delivery streets
+        for street in street_collection: 
+            # writes delivery streets as a column matching family diet info
             self.worksheet.write('A{}'.format(s_c), street, 
                                  self.cell_format_size)
             s_c +=1

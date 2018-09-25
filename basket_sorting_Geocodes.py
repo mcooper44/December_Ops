@@ -90,6 +90,10 @@ class Route_Summary():
         self.boxes = Counter() # Family size Counter
         self.letters = [] 
         self.street_list = [] # for an ordered summary of streets
+                              # if .streets is used duplicated addresses
+                              # will be dropped and there may be a mismatch
+                              # when printing columns such as:  
+                              # | streets | household info |
     
     def add_household(self, sum_tp):
         '''
