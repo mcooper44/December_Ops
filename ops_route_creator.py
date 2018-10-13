@@ -73,6 +73,14 @@ the database will then yeild the materials necessary to make the route cards
 and should be more portable
 
 '''
+class NotCoded(Exception):
+    '''
+    This Exception class is a custom class to communicate that 
+    an address has not been geocoded previously and that they
+    should!
+    '''
+    pass
+
 
 address_parser = AddressParser() # I strip out extraneous junk from address strings
 coordinate_manager = Coordinates()
@@ -120,15 +128,18 @@ for line in export_file: # I am a csv object
     simple_address = None
     if is_xmas:
         try:
+            # attempt to strip out extraneous details from the address
+            # such as unit number etc. 
             simple_address, _ = address_parser.parse(address, applicant) 
         except Exception as a_err:
             add_log.error('{} raised {} from {}'.format(applicant, a_err, address))
             nr_logger.error('{} raised an error during address parse'.format(applicant))
+        # ping database with simle address  to see if there is a geocoded address
         try:
             lt, lg = address_dbase.get_coordinates(simple_address, city)   
-            if all([lt, lg]):
+            if all([lt, lg]): # if there is a previously geocoded address
                 # insert base information needed to build a route and card
-                n_hood = k_w.find_in_shapes(lt, lg)
+                n_hood = k_w.find_in_shapes(lt, lg) # find neighbourhood
                 add_log.info('{} is in this neighbourhood: {}'.format(applicant,
                                                                         n_hood))
                 # create a HH object and insert the summary we need to build 
@@ -141,15 +152,11 @@ for line in export_file: # I am a csv object
 
                 add_log.info('{} has lat {} lng {}'.format(applicant, 
                                                            lt, lg))
-            else:
-                # try and geocode the address
-                address_for_api = '{} {} Ontario, Canada'.format(simple_address,
-                                                                 city)
-                coding_result = coordinate_manager.lookup(address_for_api)
-                if coding_result:
-                    pass
-                else:
-                    nr_logger.error('{} yielded no geocodes and will not be routed'.format(applicant))
+            else: # if we have not geocoded the address
+            # we need to raise and exception.  It is better to 
+            # run the geocoding script first and dealing with potential errors
+                raise NotCoded('{} has not been geocoded! Run the gc script 1st'.format(address))
+                
         except Exception as errr:
             nr_logger.error('{} has raised {} and was not routed'.format(applicant, 
                                                                          errr))
