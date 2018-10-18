@@ -112,25 +112,27 @@ slips = Delivery_Slips('2018_test.xlsx') # source file for the households
 
 for line in export_file: # I am a csv object
     line_object = Visit_Line_Object(line,fnames.ID)
-    # use is_xmas in a control block to determine if we should 
-    # run the try blocks
     is_xmas = line_object.is_christmas_hamper()
+    summary = line_object.get_HH_summary() # returns a named tuple
+    applicant = summary.applicant
+    is_routed = route_database.prev_routed(applicant)
     # extract summary from the visit line
     # this will be inserted into a HH object and provides the key
     # bits of info that we need to build a route card
-    summary = line_object.get_HH_summary() # returns a named tuple
-    
-    applicant = summary.applicant
-    address = summary.address
-    pos_code = summary.postal
-    city = summary.city
-    family_size = summary.size
-    simple_address = None
-    if is_xmas:
+    print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
+                                                                       is_xmas,
+                                                                       is_routed))
+    if is_xmas == True and is_routed  == False:
+        address = summary.address
+        pos_code = summary.postal
+        city = summary.city
+        family_size = summary.size
+        simple_address = None
         try:
             # attempt to strip out extraneous details from the address
             # such as unit number etc. 
             simple_address, _ = address_parser.parse(address, applicant) 
+            print('simple_address: {}'.format(simple_address))
         except Exception as a_err:
             add_log.error('{} raised {} from {}'.format(applicant, a_err, address))
             nr_logger.error('{} raised an error during address parse'.format(applicant))
@@ -155,7 +157,9 @@ for line in export_file: # I am a csv object
             else: # if we have not geocoded the address
             # we need to raise and exception.  It is better to 
             # run the geocoding script first and dealing with potential errors
-                raise NotCoded('{} has not been geocoded! Run the gc script 1st'.format(address))
+                print('{} has not been geocoded! Run the gc script 1st'.format(address))
+                raise NotCoded()
+
                 
         except Exception as errr:
             nr_logger.error('{} has raised {} and was not routed'.format(applicant, 
@@ -166,20 +170,25 @@ for line in export_file: # I am a csv object
         try:
             if line_object.has_family():
                 family = line_object.get_family_members(fnames) # returns [tuples]
+                print(family)
                 # ID, fname, lname, dob, age, gender, ethno, disability
                 delivery_households.add_hh_family(applicant, family)
                 ops_logger.info('{} has family and they have been stored in dhh object'.format(applicant))
         except Exception as oops:
             nr_logger.error('{} has family, but they were not stored in dhh object, due to {}'.format(applicant, oops))
     else:
-        nr_logger.info('{} was not routed. Is it a xmas hamper?'.format(applicant))
+        nr_logger.info('{} was not routed. is xmas = {} route = {}'.format(applicant, 
+                                                                           is_xmas, 
+                                                                           is_routed))
 
 # Sort the Households into Routes and 
 # pass the route numbers and labels back into the delivery households
 # object
 starting_rn = route_database.return_last_rn() # find last rn
-a2018routes.start_count = int(starting_rn) # reset rn to resume from last route
+a2018routes.start_count = int(starting_rn) + 1 # reset rn to resume from last route
 a2018routes.sort_method(delivery_households) # start sorting
+
+print('picking up after route number: {}'.format(starting_rn))
 
 # populate the database with summary and route data
 for house in delivery_households:
@@ -254,8 +263,11 @@ for house in delivery_households.route_iter():
     ops_ref.add_line(rt, summ, fam) # delivery binder
     ops_logger.info('Added {} in route {} to ops reference'.format(rt[0],
                                                                    rt[1]))
+    # the following two lines need to be pulled out into a separate 
+    # pipeline - we need a hh structure for true sponsored households
     s_report.add_household(summ, fam) # sponsor report
     ops_logger.info('Added {} to sponsor report'.format(rt[0]))
+    
     rt_str = str(rt[1]) # because the route number is an int 
     # decide if now is the right time to insert a route summay on the stack
     rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
