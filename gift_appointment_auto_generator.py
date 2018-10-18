@@ -7,16 +7,14 @@ people for gift appointments
 """
             
 import string
-import random
 import csv
-import xlsxwriter
-#http://xlsxwriter.readthedocs.io/format.html
+import xlsxwriter #http://xlsxwriter.readthedocs.io/format.html
 import re
 from collections import defaultdict
 from collections import namedtuple
 from operator import itemgetter # http://stackoverflow.com/questions/4174941/how-to-sort-a-list-of-lists-by-a-specific-index-of-the-inner-list
 
-file_output = 'gift sign up 2018 - print test.xlsx'
+file_output = '2018_gift_app_test_b.xlsx'
 
 Visit = namedtuple('Visit', 'slot_number, day, time') 
 
@@ -24,87 +22,85 @@ def create_time():
     '''
     This function returns a list of strings to insert into the booking sheet
     '''
-    time_slots = [x for x in range(1, 2648)] # 39 apps/hour * 8 hours * 9 days +1 b/c of how range works
+    #time_slots = [x for x in range(1, 2899)]
+    # 9:30-4:40 time period with no breaks doing 13 every 20 minutes
+    # or alternating blocks of 6 and 7 appointments booked every
+    # 10 minutes works out to
+    # ((45 apps/hour * 7 hours)+7) * 9 days +1 (b/c of how range works)
+    # is 2899 appointment time slots available
 
-    day = ['Dec 6', #  0 - Wednesday - FIRST DAY
-            'Dec 7', #  1- Thursday
-            'Dec 8', #  2 - Friday
-            'Dec 13', # 3 - Wednesday, Dec 11-12 are the unstructured days
-            'Dec 14', # 4 - Thursday
-            'Dec 15', # 5 - Friday
-            'Dec 18', # 6 - Monday
-            'Dec 19', # 7 - Tuesday
-            'Dec 20', #  8 - Wednesday - LAST DAY!
-            'Dec 21'
+    day = ['Dec 5', #  0 - Wednesday - FIRST DAY
+            'Dec 6', #  1- Thursday
+            'Dec 7', #  2 - Friday
+            'Dec 12', # 3 - Wednesday, Dec 10-11 are the unstructured days
+            'Dec 13', # 4 - Thursday
+            'Dec 14', # 5 - Friday
+            'Dec 17', # 6 - Monday
+            'Dec 18', # 7 - Tuesday
+            'Dec 19' #  8 - Wednesday - LAST DAY!
             ]
 
-    hour_blocks = ['10', # 0
-             '11', # 1
-             '12', # 2
-             '1',  # 3
-             '2',  # 4
-             '4',  # 5
-             '5',  # 6
-             '6',  # 7
-             '7'   # 8
-             ]
+    times = ['9:30','9:40','9:50',
+             '10:00','10:10','10:20','10:30','10:40','10:50',
+             '11:00','11:10','11:20','11:30','11:40','11:50',
+             '12:00','12:10','12:20','12:30','12:40','12:50',
+             '1:00','1:10','1:20','1:30','1:40','1:50',
+             '2:00','2:10','2:20','2:30','2:40','2:50',
+             '3:00','3:10','3:20','3:30','3:40','3:50',
+             '4:00','4:10','4:20','4:30','4:40'] 
 
-    minute_blocks = [':00', # 0 (6)
-                    ':10', # 1 (7) 13
-                    ':20', # 2 (6) 18
-                    ':30', # 3 (7)
-                    ':40', # 4 (6)
-                    ':50'  # 5 (7)
-                    ]
+    multipliers = [6, 7, 6,
+                   7, 6, 7, 6, 7, 6,
+                   7, 6, 7, 6, 7, 6,
+                   7, 6, 7, 6, 7, 6,
+                   7, 6, 7, 6, 7, 6,
+                   7, 6, 7, 6, 7, 6,
+                   7, 6, 7, 6, 7, 6,
+                   7, 6, 7, 6, 7]
 
+    day_mult = [286, 286 ,286,
+                286, 286 ,286,
+                286, 286 ,286]
 
     times_list = []
-
-    day_index = 0
-    hour_index = 0
-    minute_index = 0
-    app_count = 0
-
+    time_strings = []
+    day_strings = []
     
-    for slot in time_slots:
-        time_string = '{}{}'.format(hour_blocks[hour_index], minute_blocks[minute_index])
-        slot_string = '{}{}'.format('#',str(slot))
-        time_tuple = Visit(slot_string, day[day_index], time_string)
-        
-        times_list.append(time_tuple)
+    r_times = times[::-1]
+    time_counter = len(times)
+    time_index = len(times) -1
+    
+    while time_counter:
+        for x in multipliers:
+            number = x
+            time = r_times[time_index]
+            while number:
+                time_strings.append(time)
+                number -= 1
+            time_index -= 1
+            time_counter -= 1
 
-        app_count += 1
+    time_strings = time_strings * len(day)
+    
+    day_counter = len(day)
+    day_index = 0
 
-        if app_count == 6: # 0
-            minute_index += 1 
-        if app_count == 13: # 1
-            minute_index += 1
-        if app_count == 19: # 2
-            minute_index += 1
+    while day_counter:
+        for x in day_mult:
+            number = x
+            the_day = day[day_index]
+            while number:
+                day_strings.append(the_day)
+                number -=1
+            day_counter -=1
+            day_index += 1
 
-        if hour_index == 4:
-            if minute_index == 3:
-                hour_index += 1
-                minute_index = 0
-                app_count = 0
-
-
-        if hour_index == 8:
-            if minute_index == 3:
-                hour_index = 0
-                minute_index = 0
-                day_index += 1
-
-
-        if app_count == 26: # 3
-            minute_index += 1
-        if app_count == 33: # 4
-            minute_index += 1           
-        if app_count == 39:# 5
-            minute_index = 0
-            app_count = 0
-            hour_index += 1
-
+    app_number = 1
+    for day_time in zip(day_strings, time_strings):
+        vt = Visit(str(app_number), day_time[0], day_time[1])
+        times_list.append(vt)
+        app_number += 1
+    
     return times_list
 
 def write_gift_sheet():
