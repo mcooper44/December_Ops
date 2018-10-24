@@ -14,7 +14,7 @@ from collections import defaultdict
 from collections import namedtuple
 from operator import itemgetter # http://stackoverflow.com/questions/4174941/how-to-sort-a-list-of-lists-by-a-specific-index-of-the-inner-list
 
-file_output = '2018_gift_app_test_b.xlsx'
+file_output = '2018_gift_app_test_c.xlsx'
 
 Visit = namedtuple('Visit', 'slot_number, day, time') 
 
@@ -29,15 +29,17 @@ def create_time():
     # ((45 apps/hour * 7 hours)+7) * 9 days +1 (b/c of how range works)
     # is 2899 appointment time slots available
 
-    day = ['Dec 5', #  0 - Wednesday - FIRST DAY
-            'Dec 6', #  1- Thursday
-            'Dec 7', #  2 - Friday
-            'Dec 12', # 3 - Wednesday, Dec 10-11 are the unstructured days
-            'Dec 13', # 4 - Thursday
-            'Dec 14', # 5 - Friday
-            'Dec 17', # 6 - Monday
-            'Dec 18', # 7 - Tuesday
-            'Dec 19' #  8 - Wednesday - LAST DAY!
+    day = ['Dec 5',     #  Wednesday - FIRST DAY
+            'Dec 6',    #  Thursday
+            'Dec 7',    #  Friday
+            'Dec 10',   #  Monday
+            'Dec 11',   #  Tuesday
+            'Dec 12',   #  Wednesday, 
+            'Dec 13',   #  Thursday
+            'Dec 14',   #  Friday
+            'Dec 17',   #  Monday
+            'Dec 18',   #  Tuesday
+            'Dec 19'    #  Wednesday - LAST DAY!
             ]
 
     times = ['9:30','9:40','9:50',
@@ -60,7 +62,8 @@ def create_time():
 
     day_mult = [286, 286 ,286,
                 286, 286 ,286,
-                286, 286 ,286]
+                286, 286 ,286,
+                286, 286]
 
     times_list = []
     time_strings = []
