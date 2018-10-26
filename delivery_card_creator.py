@@ -74,13 +74,13 @@ class Delivery_Slips():
         self.worksheet.write('H{}'.format(self.l_n[1]), 'ROUTE:')
         self.worksheet.write('I{}'.format(self.l_n[1]), rn)
         self.worksheet.write('J{}'.format(self.l_n[1]), rl)
-        at_home_str = 'AT HOME:    YES  /  NO               AT HOME:    YES  /  NO               AT HOME:    YES  /  NO'
- 
+        at_home_str = '                           AT HOME:     YES  /  NO                  AT HOME:     YES  /  NO                     AT HOME:     YES  /  NO'
+        left_with_str = '                           LEFT HAMPER: YES  /  NO             LEFT HAMPER: YES  /  NO                 LEFT HAMPER: YES  /  NO'
         # Driving related text strings
         self.worksheet.write('A{}'.format(self.l_n[7]),
                              'DRIVER(S):     ATTEMPT 1_________________ ATTEMPT 2: _________________ ATTEMPT 3:_________________ ')
-        self.worksheet.write('B{}'.format(self.l_n[8]), at_home_str)
-        self.worksheet.write('B{}'.format(self.l_n[9]), 'LEFT HAMPER:    YES  / NO      LEFT HAMPER:    YES  /  NO       LEFT HAMPER:    YES  /  NO')
+        self.worksheet.write('A{}'.format(self.l_n[8]), at_home_str)
+        self.worksheet.write('A{}'.format(self.l_n[9]), left_with_str)
         self.worksheet.write('A{}'.format(self.l_n[10]),'LEFT HAMPER WITH: _________________________________')
         self.worksheet.write('F{}'.format(self.l_n[10]),'NEW ADDRESS: ___________________________ ' )
 
