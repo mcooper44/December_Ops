@@ -353,7 +353,7 @@ class Visit_Line_Object():
             # if the l1 and l2 are comma
             # separated then we can split
             # it on the comma
-            _ l2 = fnamedict['Address'].split(',')
+            _, l2 = fnamedict['Address'].split(',')
             self.visit_address_Line2 = l2
         if fnamedict.get('Client Gender', False):
             self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
@@ -495,6 +495,31 @@ class Visit_Line_Object():
         if self.food:
             return 'Christmas Hamper|Emergency Hampers' in self.food
 
+    def is_sponsored_hamper(self):
+        '''
+        performs a check to see if this a Sponsored Hamper
+        returns a tuple:
+            True, food_sponsor, toy_sponsor
+            False, None, None
+        '''
+        food, toys = self.xmas_food_provided, self.xmas_items_provided
+        food_sponsors = ('DOON', 'JEFF')
+        toy_sponsors = ('SERTOMA','JEFF')
+        sponsored, food_provider, toy_provider = False, None, None
+        if any([food, toys]):
+            for sponsor in food_sponsors:
+                if sponsor in food:
+                    sponsored = True
+                    food_provider = sponsor
+            for sponsor in toy_sponsors:
+                if sponsor in toys:
+                    sponsored = True
+                    toy_provider = sponsor
+        return (sponsored, food_provider, toy_provider)
+
+
+            
+        pass
 
     def get_household_type(self, relationship_collection):
         '''

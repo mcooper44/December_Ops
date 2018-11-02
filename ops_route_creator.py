@@ -96,7 +96,10 @@ export_file.open_file()
 
 a2018routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
                                      # the starting route number
+# delivery households go into this object
 delivery_households = Delivery_Household_Collection()
+# record all the sponsor details into this object
+sponsored_households = Delivery_Household_Collection()
 
 k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
 k_w.extract_shapes() # get shapes ready to test points
@@ -116,18 +119,24 @@ for line in export_file: # I am a csv object
     summary = line_object.get_HH_summary() # returns a named tuple
     applicant = summary.applicant
     is_routed = route_database.prev_routed(applicant)
+    
+    sponsored, food_sponsor, gift_sponsor = line_object.is_sponsored_hamper()
+    
+    
     # extract summary from the visit line
     # this will be inserted into a HH object and provides the key
     # bits of info that we need to build a route card
-    print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
-                                                                       is_xmas,
-                                                                       is_routed))
+    
+    #print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
+    #                                                                   is_xmas,
+    #                                                                   is_routed))
     if is_xmas == True and is_routed  == False:
         address = summary.address
         pos_code = summary.postal
         city = summary.city
         family_size = summary.size
         simple_address = None
+        
         try:
             # attempt to strip out extraneous details from the address
             # such as unit number etc. 
