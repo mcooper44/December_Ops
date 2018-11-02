@@ -349,6 +349,12 @@ class Visit_Line_Object():
             self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
         if fnamedict.get('Line 2', False):
             self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
+        elif not fnameddict.get('Line 2', False): 
+            # if the l1 and l2 are comma
+            # separated then we can split
+            # it on the comma
+            _ l2 = fnamedict['Address'].split(',')
+            self.visit_address_Line2 = l2
         if fnamedict.get('Client Gender', False):
             self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
         if visit_line[fnamedict['Client Phone Numbers']]:
