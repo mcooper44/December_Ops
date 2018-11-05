@@ -98,8 +98,11 @@ a2018routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
                                      # the starting route number
 # delivery households go into this object
 delivery_households = Delivery_Household_Collection()
-# record all the sponsor details into this object
-sponsored_households = Delivery_Household_Collection()
+# record all the sponsor details into this object by key
+sponsored_households = {'DOON': Delivery_Household_Collection(),
+                        'SERTOMA' : Delivery_Household_Collection(),
+                        'REITZEL' : Delivery_Household_Collection()
+                       }
 
 k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
 k_w.extract_shapes() # get shapes ready to test points
@@ -156,13 +159,26 @@ for line in export_file: # I am a csv object
                 # create a HH object and insert the summary we need to build 
                 # a route (lt, lg)a route card(summary). 
                 # and later a route summary (n_hood)
-                delivery_households.add_household(applicant, None, 
+                if not food_sponsor: # if not sponsored by doon or reitzel
+                    delivery_households.add_household(applicant, None, 
                                                   family_size,
                                                   lt, lg, summary, 
                                                   n_hood, pos_code)
 
-                add_log.info('{} has lat {} lng {}'.format(applicant, 
-                                                           lt, lg))
+                    add_log.info('{} has lat {} lng {}'.format(applicant, 
+                                                               lt, lg))
+                if food_sponsor:
+                    # sponsors should be held in a dictionary
+                    # record the sponsor in the datastructure
+                    # and then later we will create reports based
+                    # of the data for each sponsor
+                    sponsored_households[food_sponsor].add_household(applicant,
+                                                                     None,
+                                                                     family_size,
+                                                                     lt, lg,
+                                                                     summary,
+                                                                     n_hood,
+                                                                     pos_code)
             else: # if we have not geocoded the address
             # we need to raise and exception.  It is better to 
             # run the geocoding script first and dealing with potential errors
@@ -260,7 +276,12 @@ for house in delivery_households:
 
 route_binder = Binder_Sheet('2018_route_binder.xlsx') # 
 ops_ref = Office_Sheet('2018_operations_reference.xlsx')
-s_report = Report_File('2018_sponsor_report_text.xlsx')
+# the sponsor report dictionary will produce a report for each organization
+s_report = {'DOON': Report_File('2018_sponsor_report_DOON.xlsx'),
+            'SERTOMA': Report_File('2018_sponsor_report_SERTOMA.xlsx'),
+            'REITZEL': Report_File('2018_sponsor_report_REITZEL.xlsx')
+           }
+
 
 current_rt = int(starting_rn) - 1 # to keep track of the need to print 
                                     # a summary card or not
@@ -274,9 +295,8 @@ for house in delivery_households.route_iter():
                                                                    rt[1]))
     # the following two lines need to be pulled out into a separate 
     # pipeline - we need a hh structure for true sponsored households
-    s_report.add_household(summ, fam) # sponsor report
-    ops_logger.info('Added {} to sponsor report'.format(rt[0]))
-    
+    #s_report.add_household(summ, fam) # sponsor report
+       
     rt_str = str(rt[1]) # because the route number is an int 
     # decide if now is the right time to insert a route summay on the stack
     rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
@@ -294,6 +314,15 @@ for house in delivery_households.route_iter():
     slips.add_household(rt, summ) # adds another card to the file
     ops_logger.info('{} added to card stack'.format(rt))
 
+# insert data into sponsor reports
+for sponsor_group in sponsored_households.keys():
+    for household in sponsor_households[sponsor_group].route_iter():
+        rt = household.return_route()
+        summ = household.return_summary() # the HH info (name, address etc.)
+        fam = household.family_members
+        s_report[sponsor_group].add_household(summ, fam) # sponsor report
+        ops_logger.info('Added {} to {} sponsor report'.format(rt[0],
+                                                               sponsor_group))
 
 
 route_database.close_db()
@@ -301,5 +330,6 @@ address_dbase.close_db()
 slips.close_worksheet()
 route_binder.close_worksheet()
 ops_ref.close_worksheet() 
-s_report.close_worksheet()
+for x in s_report:
+    x.close_worksheet()
 
