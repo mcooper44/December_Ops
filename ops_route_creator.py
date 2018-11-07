@@ -90,8 +90,8 @@ address_dbase.connect_to('Address.db', create=True) # testing = atest.db
 
 route_database = Route_Database('2018rdb.db')
 
-fnames = Field_Names('2018sourcec.csv') # I am header names
-export_file = Export_File_Parser('2018sourcec.csv',fnames) # I open a csv 
+fnames = Field_Names('nov5.csv') # I am header names
+export_file = Export_File_Parser('nov5.csv',fnames) # I open a csv 
 export_file.open_file()
 
 a2018routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
@@ -117,7 +117,7 @@ slips = Delivery_Slips('2018_test.xlsx') # source file for the households
 # all the HH from the file and make route cards for them.
 
 for line in export_file: # I am a csv object
-    line_object = Visit_Line_Object(line,fnames.ID)
+    line_object = Visit_Line_Object(line,fnames.ID, december_flag = True)
     is_xmas = line_object.is_christmas_hamper()
     summary = line_object.get_HH_summary() # returns a named tuple
     applicant = summary.applicant
@@ -130,16 +130,19 @@ for line in export_file: # I am a csv object
     # this will be inserted into a HH object and provides the key
     # bits of info that we need to build a route card
     
-    #print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
-    #                                                                   is_xmas,
-    #                                                                   is_routed))
-    if is_xmas == True and is_routed  == False:
+    print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
+                                                                       is_xmas,
+                                                                       is_routed))
+    print('sponsored: {} by {} and-or {}'.format(sponsored, 
+                                                 food_sponsor,
+                                                 gift_sponsor))
+    if (is_xmas or sponsored) and not is_routed:
         address = summary.address
         pos_code = summary.postal
         city = summary.city
         family_size = summary.size
         simple_address = None
-        
+        print('is xmas {} or sponsored {}'.format(is_xmas, sponsored))
         try:
             # attempt to strip out extraneous details from the address
             # such as unit number etc. 
@@ -163,7 +166,7 @@ for line in export_file: # I am a csv object
                     delivery_households.add_household(applicant, None, 
                                                   family_size,
                                                   lt, lg, summary, 
-                                                  n_hood, pos_code)
+                                                  n_hood)
 
                     add_log.info('{} has lat {} lng {}'.format(applicant, 
                                                                lt, lg))
@@ -172,24 +175,34 @@ for line in export_file: # I am a csv object
                     # record the sponsor in the datastructure
                     # and then later we will create reports based
                     # of the data for each sponsor
+                    print('added {} to food sponsor {}'.format(applicant,
+                                                               food_sponsor))
                     sponsored_households[food_sponsor].add_household(applicant,
                                                                      None,
                                                                      family_size,
                                                                      lt, lg,
                                                                      summary,
-                                                                     n_hood,
-                                                                     pos_code)
+                                                                     n_hood)
+                if gift_sponsor:
+                    print('added {} to gift sponsor {}'.format(applicant,
+                                                               gift_sponsor))
+                    print('gift sponsors are: ')
+                    sponsored_households[gift_sponsor]
+                    print('of type  {}'.format(type(sponsored_households[gift_sponsor])))
+                    sponsored_households[gift_sponsor].add_household(applicant,
+                                                                     None,
+                                                                     family_size,
+                                                                     lt, lg,
+                                                                     summary,
+                                                                     n_hood)
             else: # if we have not geocoded the address
             # we need to raise and exception.  It is better to 
             # run the geocoding script first and dealing with potential errors
-                print('{} has not been geocoded! Run the gc script 1st'.format(address))
-                raise NotCoded()
-
+                raise NotCoded('{} has not been geocoded! Run the gc script 1st'.format(address))
                 
         except Exception as errr:
             nr_logger.error('{} has raised {} and was not routed'.format(applicant, 
                                                                          errr))
-
         # add individual details for each family member to the d_h object
         # if present.
         try:
@@ -199,8 +212,17 @@ for line in export_file: # I am a csv object
                 # ID, fname, lname, dob, age, gender, ethno, disability
                 delivery_households.add_hh_family(applicant, family)
                 ops_logger.info('{} has family and they have been stored in dhh object'.format(applicant))
+                if food_sponsor:
+                    sponsored_households[food_sponsor].add_hh_family(applicant,
+                                                                    family)
+                if gift_sponsor:
+                    sponsored_households[gift_sponsor].add_hh_family(applicant,
+                                                                    family)
         except Exception as oops:
             nr_logger.error('{} has family, but they were not stored in dhh object, due to {}'.format(applicant, oops))
+        
+        ### TO DO: insert try/except block here to add kids to the sponsor list
+    
     else:
         nr_logger.info('{} was not routed. is xmas = {} route = {}'.format(applicant, 
                                                                            is_xmas, 
@@ -316,10 +338,12 @@ for house in delivery_households.route_iter():
 
 # insert data into sponsor reports
 for sponsor_group in sponsored_households.keys():
-    for household in sponsor_households[sponsor_group].route_iter():
+    print('operating on {}'.format(sponsor_group))
+    for household in sponsored_households[sponsor_group].route_iter():
         rt = household.return_route()
         summ = household.return_summary() # the HH info (name, address etc.)
         fam = household.family_members
+        print('attempting to write {} with family {}'.format(rt[0], fam))
         s_report[sponsor_group].add_household(summ, fam) # sponsor report
         ops_logger.info('Added {} to {} sponsor report'.format(rt[0],
                                                                sponsor_group))
@@ -330,6 +354,6 @@ address_dbase.close_db()
 slips.close_worksheet()
 route_binder.close_worksheet()
 ops_ref.close_worksheet() 
-for x in s_report:
-    x.close_worksheet()
+for x in s_report.keys():
+    s_report[x].close_worksheet()
 
