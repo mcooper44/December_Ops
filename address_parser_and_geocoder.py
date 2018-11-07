@@ -1,3 +1,4 @@
+#!/usr/bin/python3.6
 '''
 this script provides classes and methods to access the 
 database of geocoded address data and runs through a 
@@ -197,6 +198,8 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
     try:            
         sleep(1)
         result = geocoder.google(address, key=myapikey)
+        print(result.status)
+        print(result.lat, result.lng)
         if result is not None:
             if result.status == 'OK':
                 geocoding_logger.info('##500## {} is {}'.format(address, result.status))
@@ -307,6 +310,7 @@ class Coordinates():
         else:
             if self.can_proceed:
                 response, result = returnGeocoderResult(address, self.api_key)
+                print(response, result)
                 self.calls += 1
                 if response == False: # returnGeocoderResult returns False when limit reached
                     self.can_proceed = False
@@ -577,7 +581,7 @@ class line_obj_parser():
         self.line_object = Visit_Line_Object(line,fnamedict)
         self.flagged_unit = False
         self.in_bounds = False
-        self.decon_adrress = None
+        self.decon_address = None
         self.simplified_address = None
         self.flags = None
         self.flagged_unit = False
@@ -596,6 +600,9 @@ class line_obj_parser():
         self.google_result = False 
         self.pt_eval_errors = None
         self.done_b4 = False
+        self.lat = None
+        self.lng = None
+        self.should_write = False
 
     def deconstruct(self):
         '''
@@ -609,10 +616,17 @@ class line_obj_parser():
         self.in_bounds = boundary_checker(self.city)
         print('looking up {}'.format(self.applicant))
         print('they live at {} {}'.format(self.address, self.city))
+        print('their deconstructed address is: {}'.format(self.decon_address))
+        try:
+            self.simplified_address, self.flags = self.decon_address
+        
+        except:
+            print('address error for {}. check logs for {}'.format(self.applicant, self.address))
+
         if not self.in_bounds:
             boundary_logger(self.applicant, self.city)
         if self.decon_address is not False and self.in_bounds == True:
-            self.simplified_address, self.flags = self.decon_address
+
             self.flagged_unit = self.flags['MultiUnit']
             self.source_post_types = parse_post_types(self.simplified_address)
             _, _, self.s_evf = self.source_post_types
@@ -626,13 +640,15 @@ class line_obj_parser():
         '''
         try and geocode the address
         '''
-        print('trying to geocode')
-        if dbase.is_in_db(self.simplified_address, self.city) == False and self.s_evf == False:
+        print('trying to geocode {} {}'.format(self.simplified_address,
+                                               self.city))
+        if dbase.is_in_db(self.simplified_address, self.city) == False: #  and self.s_evf == False:
             print('they are not in the db')
             address_for_api = '{} {} Ontario, Canada'.format(self.simplified_address, self.city)
-            
+            print('looking up {}'.format(address_for_api))           
             self.coding_result = coordinate_manager.lookup(address_for_api)
             print('status is {}'.format(self.coding_result))
+            self.should_write = True
             if self.coding_result == None:                    
                 print('error in geocoding address for {}. check logs for {}'.format(self.applicant, self.simplified_address))
                 # to avoid pinging google again for this bad address, we will log it as an error
@@ -642,8 +658,22 @@ class line_obj_parser():
             if self.coding_result == False:
                 raise Exception('We are at coding limit!')
                 # we are at the limit - cool down
-    
+            if self.coding_result:
+                self.lat = self.coding_result.lat
+                self.lng = self.coding_result.lng
+
         else:
+            print('Did not code it they are in the db')
+            try:
+
+                lat, lng = dbase.get_coordinates(self.simplified_address,
+                                                     self.city) # get the lat, lng
+                print(lat, lng)
+                self.lat = lat
+                self.lng = lng
+            except:
+                print('could not find lat and long in the database')
+
             if dbase.is_error(self.simplified_address,self.city):
                 print('they are in the error table')
                 # we looked this address up, logged an error and made some database entries previously.
@@ -651,8 +681,7 @@ class line_obj_parser():
 
             if self.flagged_unit: # if the input string has a unit number and we have already coded it
                 try:
-                    lat, lng = dbase.get_coordinates(self.simplified_address,
-                                                     self.city) # get the lat, lng
+
                     if not lat and lng:
                         address_str_parse_logger.error('##405## Attempting to find geocodes in google_table but not present. Check address {}'.format(self.address))
                     else:
@@ -694,7 +723,9 @@ class line_obj_parser():
             self.pt_eval_errors = evaluate_post_types(self.source_post_types, google_post_types)
             
             self.cities_valid_and_matching = two_city_parser(self.city, g_city) # True or False
-            
+        else:
+            print('no flags to set.  There is no coding result')
+
     def attempt_db_write(self):
         '''
         assuming no issues, write the address to the db
@@ -704,10 +735,12 @@ class line_obj_parser():
         process again and making api pings that go nowhere
         '''
         print('attempting to write to db')
-        address_dbase_input = (self.simplified_address, 
-                               self.city, 
-                               self.coding_result.lat,
-                               self.coding_result.lng)
+        input_tuple = (self.simplified_address, 
+                       self.city, 
+                       self.lat,
+                       self.lng)
+        print(input_tuple)
+        address_dbase_input = input_tuple
 
         if all(self.cities_valid_and_matching): # Cities input and returned match and are valid
             if not any([self.s_evf, self.g_evf]): # if the post type parsers didn't find any weirdness
@@ -769,19 +802,28 @@ if __name__ == '__main__':
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('Address.db', create=True) # testing = atest.db
     
-    fnames = Field_Names('2018sourcec.csv') # I am header names
+    fnames = Field_Names('nov5.csv') # I am header names
     fnames.init_index_dict() 
-    export_file = Export_File_Parser('2018sourcec.csv',fnames.ID) # I open a csv 
+    export_file = Export_File_Parser('nov5.csv',fnames) # I open a csv 
     # for testing us test_export.csv
     export_file.open_file()
     
     for line in export_file: # I am a csv object
-        lop = line_obj_parser(line,fnames.ID)
-        lop.deconstruct()
-        lop.try_gc_api()
+        lop = line_obj_parser(line,fnames.ID) #.ID
+        try:
+            lop.deconstruct()
+        except:
+            print('could not deconstruct')
+        if lop.decon_address:
+            lop.try_gc_api()
+        else:
+            print('unable to deconstruct address')
         if not lop.done_b4:
             lop.set_address_flags()
-            lop.attempt_db_write()
-
+            if lop.should_write:
+                try:
+                    lop.attempt_db_write()
+                except:
+                    print('could not write to db')
     dbase.close_db()
     print('proccess complete')
