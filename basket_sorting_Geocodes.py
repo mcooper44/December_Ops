@@ -422,16 +422,18 @@ class Delivery_Household_Collection():
         add a household object to the .hh_dict attribute
         '''
         self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size, lat, lng, summary, hood, rn, rl)
-    
+
     def add_hh_family(self, applicant, familytples):
         '''
         adds tuples of the family members to a Delivery_Household
         using its add_family_members() method
         '''
+        print('trying to add family to key {}'.format(applicant))
         if self.hh_dict.get(applicant, False):
             self.hh_dict[applicant].add_family_members(familytples)
+            print('added family members to {}'.format(applicant))
         else:
-            print('{} has not been recorded as a HH'.format(applicant))
+            print('Attempting to add {} family members but they have not been recorded as a HH yet'.format(applicant))
     
     def add_to_route_summary(self, rn, r_summary):
         '''
