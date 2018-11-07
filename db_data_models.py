@@ -316,8 +316,8 @@ class Visit_Line_Object():
         self.main_applicant_Gender = None # Main Applicant Gender
         self.main_applicant_Phone = None # Main Applicant Phone Numbers
         self.main_applicant_Email = None
-        self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
-        self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
+        self.main_applicant_Ethnicity = None
+        self.main_applicant_Self_Identity = None
         self.household_primary_SOI = None # Client Primary Source of Income
         self.visit_Address = visit_line[fnamedict['Address']]
         self.visit_Address_Line2 = None
@@ -325,8 +325,8 @@ class Visit_Line_Object():
         self.visit_Postal_Code = None
         self.visit_Household_ID = None  # Household ID - the unique file number used to identify households
         self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
-        self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
-        self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
+        self.visit_household_Diet = None # Dietary Conditions in a readable form
+        self.visit_food_hamper_type = None 
         self.visit_Referral = None # Referrals Provided
         self.visit_Family_Slice = None
         self.visit_Agency = None # organization that provided services
@@ -338,7 +338,15 @@ class Visit_Line_Object():
         self.xmas_items_provided = None
         self.xmas_notes = None
         self.xmas_application_site = None
-
+       
+        if fnamedict.get('Dietary Considerations', False):
+            self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
+        if fnamedict.get('Client Ethnicities', False):
+            self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
+        if fnamedict.get('Client Self-Identifies As', False):
+            self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
+        if fnamedict.get('Quantity', False):
+            self.visit_household_Diet = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
         if fnamedict.get('Visit Date', False):
             self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         if fnamedict.get('Client First Name', False):
@@ -349,12 +357,15 @@ class Visit_Line_Object():
             self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
         if fnamedict.get('Line 2', False):
             self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
-        elif not fnameddict.get('Line 2', False): 
+        elif not fnamedict.get('Line 2', False): 
             # if the l1 and l2 are comma
             # separated then we can split
             # it on the comma
-            _, l2 = fnamedict['Address'].split(',')
-            self.visit_address_Line2 = l2
+            try:
+                _, l2 = self.visit_Address.split(',')
+                self.visit_address_Line2 = l2
+            except:
+                pass
         if fnamedict.get('Client Gender', False):
             self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
         if visit_line[fnamedict['Client Phone Numbers']]:
@@ -502,9 +513,9 @@ class Visit_Line_Object():
             True, food_sponsor, toy_sponsor
             False, None, None
         '''
-        food, toys = self.xmas_food_provided, self.xmas_items_provided
-        food_sponsors = ('DOON', 'JEFF')
-        toy_sponsors = ('SERTOMA','JEFF')
+        food, toys = self.food, self.xmas_items_provided
+        food_sponsors = ('DOON', 'REITZEL')
+        toy_sponsors = ('SERTOMA','REITZEL')
         sponsored, food_provider, toy_provider = False, None, None
         if any([food, toys]):
             for sponsor in food_sponsors:
@@ -516,10 +527,6 @@ class Visit_Line_Object():
                     sponsored = True
                     toy_provider = sponsor
         return (sponsored, food_provider, toy_provider)
-
-
-            
-        pass
 
     def get_household_type(self, relationship_collection):
         '''
