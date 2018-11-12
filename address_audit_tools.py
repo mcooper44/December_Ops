@@ -105,23 +105,27 @@ def evaluate_post_types(source_types, db_types):
     
     (street name type errors, direction type errors, a name or dir dictionary matching error)
     '''
-    source_nt_tpl, source_dt_tpl, s_e_flag = source_types
-    db_nt_tpl, db_dt_tpl, db_e_flag = db_types
+    try:
+        source_nt_tpl, source_dt_tpl, s_e_flag = source_types
+        db_nt_tpl, db_dt_tpl, db_e_flag = db_types
 
-    sn_error = False # street name error
-    dt_error = False # direction type error
-    fl_error = False # eval_flag mismatch
+        sn_error = False # street name error
+        dt_error = False # direction type error
+        fl_error = False # eval_flag mismatch
 
-    if source_nt_tpl != db_nt_tpl:
-        sn_error = True
-    if source_dt_tpl != db_dt_tpl:
-        dt_error = True
-    if s_e_flag:
-        fl_error = True
-    if db_e_flag:
-        fl_error = True
+        if source_nt_tpl != db_nt_tpl:
+            sn_error = True
+        if source_dt_tpl != db_dt_tpl:
+            dt_error = True
+        if s_e_flag:
+            fl_error = True
+        if db_e_flag:
+            fl_error = True
 
-    return (sn_error, dt_error, fl_error)
+        return (sn_error, dt_error, fl_error)
+   
+    except:
+        print('Error matching post types source v. google')
 
 def flag_checker(tpl_to_check, tpl_to_check_against):
     '''

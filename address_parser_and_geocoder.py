@@ -802,9 +802,9 @@ if __name__ == '__main__':
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('Address.db', create=True) # testing = atest.db
     
-    fnames = Field_Names('nov5.csv') # I am header names
+    fnames = Field_Names('nov12.csv') # I am header names
     fnames.init_index_dict() 
-    export_file = Export_File_Parser('nov5.csv',fnames) # I open a csv 
+    export_file = Export_File_Parser('nov12.csv',fnames) # I open a csv 
     # for testing us test_export.csv
     export_file.open_file()
     
