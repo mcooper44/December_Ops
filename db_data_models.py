@@ -362,8 +362,14 @@ class Visit_Line_Object():
             # separated then we can split
             # it on the comma
             try:
-                _, l2 = self.visit_Address.split(',')
-                self.visit_address_Line2 = l2
+                split_address = self.visit_Address.split(',')
+                if len(split_address) == 2:
+                    l1, l2 = split_address
+                    self.visit_Address_Line2 = l2
+                    self.visit_Address = l1
+                else:
+                    self.visit_Address = split_address[0]
+                    self.visit_Address_Line2 = ''.join(split_address[1:])
             except:
                 pass
         if fnamedict.get('Client Gender', False):

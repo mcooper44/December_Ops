@@ -5,6 +5,8 @@ from collections import namedtuple
 import logging
 from datetime import datetime
 
+from config.py import target
+
 from basket_sorting_Geocodes import Delivery_Household
 from basket_sorting_Geocodes import Delivery_Routes
 from basket_sorting_Geocodes import Route_Database
@@ -90,8 +92,8 @@ address_dbase.connect_to('Address.db', create=True) # testing = atest.db
 
 route_database = Route_Database('2018rdb.db')
 
-fnames = Field_Names('nov12.csv') # I am header names
-export_file = Export_File_Parser('nov12.csv',fnames) # I open a csv 
+fnames = Field_Names(target) # I am header names
+export_file = Export_File_Parser(target, fnames) # I open a csv 
 export_file.open_file()
 
 a2018routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
@@ -100,7 +102,7 @@ a2018routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
 delivery_households = Delivery_Household_Collection()
 # record all the sponsor details into this object by key
 sponsored_households = {'DOON': Delivery_Household_Collection(),
-                        'SERTOMA' : Delivery_Household_Collection(),
+                        'Sertoma' : Delivery_Household_Collection(),
                         'REITZEL' : Delivery_Household_Collection()
                        }
 
@@ -300,7 +302,7 @@ route_binder = Binder_Sheet('2018_route_binder.xlsx') #
 ops_ref = Office_Sheet('2018_operations_reference.xlsx')
 # the sponsor report dictionary will produce a report for each organization
 s_report = {'DOON': Report_File('2018_sponsor_report_DOON.xlsx'),
-            'SERTOMA': Report_File('2018_sponsor_report_SERTOMA.xlsx'),
+            'Sertoma': Report_File('2018_sponsor_report_SERTOMA.xlsx'),
             'REITZEL': Report_File('2018_sponsor_report_REITZEL.xlsx')
            }
 
