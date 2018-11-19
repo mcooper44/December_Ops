@@ -1,24 +1,48 @@
 #!/usr/bin/python3.6
 
+'''
+Hello.  I am the deliverator.  I am here to create routes!
+this script will run through a l2f export file that has been cleaned up
+after iterative address fixing passes and quality control via the
+address_parser... script and careful digesting of logs.
+
+This script open the csv and strips out the households line by line
+It attempts to gather key bits of information such as is it the right
+kind of visit?  Is a service being provided by another party? Has it been
+routed previously and thus, should be ignored?
+
+If it passes these tests it is added to a Delivery_Household_Collection
+or equivalent data type and then it...
+iterate through the collection of households to create routes
+log the routes in the database in a separate table
+
+the database will then yeild the materials necessary to make the route cards
+and should be more portable
+sponsor report files are also created out of the appropriate datatypes
+everyone wins!
+
+'''
+
+
 import sqlite3
 from collections import namedtuple
 import logging
 from datetime import datetime
 
-from config.py import target
+from config import target
 
 from basket_sorting_Geocodes import Delivery_Household
 from basket_sorting_Geocodes import Delivery_Routes
 from basket_sorting_Geocodes import Route_Database
-from basket_sorting_Geocodes import Delivery_Household_Collection 
+from basket_sorting_Geocodes import Delivery_Household_Collection
 
-from address_parser_and_geocoder import Coordinates  
+from address_parser_and_geocoder import Coordinates
 from address_parser_and_geocoder import SQLdatabase
 from address_parser_and_geocoder import AddressParser
 
 from db_data_models import Field_Names
 from db_data_models import Visit_Line_Object
-from db_data_models import Export_File_Parser 
+from db_data_models import Export_File_Parser
 from db_data_models import Person
 from db_parse_functions import itr_joiner
 
@@ -26,7 +50,7 @@ from kw_neighbourhoods import Neighbourhoods
 
 from delivery_card_creator import Delivery_Slips
 from delivery_binder import Binder_Sheet
-from delivery_binder import Office_Sheet 
+from delivery_binder import Office_Sheet
 
 from sponsor_reports import Report_File
 
@@ -56,25 +80,7 @@ add_log_file_handler = logging.FileHandler('Logging/add.log')
 add_log_file_handler.setFormatter(add_log_formatter)
 add_log.addHandler(add_log_file_handler)
 add_log.info('Running new session {}'.format(datetime.now()))
-'''
-Hello.  I am the deliverator.  I am here to create routes
-this script will run through a l2f export file that has been cleaned up
-after iterative address fixing passes and quality control via the
-address_parser... script and careful digesting of logs.
 
-open the csv and strip out the households line by line
-log them into a database in the correct structure for later
-
-run through the households in the database and add them to a
-Delivery_Household_Collection
-
-iterate through the collection of households to create routes
-log the routes in the database in a separate table
-
-the database will then yeild the materials necessary to make the route cards
-and should be more portable
-
-'''
 class NotCoded(Exception):
     '''
     This Exception class is a custom class to communicate that 
@@ -112,26 +118,23 @@ k_w.extract_shapes() # get shapes ready to test points
 slips = Delivery_Slips('2018_test.xlsx') # source file for the households
 
 # open the source file and parse the households out of it
-# store the main applicant info, address etc. as well as family member details
+# it determines hamper type and if there is a sponsor and if it has previously
+# been routed then it then
+# stores the main applicant info, address etc. as well as family member details
 # for use later if needed.
-# NB: the export file needs to be cleaned and should only include HH
-# that have requested services from us.  This script will just strip
-# all the HH from the file and make route cards for them.
 
 for line in export_file: # I am a csv object
     line_object = Visit_Line_Object(line,fnames.ID, december_flag = True)
     is_xmas = line_object.is_christmas_hamper()
+    sponsored, food_sponsor, gift_sponsor = line_object.is_sponsored_hamper()
     summary = line_object.get_HH_summary() # returns a named tuple
     applicant = summary.applicant
     is_routed = route_database.prev_routed(applicant)
-    
-    sponsored, food_sponsor, gift_sponsor = line_object.is_sponsored_hamper()
-    
-    
+
     # extract summary from the visit line
     # this will be inserted into a HH object and provides the key
     # bits of info that we need to build a route card
-    
+
     print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
                                                                        is_xmas,
                                                                        is_routed))

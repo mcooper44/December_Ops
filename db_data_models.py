@@ -521,7 +521,7 @@ class Visit_Line_Object():
         '''
         food, toys = self.food, self.xmas_items_provided
         food_sponsors = ('DOON', 'REITZEL')
-        toy_sponsors = ('SERTOMA','REITZEL')
+        toy_sponsors = ('Sertoma',)
         sponsored, food_provider, toy_provider = False, None, None
         if any([food, toys]):
             for sponsor in food_sponsors:
