@@ -4,6 +4,13 @@ and extracting major datapoints for use in the December Ops pipeline
 or to reimplement l2f in a localized SQL database for long term 
 data and caseload projects 
 
+It allows access to the following objects 
+    file 
+    line 
+    field names
+    person
+    household
+    visit
 '''
 
 import db_parse_functions as parse_functions
@@ -512,7 +519,9 @@ class Visit_Line_Object():
         if self.food:
             return 'Christmas Hamper|Emergency Hampers' in self.food
 
-    def is_sponsored_hamper(self):
+    def is_sponsored_hamper(self, 
+                            food_sponsors=('DOON', 'REITZEL'), 
+                            toy_sponsors=('Sertoma',)):
         '''
         performs a check to see if this a Sponsored Hamper
         returns a tuple:
@@ -520,8 +529,6 @@ class Visit_Line_Object():
             False, None, None
         '''
         food, toys = self.food, self.xmas_items_provided
-        food_sponsors = ('DOON', 'REITZEL')
-        toy_sponsors = ('Sertoma',)
         sponsored, food_provider, toy_provider = False, None, None
         if any([food, toys]):
             for sponsor in food_sponsors:
