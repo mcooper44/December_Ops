@@ -141,7 +141,7 @@ for line in export_file: # I am a csv object
     print('sponsored: {} by {} and-or {}'.format(sponsored, 
                                                  food_sponsor,
                                                  gift_sponsor))
-    if (is_xmas or sponsored) and not is_routed:
+    if ((is_xmas or sponsored) and not is_routed) or sponsored:
         address = summary.address
         pos_code = summary.postal
         city = summary.city
