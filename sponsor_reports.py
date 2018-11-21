@@ -35,15 +35,19 @@ class Report_File():
         self.workbook = xlsxwriter.Workbook(book_name)
         self.worksheet1 = None # printable sponsor report
         self.worksheet2 = None # list of kids
+        self.worksheet3 = None # main applicant file number listing
         self.bold = None
         self.l_n = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17] 
         self.off_set = 16
         self.spot_counter = 0
         self.clc = 1 # 'Child List Counter' used to keep track of what line
                      # we are writing to
+        self.alc = 1 # 'Adult List Counter' used like the clc
+
         if self.workbook:
             self.worksheet1 = self.workbook.add_worksheet('Sponsor_Report')
             self.worksheet2 = self.workbook.add_worksheet('Child_Report')
+            self.worksheet3 = self.workbook.add_worksheet('Main_Applicants')
             self.worksheet1.set_margins(0.25,0.25,0.15,0.15)
             self.worksheet1.set_column(0, 0, 24) # Col. A
             self.worksheet1.set_column(2, 2, 4) # Col. C
@@ -101,11 +105,14 @@ class Report_File():
         self.worksheet1.write('G{}'.format(self.l_n[5]), 'GENDER', self.bold)
 
         a_c_i = self.l_n[6] # adult cell index
-
         for a in adults:
             self.worksheet1.write('A{}'.format(a_c_i), '{} {}'.format(a.person_Fname,
                                                                 a.person_Lname))                            
+            self.worksheet3.write('A{}'.format(self.alc), '{} {}'.format(a.person_Fname,
+                                                                      a.person_Lname))
+            self.worksheet3.write('B{}'.format(self.alc), '{}'.format(summary.applicant))
             a_c_i += 1
+            self.alc +=1
 
         # now the kids names...
         k_c_i = self.l_n[6] # kids cell index
