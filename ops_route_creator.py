@@ -191,9 +191,8 @@ for line in export_file: # I am a csv object
                 if gift_sponsor:
                     print('added {} to gift sponsor {}'.format(applicant,
                                                                gift_sponsor))
-                    print('gift sponsors are: ')
-                    sponsored_households[gift_sponsor]
-                    print('of type  {}'.format(type(sponsored_households[gift_sponsor])))
+                   # print('gift sponsors are: {}'.format(sponsored_households[gift_sponsor]))
+                    #print('of type  {}'.format(type(sponsored_households[gift_sponsor])))
                     sponsored_households[gift_sponsor].add_household(applicant,
                                                                      None,
                                                                      family_size,
@@ -352,7 +351,6 @@ for sponsor_group in sponsored_households.keys():
         s_report[sponsor_group].add_household(summ, fam) # sponsor report
         ops_logger.info('Added {} to {} sponsor report'.format(rt[0],
                                                                sponsor_group))
-
 
 route_database.close_db()
 address_dbase.close_db()
