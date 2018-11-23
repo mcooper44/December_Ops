@@ -126,7 +126,7 @@ class Route_Database():
     1. 'applicants' = base data encapsulated by a delivery card
     2. 'family' = family member data keyed off a main applicant file id 
     3. 'routes' = file id for a main applicant and their route, route letter 
-
+    4. 'sponsor' = file id for main applicant, food_sponsor, gift_sponsor
     It is the central database that will recieve routes, reproduce them
     and return route specific information when needed by other classes
     and methods
@@ -154,6 +154,10 @@ class Route_Database():
             self.cur.execute('''CREATE TABLE IF NOT EXISTS family
                              (main_applicant INT, client_id INT, fname TEXT,
                              lname TEXT, age INT)''')
+            # SPONSOR TABLE
+            self.cur.execute('''CREATE TABLE IF NOT EXISTS sponsor (file_id INT
+                             UNIQUE, food_sponsor TEXT, gift_sponsor TEXT)''')
+            
             self.conn.commit()
 
     def add_route(self, file_id, rn, rl):
@@ -166,8 +170,20 @@ class Route_Database():
 
         db_tple = (file_id, rn, rl)
         self.cur.execute("INSERT OR IGNORE INTO routes VALUES (?, ?, ?)", db_tple)
-        self.conn.commit()   
-        
+        self.conn.commit()  
+
+    def add_sponsor(self, file_id, food_sponsor, gift_sponsor):
+        '''
+        logs a family in the database with their assigned sponsors
+
+        takes a file id, food provider and gift provider wraps them in a tuple
+        and inserts them into the table
+        '''
+        db_tple = (file_id, food_sponsor, gift_sponsor)
+        self.cur.exectue("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
+                         db_tple)
+        self.conn.commit()
+
     def add_family(self, family_tple):
         '''
         this adds a household to the 'applicants' table
@@ -206,6 +222,10 @@ class Route_Database():
             return True
         else:
             return False
+    
+    def prev_sponsor(self, applicant):
+        pass
+
 
     def fam_prev_entered(self, applicant):
         '''
