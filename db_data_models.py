@@ -314,6 +314,7 @@ class Visit_Line_Object():
     '''    
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
+        #self.vline = visit_line
         self.visit_Date = None
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
@@ -551,6 +552,15 @@ class Visit_Line_Object():
         '''
         household_classification = parse_functions.household_classifier(relationship_collection)
         return household_classification 
+
+    def __str__(self):
+        '''
+        returns basic information about the visit
+        visit date
+        main applicant id
+        '''
+        return '{} {}'.format(self.visit_Date, 
+                              self.main_applicant_ID)
 
 class Visit():
     '''

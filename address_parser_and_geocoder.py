@@ -8,6 +8,9 @@ bad source address inputs that can be looked up and
 manually corrected in l2f 
 
 it is in need of some major refactoring love
+the database should probably become a separate file?
+
+
 '''
 
 import csv
@@ -19,7 +22,7 @@ import sqlite3
 from time import gmtime, strftime, sleep
 import logging
 import re
-import config	# secret api key source
+import config	# secret api key and file target source 
 from db_data_models import Field_Names
 from db_data_models import Visit_Line_Object
 from db_data_models import Export_File_Parser
@@ -80,10 +83,11 @@ def address_builder(parsed_string):
     takes the ordered dictionary object (parsed_string) created by the usaddress.tag method 
     and builds a string out of the relevant tagged elements, stripping out the address number
     from the 123-44 Main Street formatted addresses using the street_number_parser() function
-    refer to for full definitions of all the tags
+    refer to usaddress documentation for the full definitions of all the tags
     the flags var is for helping to flag addresses that have a direction or multiunits
     this is important because it allows us to identify addresses that are missing key
-    features for down stream delivery
+    features for down stream delivery i.e. We are provided 123 Main Street when
+    123 Main street could be [...] East or West
     as such, we return a tuple of the parsed address and the flags variable
     '''
     parse_keys = parsed_string.keys()
@@ -826,4 +830,4 @@ if __name__ == '__main__':
                 except:
                     print('could not write to db')
     dbase.close_db()
-    print('proccess complete')
+    print('proccess complete on source file {}'.format(config.target))

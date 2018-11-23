@@ -44,7 +44,7 @@ def parse_post_types(address):
                   'p': ('place', 'pl', 'pkway', 'pkwy', 'pk', 'parkway', 'park'),
                   'r': ('road', 'ridge', 'rd'),
                   's': ('street', 'st', 'st n', 'square', 'springs'),
-                  't': ('trail', 'terrace'), 
+                  't': ('trail', 'terrace','terr'), 
                   'w': ('way', 'walk')}
     directions = {'n': ('north', 'n', 'nor', 'nth'),
                   's': ('south', 's'),
