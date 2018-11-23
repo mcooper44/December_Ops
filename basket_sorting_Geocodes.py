@@ -224,8 +224,16 @@ class Route_Database():
             return False
     
     def prev_sponsor(self, applicant):
-        pass
-
+        '''
+        looks in the sponsor table to see if the household has been sponsored
+        previously and returns either the tuple  or False
+        '''
+        self.cur.execute("SELECT * FROM sponsor WHERE file_id=?", (applicant,))
+        sponsor_details = self.cur.fetchone()
+        if not sponsor_details:
+            return False
+        else:
+            return sponsor_details
 
     def fam_prev_entered(self, applicant):
         '''

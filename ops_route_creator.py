@@ -117,6 +117,11 @@ k_w.extract_shapes() # get shapes ready to test points
 
 slips = Delivery_Slips('2018_test.xlsx') # source file for the households
 
+sponsor_dictionary = {'food': {}, 
+                      'gifts':{}
+                     } # holds dictionary of file_id : sponsor
+                       # for each service type
+
 # open the source file and parse the households out of it
 # it determines hamper type and if there is a sponsor and if it has previously
 # been routed then it then
@@ -182,6 +187,7 @@ for line in export_file: # I am a csv object
                     # of the data for each sponsor
                     print('added {} to food sponsor {}'.format(applicant,
                                                                food_sponsor))
+                    sponsor_dictionary['food'][applicant] = food_sponsor
                     sponsored_households[food_sponsor].add_household(applicant,
                                                                      None,
                                                                      family_size,
@@ -193,6 +199,7 @@ for line in export_file: # I am a csv object
                                                                gift_sponsor))
                    # print('gift sponsors are: {}'.format(sponsored_households[gift_sponsor]))
                     #print('of type  {}'.format(type(sponsored_households[gift_sponsor])))
+                    sponsor_dictionary['gifts'][applicant] = gift_sponsor
                     sponsored_households[gift_sponsor].add_household(applicant,
                                                                      None,
                                                                      family_size,
@@ -344,13 +351,29 @@ for house in delivery_households.route_iter():
 for sponsor_group in sponsored_households.keys():
     print('operating on {}'.format(sponsor_group))
     for household in sponsored_households[sponsor_group].route_iter():
-        rt = household.return_route()
+        rt = household.return_route() # use this to get the file number
         summ = household.return_summary() # the HH info (name, address etc.)
         fam = household.family_members
-        print('attempting to write {} with family {}'.format(rt[0], fam))
-        s_report[sponsor_group].add_household(summ, fam) # sponsor report
-        ops_logger.info('Added {} to {} sponsor report'.format(rt[0],
+        f_sponsor = sponsor_dictionary['food'].get([rt[0]], False)
+        g_sponsor = sponsor_dictionary['gifts'].get(rt[0], False)
+        
+        data_base_return = route_database.prev_sponsor(rt[0])
+        # d_b_r = False or (file_id, food sponsor, gift sponsor)
+        if not data_base_return:
+        
+            print('attempting to write {} with family {}'.format(rt[0], fam))
+            s_report[sponsor_group].add_household(summ, fam) # sponsor report
+            ops_logger.info('Added {} to {} sponsor report'.format(rt[0],
                                                                sponsor_group))
+
+            route_database.add_sponsor(rt[0], f_sponsor, g_sponsor)
+        else:
+
+            _, d_food, d_gifts = data_base_return 
+            
+            print('{} has been previously sponsored'.format(rt[0]))
+            print('Food: {} Gifts: {}'.format(d_food, 
+                                              d_gifts))
 
 route_database.close_db()
 address_dbase.close_db()
