@@ -180,7 +180,7 @@ class Route_Database():
         and inserts them into the table
         '''
         db_tple = (file_id, food_sponsor, gift_sponsor)
-        self.cur.exectue("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
+        self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
                          db_tple)
         self.conn.commit()
 
@@ -279,7 +279,7 @@ class Route_Database():
         if last_rn[0]:
             return last_rn[0]
         else:
-            return 1
+            return 0
    
     def __iter__(self):
         '''
