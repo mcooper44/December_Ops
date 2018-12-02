@@ -354,7 +354,7 @@ class Visit_Line_Object():
         if fnamedict.get('Client Self-Identifies As', False):
             self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
         if fnamedict.get('Quantity', False):
-            self.visit_household_Diet = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
+            self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
         if fnamedict.get('Visit Date', False):
             self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         if fnamedict.get('Client First Name', False):
