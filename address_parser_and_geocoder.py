@@ -44,7 +44,7 @@ myapikey = config.api_key
 # they pass False or None on to the objects using them and are handled by the objects
 
 geocoding_logger = logging.getLogger('geocoder')
-geocoding_logger.setLevel(logging.ERROR)
+geocoding_logger.setLevel(logging.INFO)
 #geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 geocoding_log_formatter = logging.Formatter('%(message)s')
 geocoding_log_file_handler = logging.FileHandler(r'Logging/geocoding.log')
@@ -52,7 +52,7 @@ geocoding_log_file_handler.setFormatter(geocoding_log_formatter)
 geocoding_logger.addHandler(geocoding_log_file_handler)
 
 address_str_parse_logger = logging.getLogger('address_parser')
-address_str_parse_logger.setLevel(logging.ERROR)
+address_str_parse_logger.setLevel(logging.INFO)
 #address_str_parse_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 address_str_parse_log_formatter = logging.Formatter('%(message)s')
 address_str_parse_log_file_handler = logging.FileHandler(r'Logging/address_str_parse_functions.log')
