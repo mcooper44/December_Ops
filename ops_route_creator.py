@@ -316,8 +316,10 @@ s_report = {'DOON': Report_File('2018_sponsor_report_DOON.xlsx'),
            }
 
 
-current_rt = int(starting_rn) - 1 # to keep track of the need to print 
+current_rt = int(starting_rn)  # to keep track of the need to print 
                                     # a summary card or not
+rt_written_set = set()
+
 for house in delivery_households.route_iter():
     rt =  house.return_route() # the route info (fid, rn, rl)
     summ = house.return_summary() # the HH info (name, address etc.)
@@ -333,6 +335,7 @@ for house in delivery_households.route_iter():
     rt_str = str(rt[1]) # because the route number is an int 
     # decide if now is the right time to insert a route summay on the stack
     rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
+    
     if rt[1] > current_rt: # if we have the next route number
         if rt_card_summary: # and the summary is there
             # add a summary card because we are at the start of a new route
@@ -354,23 +357,44 @@ for sponsor_group in sponsored_households.keys():
         rt = household.return_route() # use this to get the file number
         summ = household.return_summary() # the HH info (name, address etc.)
         fam = household.family_members
-        f_sponsor = sponsor_dictionary['food'].get([rt[0]], False)
+
+        f_sponsor = sponsor_dictionary['food'].get(rt[0], False)
         g_sponsor = sponsor_dictionary['gifts'].get(rt[0], False)
         
         data_base_return = route_database.prev_sponsor(rt[0])
         # d_b_r = False or (file_id, food sponsor, gift sponsor)
+        new_info_test = False
+
+        if data_base_return:
+            _, fs, gs = data_base_return
+            # is there new information that we need to overwrite 
+            # or add to?
+            if f_sponsor and fs:
+                # there is a return from the database and there is a food
+                # sponsor
+                if f_sponsor != fs:
+                    # if the f_sponsor from teh source file and the
+                    # food sponsor from the database are not the same
+                    # over ride the database return b/c we need to make a report
+                    # with new information
+                    data_base_return = False
+                if f_sponsor and not fs:
+                    data_base_return = False
+
+            if g_sponsor and gs:
+                if g_sponsor != gs:
+                    data_base_return = False
+                if g_sponsor and not gs:
+                    data_base_return = False
+
         if not data_base_return:
-        
             print('attempting to write {} with family {}'.format(rt[0], fam))
             s_report[sponsor_group].add_household(summ, fam) # sponsor report
             ops_logger.info('Added {} to {} sponsor report'.format(rt[0],
                                                                sponsor_group))
-
             route_database.add_sponsor(rt[0], f_sponsor, g_sponsor)
         else:
-
             _, d_food, d_gifts = data_base_return 
-            
             print('{} has been previously sponsored'.format(rt[0]))
             print('Food: {} Gifts: {}'.format(d_food, 
                                               d_gifts))
