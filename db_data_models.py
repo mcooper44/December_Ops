@@ -331,6 +331,8 @@ class Visit_Line_Object():
         self.visit_Address_Line2 = None
         self.visit_City = visit_line[fnamedict['City']]
         self.visit_Postal_Code = None
+        self.lat = None # latitude
+        self.lng = None # longitude
         self.visit_Household_ID = None  # Household ID - the unique file number used to identify households
         self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
         self.visit_household_Diet = None # Dietary Conditions in a readable form
@@ -365,6 +367,10 @@ class Visit_Line_Object():
             self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
         if fnamedict.get('Line 2', False):
             self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
+        if fnamedict.get('Latitude', False):
+            self.lat = visit_line[fnamedict['Latitude']]
+        if fnamedict.get('Longitude', False):
+            self.lng = visit_line[fnamedict['Longitude']]
         elif not fnamedict.get('Line 2', False): 
             # if the l1 and l2 are comma
             # separated then we can split
@@ -417,6 +423,18 @@ class Visit_Line_Object():
             return address_3tuple
         else:
             return (False, False, False)
+
+    def get_coordinates(self):
+        '''
+        returns a tuple of (lat, lng) 
+        or False if coordinates 
+        were not provided
+        '''
+        coordinates = (self.lat, self.lng)
+        if all(coordinates):
+            return coordinates
+        else:
+            return False
 
     def get_HH_summary(self):
         '''
