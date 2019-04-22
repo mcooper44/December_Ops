@@ -321,7 +321,7 @@ class Delivery_Household():
     '''
 
     def __init__(self, file_id, hh_id, family_size, lat, lng, summary, hood,
-                 postal = None, rn=None, rl=None):
+                 postal=None, rn=None, rl=None):
         self.main_app_ID = file_id
         self.household_ID = hh_id
         self.hh_size = family_size
@@ -330,10 +330,10 @@ class Delivery_Household():
         self.route_number = rn
         self.route_letter = rl
         self.neighbourhood = hood
-        self.postal = postal # typically not used but may be of interest to
+        self.postal = summary.postal # typically not used but may be of interest to
                              # partners
         self.summary = summary # route card data with address et al. 
-                               # created by the visit line object
+                               # created by the visit line object .get_HH_summary()
         self.family_members = None # family members in tuples
     
     def return_hh(self):
@@ -379,14 +379,14 @@ class Delivery_Household():
     
     def return_route(self):
         '''
-        returns a tuple of (file id, routing number, letter)
+        returns a tuple of (file id, routing number, letter, neighbourhood)
 
         This method is useful at various points when iterating over
         Delivery_Household() objects for database inserts, and for using logic
         to decide if it is necessary to add a route card to the card stack or
         insert a summary and route binder entry.
         '''
-        return (self.main_app_ID, self.route_number, self.route_letter)
+        return (self.main_app_ID, self.route_number, self.route_letter, self.neighbourhood)
     
     def return_summary(self):
         '''
@@ -395,10 +395,11 @@ class Delivery_Household():
         route card
         
         returns the HH summary.  Data needed to put on the route card like
-        name, address, etc. in the form of a named tuple
-        (applicant, fname, lname, fam size, phone, email, address1, address2,
-        city, diet)
-                    
+        name, address, etc. in the form of a named tuple with labels
+        'applicant, fname, lname, size, phone, email, address, 
+        address2, city, postal, diet'
+        this named tuple is created by the .get_HH_summary() method 
+        in the Visit_Line_Object() class found in db_data_models
         '''
         return self.summary
 
@@ -445,11 +446,11 @@ class Delivery_Household_Collection():
                                   # cards that sit at the head of the route
                                   # in the card stack
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
-                      hood, rn=None, rl=None):
+                      hood, postal=None, rn=None, rl=None):
         '''
         add a household object to the .hh_dict attribute
         '''
-        self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size, lat, lng, summary, hood, rn, rl)
+        self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size, lat, lng, summary, hood, postal, rn, rl)
 
     def add_hh_family(self, applicant, familytples):
         '''
