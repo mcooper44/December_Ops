@@ -465,13 +465,6 @@ class Visit_Line_Object():
         '''
         return (self.main_applicant_Ethnicity, self.main_applicant_Self_Identity)
 
-    def has_family(self):
-        '''
-        returns boolian value indicating False for single people, True for families
-        '''
-        
-        return int(self.visit_household_Size) > 1
-
     def get_main_applicant(self):
         '''
         returns a tuple of information in the order necessary to setup a Person()
@@ -501,6 +494,23 @@ class Visit_Line_Object():
                                                                 sub_slice_len,
                                                                 h_d)
         return family_members
+
+    def get_add_city_app(self):
+        '''
+        returns tuple of (address, city, main_applicant)
+        '''
+        return (self.visit_Address, self.visit_City, self.main_applicant_ID)
+
+    def get_household_type(self, relationship_collection):
+        '''
+        returns a guess as to the household type
+        single person
+        single parent etc.
+        :param: relationshiop_collection is a tuple of relationships extracted from the
+        .get_family_members_list() method
+        '''
+        household_classification = parse_functions.household_classifier(relationship_collection)
+        return household_classification 
 
     def is_hamper(self):
         '''
@@ -542,16 +552,12 @@ class Visit_Line_Object():
                     toy_provider = sponsor
         return (sponsored, food_provider, toy_provider)
 
-    def get_household_type(self, relationship_collection):
+    def has_family(self):
         '''
-        returns a guess as to the household type
-        single person
-        single parent etc.
-        :param: relationshiop_collection is a tuple of relationships extracted from the
-        .get_family_members_list() method
+        returns boolian value indicating False for single people, True for families
         '''
-        household_classification = parse_functions.household_classifier(relationship_collection)
-        return household_classification 
+        
+        return int(self.visit_household_Size) > 1
 
     def __str__(self):
         '''
