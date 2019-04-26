@@ -499,6 +499,7 @@ class Visit_Line_Object():
         '''
         returns tuple of (address, city, main_applicant)
         '''
+        print('{} {} {}'.format(self.visit_Address, self.visit_City, self.main_applicant_ID))
         return (self.visit_Address, self.visit_City, self.main_applicant_ID)
 
     def get_household_type(self, relationship_collection):

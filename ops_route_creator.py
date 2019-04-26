@@ -399,6 +399,8 @@ for sponsor_group in sponsored_households.keys():
             print('Food: {} Gifts: {}'.format(d_food, 
                                               d_gifts))
 
+
+# HOUSEKEEPING 
 route_database.close_db()
 address_dbase.close_db()
 slips.close_worksheet()
