@@ -302,7 +302,7 @@ class Coordinates():
         if the function returns None some non fatal error 
         has been returned by google - better luck next time?
         '''
-        address_tpl = namedtuple('address_tpl', 'g_address_str,house_number,street,city,lat,lng')
+        address_tpl = namedtuple('address_tpl', 'g_address_str, house_number, street, city, lat, lng')
         if address in self.coordinates:
             return self.coordinates[address]
         else:
@@ -330,6 +330,7 @@ class Coordinates():
                             lng)
                     self.coordinates[address] = response_tple
                     if all(response_tple):
+
                         return response_tple
                     else:
                         return None
@@ -407,28 +408,33 @@ class SQLdatabase():
             self.conn = sqlite3.connect(name)
             self.cursor = self.conn.cursor()
             if create:
-                self.cursor.execute("""CREATE TABLE IF NOT EXISTS address (source_street text,
-                                                                         source_city text,
-                                                                         lat real,
-                                                                         lng real)""")
+                self.cursor.execute("""CREATE TABLE IF NOT EXISTS address (source_street TEXT,
+                                                                         source_city TEXT,
+                                                                         lat REAL,
+                                                                         lng REAL)""")
                 self.conn.commit()
                 self.cursor.execute("""CREATE TABLE IF NOT EXISTS google_result 
-                                    (lat real,
-                                     lng real,
-                                     google_full_str text,
-                                     google_house_num text,
-                                     google_street text,
-                                     google_city text,
-                                     unit_flag boolean,
-                                     dir_flag boolean,
-                                     dir text,
-                                     post_type boolean,
-                                     post text)""")
+                                    (lat REAL,
+                                     lng REAL,
+                                     google_full_str TEXT,
+                                     google_house_num TEXT,
+                                     google_street TEXT,
+                                     google_city TEXT,
+                                     unit_flag BOOLEAN,
+                                     dir_flag BOOLEAN,
+                                     dir TEXT,
+                                     post_type BOOLEAN,
+                                     post TEXT)""")
                 self.conn.commit()
-                self.cursor.execute("""CREATE TABLE IF NOT EXISTS errors (source_street text,
-                                                                         source_city text,
-                                                                         lat real,
-                                                                         lng real)""")
+                self.cursor.execute("""CREATE TABLE IF NOT EXISTS errors (source_street TEXT,
+                                                                         source_city TEXT,
+                                                                         lat REAL,
+                                                                         lng REAL,
+                                                                         city BOOLEAN,
+                                                                         dir_type BOOLEAN,
+                                                                         post_type BOOLEAN,
+                                                                         parse_error BOOLEAN,
+                                                                         use_google BOOLEAN)""")
                 self.conn.commit()
         except:
             print('error with database connection')
@@ -443,14 +449,16 @@ class SQLdatabase():
             print('establish connection first')
             return False
         if table == 'address':
-            self.cursor.execute('INSERT INTO address VALUES (?,?,?,?)', values)
+            self.cursor.execute('INSERT OR IGNORE INTO address VALUES (?,?,?,?)', values)
             self.conn.commit()
+
         if table == 'google_result':
             self.cursor.execute("""INSERT OR IGNORE INTO google_result VALUES
                                 (?,?,?,?,?,?,?,?,?,?,?)""", values)
             self.conn.commit()
+
         if table == 'errors':
-            self.cursor.execute('INSERT INTO errors VALUES (?,?,?,?)', values)
+            self.cursor.execute('INSERT OR IGNORE INTO errors VALUES (?,?,?,?,?,?,?,?,?)', values)
             self.conn.commit()
         
     def is_in_db(self, parsed_address, source_city):
@@ -505,24 +513,35 @@ class SQLdatabase():
         searches the address and then errors table and if it finds an entry it returns the lat, lng
         returns a named tuple with attributes 'lat, lng, source, exists'
         '''
-        Coord_package = namedtuple('Coord_package', 'lat, lng, source, exists')
+        Coord_package = namedtuple('Coord_package', 'lat, lng, source, exists, status')
+        result = None
+
         self.cursor.execute("SELECT lat, lng FROM address WHERE source_street=? AND source_city=?",(input_address, input_city,))
         result = self.cursor.fetchone()
+              
         if result:
             if give_source:
-                return Coord_package(*result, 'address', True)
+                return Coord_package(*result, 'address', True, 'valid')
             else:
-                return result
+                return Coord_package(*result, None, True, 'valid')
         else:
             self.cursor.execute("SELECT lat, lng FROM errors WHERE source_street=? AND source_city=?",(input_address, input_city,))
             error_result = self.cursor.fetchone()
             if error_result:
                 if give_source:
-                    return Coord_package(*error_result, 'errors', True)
+                    return Coord_package(*error_result, 'errors', True, 'valid')
                 else:
-                    return error_result
+                    return Coord_package(*error_result, None, True, 'valid')
             else:
-                return (False, False)
+                return Coord_package(None, None, None, False, 'no_results')
+
+    def in_google_tab(self, lat, lng):
+        self.cursor.execute("SELECT lat, lng FROM google_result WHERE lat=? AND lng=?", ((lat, lng,)))
+        result = self.cursor.fetchone()
+        if result:
+            return True
+        else:
+            return False
 
     def get_address(self, lat, lng):
         '''
@@ -599,6 +618,7 @@ class Source_Address():
                                  'boundary_error': False, # invalid City  
                                     }
         self.go_to_next_step = True
+        
 
     def deconstruct_view(self, address_parser):
         '''
@@ -658,7 +678,7 @@ class Database_View():
     def __init__(self, db):
         self.db = db
 
-    def in_db(self, address, city, bool_flag=True):
+    def in_db(self, address, city, bool_flag=False):
         '''
         wraps around the call to see if a given address, city
         has previously been coded
@@ -667,19 +687,24 @@ class Database_View():
         else returns tuple (lat, lng, source_table) 
         or False if no results
         '''
+        Fail_package = namedtuple('Coord_package', 'lat, lng, source, exists, status')
+
         try: # look for database result
-            dbr = self.db.get_coordinates(address, city, give_source=True)
+            dbr = self.db.get_coordinates(address, city)
             # a named tuple
             if bool_flag: # if we only want to know if it's been logged
                 return dbr.exists
             else: # if we want to know lat, lng and source table
                 if dbr.exists:
-                    return (dbr.lat, dbr.lng, dbr.source)
+                    return dbr
                 else:
-                    print('there is an error')
-                    return (False, False, False)
+                    print('address is not in database')
+                    return dbr # (None, None, None, False, 'no_results')
         except:
-            return False
+            return Fail_package(None, None, None, False, 'failed')
+    
+    def google_tab_entry(self, lat, lng):
+        return self.db.in_google_tab(lat, lng) # T | F
 
     def extract_flags(self, lat, lng):
         return self.db.pull_flags_at(lat, lng)
@@ -696,30 +721,28 @@ class Database_View():
         print(f'attempting to write {input_tuple} to db in the {table} table')
         try:
             self.db.insert_into_db(table, input_tuple)
-            return True
+
         except:
-            print('could not write to dbase')
-            return False
+            print(f'could not write {input_tuple} to dbase table {table}')
 
     def set_unit_flag(self, lat, lng):
         '''
         wraps the call to set the unit flag True in the database address table
         '''
         self.db.set_unit_flag_in_db(lat, lng)
-
-     
+    
 
 class Geocode_View():
     '''
     Provides methods to pass an address in and return geocodes either from 
     google or the database and a way to interrogate flags
     '''
-    def __init_pass(self, input_a, input_c, c_m):
+    def __init__(self, input_a, input_c, c_m):
         self.input_address = input_a
         self.input_city = input_c
         self.c_m = c_m
         self.address_for_api = f'{input_a} {input_c} Ontario, Canada'
-        self.coding_result = None
+        self.coding_result = None # named tuple 'g_address_str,house_number,street,city,lat,lng'
         self.lat = None
         self.lng = None
         self.flags = {'at_limit': False, 'no_result': False, 'no_errors': False, 'no_attempt': True} 
@@ -732,7 +755,7 @@ class Geocode_View():
         run with the address, city as inputs
         sets error flags as appropriate and lat, lng values
         '''
-        print(f'trying to geocode {self.input_address} {self.input_city}')
+        #print(f'trying to geocode {self.input_address} {self.input_city}')
          
         self.coding_result = self.c_m.lookup(self.address_for_api)
         self.flags['no_attempt'] = False
@@ -743,6 +766,8 @@ class Geocode_View():
             # we are at the limit - need to cool down
             self.flags['at_limit'] = True
         if self.coding_result:
+            # named tuple
+            print(f'got {self.coding_result.lat} {self.coding_result.lng}')
             self.lat = self.coding_result.lat
             self.lng = self.coding_result.lng
             if not any(self.flags.values()):
@@ -785,28 +810,31 @@ class line_obj_parser():
         self.google_post_types = None     
         self.post_type_tp = None
         self.coding_result = None
-        self.gc_attempt = False
         self.cities_valid_and_matching = False
-        self.can_proceed_to_gc = False # should try and geocode?
-        self.rejected = False                       
-        self.google_result = False
+        self.can_proceed_to_gc = False # should try and geocode?                    
         self.pt_eval_errors = None # named tuple (status: 'valid'|'failed', error_free: T|F, sn_error, dt_error, fl_error)
         self.done_b4 = False
         self.in_table = None # returned from poll_db
-        self.db_flags = None
+        self.db_flags = None # flags extracted from database via .DBV.extract_flags()
         self.lat = None
         self.lng = None
         self.should_write = False # should write to address table
         self.should_write_g = False # should write to google table
         self.should_write_uf = False # set unit flag in database
         self.should_write_et = False # write to error table
+        self.google_pinged = False # did we hit google
+        self.google_db_entry = False # is there an existing entry in the db?
         self.SAO = None # Source Address Object View
         self.GOO = None
         # SETUP OBJECTS
         self.DBV = Database_View(dbase)
         self.address, self.city, self.applicant = self.line_object.get_add_city_app()
         self.SAO = Source_Address(self.address, self.city, self.applicant)
-        
+
+    def __str__(self):
+        return f"""source address: {self.address} source city: {self.city} applicant: {self.applicant}\nflags: {self.flags}\nIn error or address: {self.done_b4} In google_result: {self.google_db_entry}\n"""
+
+
     def deconstruct(self, add_parser):
         '''
         pulls the address appart and tries to 
@@ -837,16 +865,25 @@ class line_obj_parser():
         else: return False
         '''
         # database view named tuple from .in_db call
-        dbv_nt = self.DBV.in_db(self.address, self.city, bool_flag=False)
+        print(f'polling database with {self.simplified_address} {self.city}')
+        dbv_nt = self.DBV.in_db(self.simplified_address, self.city, bool_flag=False)
+
         if dbv_nt:
+            print(dbv_nt)
             if dbv_nt.exists:
                 self.lat = dbv_nt.lat
                 self.lng = dbv_nt.lng 
                 self.done_b4 = True
                 self.in_table = dbv_nt.source
+                print('in database')
                 return True
         else:
+            self.done_b4 = False
+            self.can_proceed_to_gc = True
+            print('not in database')
             return False
+            
+                
 
     def try_gc_api(self):
         '''
@@ -857,9 +894,14 @@ class line_obj_parser():
         '''
         print(f'trying to geocode {self.simplified_address} {self.city}')
         if self.can_proceed_to_gc:
-            self.GOO = Geocode_View(self.SAO.simplified_address, self.city, self.coordinate_man)
+            self.GOO = Geocode_View(self.simplified_address, self.city, self.coordinate_man)
             self.GOO.gc_address()
             self.flags.update(self.GOO.flags)
+            self.lat = self.GOO.lat
+            self.lng = self.GOO.lng
+            self.should_write_g = True # we have a gc result, so we should write it to db
+            self.google_pinged = True
+            self.google_db_entry = self.DBV.google_tab_entry(self.lat, self.lng) # see if there is a database result somehow
             return True
         else:
             print('cannot proceed to geocoding step - flag not set True')
@@ -872,13 +914,14 @@ class line_obj_parser():
         '''
         # IS DATABASE MISSING A UNIT FLAG   
         if self.SAO.flagged_unit and self.done_b4: # if the input string has a unit number and we have already coded it
-            self.db_flags = self.DBV.extract_flags(self.lat, self.lng) # and use that to get the unit flag from database
+            self.db_flags = self.DBV.extract_flags(self.GOO.lat, self.GOO.lng) # and use that to get the unit flag from database
             if self.db_flags.valid and not self.db_flags.unit_flag: # if the input string has one, but the database does not, we need to update the database
                 print(f'unit flag was missing from {self.address} in the database.')
                 self.should_write_uf = True
                 #dbase.set_unit_flag_in_db(lat, lng)
+       
         # DIFF GOOGLE RESULT WITH SOURCE ADDRESS
-        if self.GOO.coding_result:
+        if self.google_pinged:
             self.flags['geocode_attempt'] = True              
             g_city = self.GOO.coding_result.city
             google_address = f'{self.GOO.coding_result.house_number} {self.GOO.coding_result.street}'
@@ -895,19 +938,16 @@ class line_obj_parser():
         # SET FLAGS TO GUIDE DB WRITE LOGIC
         
         if not self.done_b4:
+            # do the cities match, + were there any errors in street type, direction or parse errors
             go_states = (self.cities_valid_and_matching, self.pt_eval_errors.error_free)
             if all(go_states):
                 self.should_write = True
-        # INSERT LOGIC HERE TO WRITE TO GOOGLE TABLE
-        # INSERT LOGIC HERE TO WRITE TO ERROR TABLE
+            else:
+                self.should_write_et = True        
 
     def attempt_db_write(self):
         '''
-        assuming no issues, write the address to the db
-        otherwise write to logs, and if we still have a valid google result
-        code it in the database to avoid unecessary api pings afterwards
-        if we have errors with an address note that to avoid going through this 
-        process again and making api pings that go nowhere
+        review flags and write the values to the db tables that are appropriate
 
         LOGIC:
         do we need to set a unit flag?
@@ -920,65 +960,70 @@ class line_obj_parser():
             write in the error table
 
         '''
+        
         print('attempting to write to db')
+        
+        base_tuple = (self.simplified_address, 
+                      self.city, 
+                      self.lat,
+                      self.lng)
+        print(f'base tuple is {base_tuple}')
+        wf = (self.should_write_uf,
+              self.should_write,
+              self.should_write_g,
+              self.should_write_et)
+
+        print('unit flag: {} address: {} google: {} errors: {}'.format(*wf))
+        print(f'should write {sum(wf)} times')
+
+
         if self.should_write_uf: # if the diff says to set unit flag in db b/c it is missing
-            self.DBV.set_unit_flag(self.lat, self.lng)
+            self.DBV.set_unit_flag(self.lat, self.lng)            
         
         if self.should_write: # not in database already - no errors
-            base_tuple = (self.simplified_address, 
-                           self.city, 
-                           self.lat,
-                           self.lng)
-            self.DBV.write_db(base_tuple, 'address')
-        # ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
-        if self.should_write_g:
-                 
-            flagged_dir, dir_str = self.g_dir_type_tp # True/False, None or first letter of dir_type
-            flagged_post_type, pt_str = self.g_post_type_tp # True/False, None or first letter of post_type 
-            google_result = None
-            self.DBV.write_db(google_result, 'google')
-               
-            #google_result = (self.coding_result.lat, 
-            #        self.coding_result.lng,
-            #        self.coding_result.g_address_str,
-            #        self.coding_result.house_number,
-             #       self.coding_result.street,
-             #       self.coding_result.city,
-            #        self.flagged_unit, # did we identify the building has units?
-             #       flagged_dir, # NSEW?
-             #       dir_str, # something from [N, S, E, W]?
-             #       flagged_post_type, # street, drive etc. 
-             #       pt_str # s, d etc. 
-             #       )
-            if self.should_write_et:
-                self.DBV.write_db(base_tuple, 'errors')
+            self.DBV.write_db(base_tuple, 'address')            
 
-'''
-                    dbase.insert_into_db('google_result', google_result)
-            else:
-                self.rejected = True # We can't log this as a correct address
-                post_type_logger(self.applicant, self.SAO.source_post_types, self.g_post_type_tp)
-        else:
-                self.rejected = True # we can't log this as a correct address
-                post_type_logger(self.applicant, self.SAO.source_post_types,
-                                    self.g_post_type_tp)
-                    
-    else:
-        self.rejected = True # we can't log this as a correct address
-        two_city_logger(self.applicant, self.city, self.coding_result.city)
-    
-    if not self.error_free: # < - replace this with other logic
-        # so, we coded a result, but after doing that we identified errors. To avoid
-        # geocoding this address again we should drop it in the db for future 
-        # reference and use
-        if not dbase.lat_lng_in_db(self.coding_result.lat, self.coding_result.lng):
-            if google_result:
-                dbase.insert_into_db('google_result', self.google_result)
-                if self.rejected:
-                    # to avoid handling this address again we will save it in the error table
-                    # and log it as having an error later if we try and code it again
-                    dbase.insert_into_db('errors', address_dbase_input)   
-'''
+        # ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
+        if self.should_write_g and not self.google_db_entry: # flag set when a valid gc result returns in the try_gc_api method
+            g_dir_type_tp, g_post_type_tp, _ = self.google_post_types     
+            flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
+            flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type 
+            print(f'coding result = {self.GOO.coding_result}')                        
+            google_result = (self.GOO.lat, 
+                    self.GOO.lng,
+                    self.GOO.coding_result.g_address_str, # full string with Prov, Pcode et al.
+                    self.GOO.coding_result.house_number,
+                    self.GOO.coding_result.street,
+                    self.GOO.coding_result.city,
+                    self.SAO.flagged_unit, # did we identify the building has units?
+                    flagged_dir, # NSEW? T | F
+                    dir_str, # something from [N, S, E, W]?
+                    flagged_post_type, # street, drive etc. T | F
+                    pt_str # s, d etc. 
+                    )
+            print(f'google result = {google_result}')
+            self.DBV.write_db(google_result, 'google_result')            
+            
+        if self.should_write_et: # set in the diff_results method
+            city_error = False # cities don't match
+            dir_error = False # N vs S
+            post_error = False # St vs Ave
+            parse_error = False # issues with the usa address tags
+            use_google = False # in production overwrite source with google?
+            if not self.cities_valid_and_matching:
+                city_error = True
+            if not self.pt_eval_errors.error_free:
+                # pt_eval is a named tuple
+                # 'status, error_free, sn_error, dt_error, fl_error'
+                dir_error = self.pt_eval_errors.sn_error
+                post_error = self.pt_eval_errors.dt_error
+                parse_error = self.pt_eval_errors.fl_error
+
+            e_tpl = (*base_tuple, city_error, dir_error, post_error, parse_error, use_google)
+            self.DBV.write_db(e_tpl, 'errors')
+        
+
+
 if __name__ == '__main__':
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
@@ -1002,14 +1047,14 @@ if __name__ == '__main__':
         if not lop.poll_db(): # poll db - set lat,lng or...
             lop.try_gc_api() # attempt to geocode
         lop.diff_results() # compare source + db as well as source + google - set error flags
-        if not lop.done_b4: # not in the database already?
-            #lop.set_address_flags()
-            if lop.should_write:
-                try:
-                    lop.attempt_db_write()
-                except:
-                    print('could not write to db.')
-                    error_stack['dbase_write'] = True
-        # insert logging call here
+        try:
+            lop.attempt_db_write()
+        except:
+            print('could not write to db.')
+            error_stack['dbase_write'] = True
+
+        print(lop)
+        print('############')
+
     dbase.close_db()
     print('proccess complete on source file {}'.format(config.target))

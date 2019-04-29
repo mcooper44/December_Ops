@@ -113,10 +113,12 @@ def evaluate_post_types(source_types, db_types):
         #print('source types {}'.format(source_types))
         db_nt_tpl, db_dt_tpl, db_e_flag = db_types        
         #print('db types {}'.format(db_types))
-        if source_nt_tpl != db_nt_tpl:
+        if source_nt_tpl != db_nt_tpl: # Str != Ave
             sn_error = True
-        if source_dt_tpl != db_dt_tpl:
+        if source_dt_tpl != db_dt_tpl:  # North != South
             dt_error = True
+        
+        # indicates the presence of an unmapped or potentially wrong usadress tag outcome
         if s_e_flag:
             fl_error = True
         if db_e_flag:
