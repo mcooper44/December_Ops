@@ -10,6 +10,7 @@
 
 import usaddress
 import logging
+from collections import namedtuple
 
 address_audit_log = logging.getLogger(__name__)
 address_audit_log.setLevel(logging.ERROR)
@@ -56,14 +57,10 @@ def parse_post_types(address):
     eval_flag = False # is there a mismatch in the pt or dir keys?  An error or an outlier? Flag for followup
     street_key = None # what is the first letter of street type?
     dir_key = None # what is the first letter of the direction tag e.g. north?
-    
     tagged_address = usaddress.tag(address)
-    
     tags, type_tag = tagged_address
     if type_tag == 'Street Address':
-    
         if 'StreetNamePostType' in tags.keys():
-                
             tag_value = tags['StreetNamePostType']
             street_key = tag_value[0].lower() # Street becomes s
             if street_key in street_types.keys():
@@ -71,12 +68,11 @@ def parse_post_types(address):
                 if tvalue in street_types[street_key]:
                     streetnameptype = True
                 else:
-                    eval_flag = True 
+                    eval_flag = True
             else:
-                eval_flag = True            
+                eval_flag = True
 
-        if 'StreetNamePostDirectional' in tags.keys():
-                
+        if 'StreetNamePostDirectional' in tags.keys():    
             tag_value = tags['StreetNamePostDirectional']
             dir_key = tag_value[0].lower()
             if dir_key in directions.keys():
@@ -87,12 +83,11 @@ def parse_post_types(address):
                     eval_flag = True 
             else:
                 eval_flag = True
-        
+        return ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
+		
     else:
         print('attempting to parse post types. Got invalid tag response for {}'.format(address))
-        return (None, None, True)
-    
-    return ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
+        return (None, None, True)    
 
 def evaluate_post_types(source_types, db_types):
     '''
@@ -100,32 +95,43 @@ def evaluate_post_types(source_types, db_types):
     source_types = the address we wish to compare against an address from the database
     db_types = the result of passing an address from the database to to parse_post_types
 
-    returns a tuple of boolean values (street name error, direction error, mismatch flag error)
+    returns a named tuple of boolean values (street name error, direction error, mismatch flag error)
+	with a status tag = valid or failed
     True indicates an error, False indicates there is no mismatch and therefore no error
     
-    (street name type errors, direction type errors, a name or dir dictionary matching error)
+    (street name type errors, direction type errors, eval flag in one or both)
     '''
+    sn_error = False # street name error
+    dt_error = False # direction type error
+    fl_error = False # eval_flag mismatch
+    #print('input types {} {}'.format(source_types, db_types))
+    PT_package = namedtuple('Pt_package', 'status, error_free, sn_error, dt_error, fl_error')
     try:
         source_nt_tpl, source_dt_tpl, s_e_flag = source_types
-        db_nt_tpl, db_dt_tpl, db_e_flag = db_types
-
-        sn_error = False # street name error
-        dt_error = False # direction type error
-        fl_error = False # eval_flag mismatch
-
-        if source_nt_tpl != db_nt_tpl:
+        #print('source types {}'.format(source_types))
+        db_nt_tpl, db_dt_tpl, db_e_flag = db_types        
+        #print('db types {}'.format(db_types))
+        if source_nt_tpl != db_nt_tpl: # Str != Ave
             sn_error = True
-        if source_dt_tpl != db_dt_tpl:
+        if source_dt_tpl != db_dt_tpl:  # North != South
             dt_error = True
+        
+        # indicates the presence of an unmapped or potentially wrong usadress tag outcome
         if s_e_flag:
             fl_error = True
         if db_e_flag:
             fl_error = True
-
-        return (sn_error, dt_error, fl_error)
-   
+        
+        e_state = (sn_error, dt_error, fl_error)
+       
+        if not any(e_state):
+            return  PT_package('valid', True, *e_state)
+        else:
+            return PT_package('valid', False, *e_state)
     except:
         print('Error matching post types source v. google')
+        return PT_package('failed', False, True, True, True)
+		
 
 def flag_checker(tpl_to_check, tpl_to_check_against):
     '''
@@ -138,7 +144,6 @@ def flag_checker(tpl_to_check, tpl_to_check_against):
     missing_unit = False
     missing_dir = False
     missing_pt = False
-
     
     if tpl_to_check != tpl_to_check_against:
         
@@ -265,6 +270,22 @@ def post_type_logger(applicant, source_post_types, post_types_from_dbase):
     if any(post_type_evaluation): # if any of the flags were mismatched       
         write_to_logs(applicant, post_type_evaluation, 'mismatch')
 
+def letter_match(source_city, g_city):
+    if source_city and g_city:
+        sc = source_city.lower()
+        gc = g_city.lower()
+        # b/c there are only 2 valid cities, we can see if the first letters
+        # are the same to test equivalence.
+        print('####################')
+        print(f'Source is: {source_city} G is: {g_city}')
+        print('####################')
+        if sc[0] == gc[0]: 
+            return True # they both match
+        else:
+            return False # they don't match
+    else:
+        return False
+
 def two_city_parser(source_city, g_city):
     '''
     this function determines if the source and google city checks
@@ -274,20 +295,7 @@ def two_city_parser(source_city, g_city):
     '''
     source_value = boundary_checker(source_city) # either True or False
     google_value = boundary_checker(g_city)
-
-    def letter_match(source_city, g_city):
-        if source_city and g_city:
-            sc = source_city.lower()
-            gc = g_city.lower()
-            # b/c there are only 2 valid cities, we can see if the first letters
-            # are the same to test equivalence.
-            if sc[0] == gc[0]: 
-                return True # they both match
-            else:
-                return False # they don't match
-        else:
-            return False
-    
+  
     # matching, source is valid, google is valid
     return (letter_match(source_city, g_city), source_value, google_value)
        

@@ -43,19 +43,20 @@ class Delivery_Slips():
         Adds a household to the route card stack in the xlsx file 
         
 
-        route (file ID, Route Number, Route Letter) is from the
+        route (file ID, Route Number, Route Letter, Neighbourhood) is from the
         Delivery_Household() class .return_route() method
         
         summary is the named tuple held in the Delivery_Household() class
         and returned by the .return_summary() method. It is orginally created 
         by the visit line object and contains the following 
-        (applicant, fname,lname,size,phone,email,address,address2,city,diet)
+        (applicant, fname,lname,size,phone,email,address,address2,city,postal,diet)
         '''
         
-        _, rn, rl = route # file_id, rn, rl
+        _, rn, rl, nhood = route # file_id, rn, rl, neighbourhood
 
         diet = summary.diet
         phone = itr_joiner(summary.phone)
+        
         
         # write client info to worksheet
         self.worksheet.write('A{}'.format(self.l_n[1]), '# of Persons:')
@@ -63,13 +64,15 @@ class Delivery_Slips():
         self.worksheet.write('C{}'.format(self.l_n[1]), summary.fname)    #  first name
         self.worksheet.write('D{}'.format(self.l_n[1]), summary.lname)    # last name
         self.worksheet.write('C{}'.format(self.l_n[5]), 'PHONE: {}'.format(phone)) # write phone
-                                                                # number str 
+                                                                                   # number str 
         self.worksheet.write('C{}'.format(self.l_n[2]), summary.address) # address
-        self.worksheet.write('C{}'.format(self.l_n[3]), summary.address2)
-        self.worksheet.write('A{}'.format(self.l_n[3]), 'CHRISTMAS ID#') 
+        self.worksheet.write('C{}'.format(self.l_n[3]), summary.address2) # address 2
+        self.worksheet.write('A{}'.format(self.l_n[3]), 'CHRISTMAS ID#')
+        self.worksheet.write('A{}'.format(self.l_n[4]), 'LOG BINDER #')  
+        self.worksheet.write('A{}'.format(self.l_n[4]), 'LOG PAGE #')
         self.worksheet.write('B{}'.format(self.l_n[3]), summary.applicant) # ID number
-        self.worksheet.write('C{}'.format(self.l_n[4]), summary.city) # city
-        self.worksheet.write('D{}'.format(self.l_n[4]), '') # postal code
+        self.worksheet.write('C{}'.format(self.l_n[4]), '{},  {}'.format(summary.city, summary.postal)) # city, postal code
+        self.worksheet.write('F{}'.format(self.l_n[4]), 'Neighbourhood {}'.format(nhood)) # Neighbourhood
         self.worksheet.write('A{}'.format(self.l_n[6]), 'SPECIAL DIET: {}'.format(diet))
         self.worksheet.write('H{}'.format(self.l_n[1]), 'ROUTE:')
         self.worksheet.write('I{}'.format(self.l_n[1]), rn)
