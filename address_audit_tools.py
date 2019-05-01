@@ -87,9 +87,7 @@ def parse_post_types(address):
 		
     else:
         print('attempting to parse post types. Got invalid tag response for {}'.format(address))
-        return (None, None, True)
-    
-    
+        return (None, None, True)    
 
 def evaluate_post_types(source_types, db_types):
     '''
@@ -272,6 +270,22 @@ def post_type_logger(applicant, source_post_types, post_types_from_dbase):
     if any(post_type_evaluation): # if any of the flags were mismatched       
         write_to_logs(applicant, post_type_evaluation, 'mismatch')
 
+def letter_match(source_city, g_city):
+    if source_city and g_city:
+        sc = source_city.lower()
+        gc = g_city.lower()
+        # b/c there are only 2 valid cities, we can see if the first letters
+        # are the same to test equivalence.
+        print('####################')
+        print(f'Source is: {source_city} G is: {g_city}')
+        print('####################')
+        if sc[0] == gc[0]: 
+            return True # they both match
+        else:
+            return False # they don't match
+    else:
+        return False
+
 def two_city_parser(source_city, g_city):
     '''
     this function determines if the source and google city checks
@@ -281,20 +295,7 @@ def two_city_parser(source_city, g_city):
     '''
     source_value = boundary_checker(source_city) # either True or False
     google_value = boundary_checker(g_city)
-
-    def letter_match(source_city, g_city):
-        if source_city and g_city:
-            sc = source_city.lower()
-            gc = g_city.lower()
-            # b/c there are only 2 valid cities, we can see if the first letters
-            # are the same to test equivalence.
-            if sc[0] == gc[0]: 
-                return True # they both match
-            else:
-                return False # they don't match
-        else:
-            return False
-    
+  
     # matching, source is valid, google is valid
     return (letter_match(source_city, g_city), source_value, google_value)
        
