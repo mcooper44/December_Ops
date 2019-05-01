@@ -247,7 +247,7 @@ class AddressParser():
         a tuple of  ('unit number street', error_flags) or False
         '''
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
-        if address not in key_list and address is not False:            
+        if address not in key_list and address is not (False or None):            
             worked, in_put, out_put  = full_address_parser(address, file_id)
             if worked:                
                 self.parsed[in_put] = out_put # tuple of (parsed_address, flags)
@@ -258,8 +258,8 @@ class AddressParser():
         else:
             if address in self.errors:
                 return False
-            elif address == False:
-                return address
+            elif address == (False or None):
+                return False
             else:
                 return self.parsed[address]
     
@@ -310,6 +310,10 @@ class Coordinates():
         has been returned by google - better luck next time?
         '''
         address_tpl = namedtuple('address_tpl', 'g_address_str, house_number, street, city, lat, lng')
+        if address is None:
+            print('blank address provided to Coordinates.lookup() method')
+            return address
+        
         if address in self.coordinates:
             return self.coordinates[address]
         else:
@@ -473,6 +477,7 @@ class SQLdatabase():
         '''
         this method checks to see if an address has been logged in the database already.
         First it looks in the address and then the error table
+        for reference see:
         https://stackoverflow.com/questions/25387537/sqlite3-operationalerror-near-syntax-error
         sql always kills me on this and it takes me forever to find and recomprehend Martins answer
         :(
@@ -626,18 +631,19 @@ class Source_Address():
         self.source_string = address_string 
         self.city = city_string
         self.applicant = applicant_ID
-        self.in_bounds = None # boundary_checker()
         self.decon_address = None # tuple result of address_parser.parse()
-        self.simplified_address = None # .decon_address[0]
         self.flags = None # extracted from .decon_address[1]
-        self.flagged_unit = None # relevant for the db - should we update the db with a unit flag?
+        self.flagged_unit = None # relevant for the db - should we update the db with a unit flag? 
+        self.in_bounds = None # boundary_checker()
+        self.simplified_address = None # .decon_address[0]
         self.source_post_types = None # ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
         self.s_evf = None
         self.error_dictionary = {'source_address_error': False, # could not parse source address !valid decon_address
                                  'post_parse_evf': False, # it says st. when it should be dr. etc. 
-                                 'boundary_error': False, # invalid City  
+                                 'boundary_error': False, # invalid City
+                                 'no_address_supplied' True # No address input
                                     }
-        self.go_to_next_step = True
+        self.go_to_next_step = True  # a T|F flag for being error free
         
 
     def deconstruct_view(self, address_parser):
@@ -673,21 +679,31 @@ class Source_Address():
             if self.s_evf:
                 self.error_dictionary['post_parse_evf'] = True # post type eval flag was set
                 # write_to_logs(self.applicant, self.city, 'post_parse')  
-    
+ 
     def return_error_flags(self):
+        '''
+        returns the dictionary of accumulated error flags for use in making
+        decisions about logging
+        '''
         return self.error_dictionary
 
     def return_go_status(self):
         '''
         Does a check of the errors and returns False if errors
         exist, or True, if they do not
+        This is used in logic to procede with geocoding
         '''
+        if self.source_string == None:
+            # no address was input
+            self.go_to_next_step = False
+            self.error_dictionary['no_address_supplied'] = True
         if not self.decon_address:
             # the deconstruct_view method has not run, or had errors
             self.go_to_next_step = False
         if any(self.error_dictionary.values()):
             # is there at lease one error?
             self.go_to_next_step = False
+        
         return self.go_to_next_step
 
 class Database_View():
@@ -876,14 +892,14 @@ class line_obj_parser():
         self.SAO.deconstruct_view(add_parser)
         
         self.flags.update(self.SAO.return_error_flags())
-        print('flags = {}'.format(self.flags))
+        #print('flags = {}'.format(self.flags))
         
         self.can_proceed_to_gc = self.SAO.return_go_status() # True if no errors or False if at least 1
 
         print('OK to do GC attempt: {}'.format(self.can_proceed_to_gc))
         if self.can_proceed_to_gc:
             self.simplified_address = self.SAO.simplified_address            
-            print(f'parsed and moving forward with {self.simplified_address}')
+            #print(f'parsed and moving forward with {self.simplified_address}')
 
     def poll_db(self):
         '''
@@ -1015,19 +1031,19 @@ class line_obj_parser():
             write in the error table
 
         '''
-        print('attempting to write to db')
+        #print('attempting to write to db')
         base_tuple = (self.simplified_address, 
                       self.city, 
                       self.lat,
                       self.lng)
-        print(f'base tuple is {base_tuple}')
+        #print(f'base tuple is {base_tuple}')
         wf = (self.should_write_uf,
               self.should_write,
               self.should_write_g,
               self.should_write_et)
 
-        print('Write unit flag: {} Write address: {} Write google: {} Write errors: {}'.format(*wf))
-        print(f'should write {sum(wf)} times')
+       # print('Write unit flag: {} Write address: {} Write google: {} Write errors: {}'.format(*wf))
+       # print(f'should write {sum(wf)} times')
 
 
         if self.should_write_uf: # if the diff says to set unit flag in db b/c it is missing
@@ -1041,7 +1057,7 @@ class line_obj_parser():
             g_dir_type_tp, g_post_type_tp, _ = self.google_post_types     
             flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
             flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type 
-            print(f'coding result = {self.GOO.coding_result}')                        
+            #print(f'coding result = {self.GOO.coding_result}')                        
             google_result = (self.GOO.lat, 
                     self.GOO.lng,
                     self.GOO.coding_result.g_address_str, # full string with Prov, Pcode et al.
@@ -1068,8 +1084,8 @@ class line_obj_parser():
             if not self.pt_eval_errors.error_free:
                 # pt_eval is a named tuple
                 # 'status, error_free, sn_error, dt_error, fl_error'
-                dir_error = self.pt_eval_errors.sn_error
-                post_error = self.pt_eval_errors.dt_error
+                post_error = self.pt_eval_errors.sn_error
+                dir_error = self.pt_eval_errors.dt_error
                 parse_error = self.pt_eval_errors.fl_error
                 unit_flag = self.should_write_uf
 
@@ -1077,6 +1093,18 @@ class line_obj_parser():
             self.DBV.write_db(e_tpl, 'errors')
     
     def log_results(self, meta_errors):
+        '''
+        This method reviews the various error flags and makes decisions on what
+        to log.
+
+        the meta log is where significant errors are consolidated so that it is
+        easier to review source addresses and identify which ones may need to
+        be reviewed and corrected.
+
+        param meta_errors is a dictionary passed in of errors from failures in 
+        the call stack of line object parser calls
+
+        '''
         who = self.line_object.main_applicant_ID
         where = f'{self.address} {self.city}'
         parse_failed = meta_errors['d_parse']
@@ -1106,15 +1134,16 @@ class line_obj_parser():
         c_com = self.cities_valid_and_matching == True     
         c2 = self.db_flags.error_free == True or None
         c3 = self.pt_eval_errors.error_free == True     
-
+        #print(f'pt_eval_errors: {self.pt_eval_errors} db_derived flags {self.db_flags}')
         dat_b = self.db_flags
         goo_p = self.pt_eval_errors
         
         if not all((c_com, c2, c3)):
-            e = sum((c_com,dat_b.unit_flag, (dat_b.dir_flag or goo_p.dt_error),(dat_b.post_type or goo_p.sn_error)))
-            print(f'write {e} times for {(c_com, c2, c3)}')
+            e = sum(((c_com != True),dat_b.unit_flag, (dat_b.dir_flag or goo_p.dt_error),(dat_b.post_type or goo_p.sn_error)))
+            #print(c_com,dat_b.unit_flag, (dat_b.dir_flag or goo_p.dt_error),(dat_b.post_type or goo_p.sn_error)) 
+            #print(f'write {e} times for {(c_com, c2, c3)}')
             if e > 0:
-                meta_log.info(f'4,{who},{where},has,{e} error(s),City mismatch,{c_com},Missing Unit Number,{dat_b.unit_flag},Direction Error,{dat_b.dir_flag or goo_p.dt_error},Street Type Error,{dat_b.post_type or goo_p.sn_error}') 
+                meta_log.info(f'4,{who},{where},has,{e} error(s),City mismatch,{c_com != True },Missing Unit Number,{dat_b.unit_flag},Direction Error,{dat_b.dir_flag or goo_p.dt_error},Street Type Error,{dat_b.post_type or goo_p.sn_error}') 
         
         # SPECIAL CASES
         if self.flags.get('at_limit', False):
