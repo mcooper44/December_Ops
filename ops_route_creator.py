@@ -89,7 +89,7 @@ class NotCoded(Exception):
     '''
     pass
 
-
+# CONFIG AND SETUP 
 address_parser = AddressParser() # I strip out extraneous junk from address strings
 coordinate_manager = Coordinates()
 
@@ -109,8 +109,7 @@ delivery_households = Delivery_Household_Collection()
 # record all the sponsor details into this object by key
 sponsored_households = {'DOON': Delivery_Household_Collection(),
                         'Sertoma' : Delivery_Household_Collection(),
-                        'REITZEL' : Delivery_Household_Collection()
-                       }
+                        'REITZEL' : Delivery_Household_Collection()}
 
 k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
 k_w.extract_shapes() # get shapes ready to test points
@@ -121,6 +120,8 @@ sponsor_dictionary = {'food': {},
                       'gifts':{}
                      } # holds dictionary of file_id : sponsor
                        # for each service type
+
+###### PARSE THE SOURCE FILE LINE BY LINE ######
 
 # open the source file and parse the households out of it
 # it determines hamper type and if there is a sponsor and if it has previously
@@ -140,35 +141,31 @@ for line in export_file: # I am a csv object
     # this will be inserted into a HH object and provides the key
     # bits of info that we need to build a route card
 
-    print('applicant: {} christmas status: {} route status: {}'.format(applicant, 
-                                                                       is_xmas,
-                                                                       is_routed))
-    print('sponsored: {} by {} and-or {}'.format(sponsored, 
-                                                 food_sponsor,
-                                                 gift_sponsor))
+    print(f'applicant: {applicant} christmas status: {is_xmas} route status:{is_routed}')
+    print(f'sponsored: {sponsored} by {food_sponsor} and-or {gift_sponsor}')
+
     if ((is_xmas or sponsored) and not is_routed) or sponsored:
         address = summary.address
         pos_code = summary.postal
         city = summary.city
         family_size = summary.size
         simple_address = None
-        print('is xmas {} or sponsored {}'.format(is_xmas, sponsored))
+        print(f'is xmas {is_xmas} or sponsored {sponsored}')
         try:
             # attempt to strip out extraneous details from the address
             # such as unit number etc. 
             simple_address, _ = address_parser.parse(address, applicant) 
-            print('simple_address: {}'.format(simple_address))
+            print(f'simple_address: {simple_address}')
         except Exception as a_err:
-            add_log.error('{} raised {} from {}'.format(applicant, a_err, address))
-            nr_logger.error('{} raised an error during address parse'.format(applicant))
+            add_log.error(f'{applicant} raised {a_err} from {address}')
+            nr_logger.error(f'{applicant} raised an error during address parse')
         # ping database with simle address  to see if there is a geocoded address
         try:
             lt, lg = address_dbase.get_coordinates(simple_address, city)   
             if all([lt, lg]): # if there is a previously geocoded address
                 # insert base information needed to build a route and card
                 n_hood = k_w.find_in_shapes(lt, lg) # find neighbourhood
-                add_log.info('{} is in this neighbourhood: {}'.format(applicant,
-                                                                        n_hood))
+                add_log.info(f'{applicant} is in this neighbourhood: {n_hood}')
                 # create a HH object and insert the summary we need to build 
                 # a route (lt, lg)a route card(summary). 
                 # and later a route summary (n_hood)
@@ -238,7 +235,7 @@ for line in export_file: # I am a csv object
         nr_logger.info('{} was not routed. is xmas = {} route = {}'.format(applicant, 
                                                                            is_xmas, 
                                                                            is_routed))
-
+###### ROUTE SORTING ######
 # Sort the Households into Routes and 
 # pass the route numbers and labels back into the delivery households
 # object
@@ -302,6 +299,8 @@ for house in delivery_households:
             else:
                 ops_logger.info('{} already exists in family table'.format(pid))
 
+
+###### ROUTE BINDER; OPS REFERENCE; SPONSOR REPORT
 
 # lets print some slips!
 # and the delivery binder
