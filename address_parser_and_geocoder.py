@@ -7,8 +7,20 @@ It also creates error logs that can be parsed later to find
 bad source address inputs that can be looked up and 
 manually corrected in l2f 
 
-it is in need of some major refactoring love
-the database should probably become a separate file?
+Running this script on its own will open the file
+listed in the config file
+It will go through line by line
+Attempt to deconstruct the address into component elements
+Rebuild a simple version of the address
+Poll a database of addresses
+If necessary attempt to geocode the address
+It will attempt to check the city, if there is a missing
+unit number, if there is a missing direction, if the
+street type (St. Dr. Ave etc) is missing or incorrect
+finally it will write to a database to record errors
+correct addresses and google results
+It will then write to a central log file to consolidate details 
+about errors with the address
 '''
 
 import csv
@@ -96,7 +108,7 @@ def address_builder(parsed_string):
     as such, we return a tuple of the parsed address and the flags variable
     '''
     parse_keys = parsed_string.keys()
-    built_string = str()  
+    built_string = str()
 
     flags = {'MultiUnit': False, 'Direction': False, 'PostType': False} # for diffing key aspects of addresses
 
@@ -203,8 +215,8 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
     or (None, None) if there is an error with the api (sometimes it just does
     not work)
     """
-    try_again = second_chance    
-    try:            
+    try_again = second_chance
+    try:
         sleep(1)
         result = geocoder.google(address, key=myapikey)
         print(result.status)
@@ -247,8 +259,10 @@ class AddressParser():
         a tuple of  ('unit number street', error_flags) or False
         '''
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
+        print(f'attempting to parse {address}')
         if address not in key_list and address is not (False or None):            
             worked, in_put, out_put  = full_address_parser(address, file_id)
+            
             if worked:                
                 self.parsed[in_put] = out_put # tuple of (parsed_address, flags)
                 return out_put 
@@ -274,7 +288,7 @@ class AddressParser():
             return simple_address
         except:
             return None
-            
+
     def is_not_error(self, address):
         # need to insert some database ping here
         if address not in self.errors:
@@ -345,17 +359,17 @@ class Coordinates():
                         return response_tple
                     else:
                         return None
-                
+
             else:
                 raise Exception('Over_Query_Limit after {} calls'.format(self.calls))
-   
+
     def add_coordinates(self, lat, lng):
         '''
         adds a coordinate to the tree structure we are using to store data about the coordinate
         '''
         if not self.coordinates[lat][lng]:
             self.coordinates[lat][lng] = self.dict_template
-    
+
     def update_error(self, lat, lng, error_type):
         '''
         update an error in the coordinate tree. Defaults are:
@@ -369,15 +383,15 @@ class Coordinates():
     def add_address(self, lat, lng, address):
         '''
         add/update an address in the coordinate tree
-        '''       
+        ''' 
         self.coordinates[lat][lng]['Address_Strings'].udpate(address)
-    
+
     def add_household(self, lat, lng, household):
         '''
         add a household to the coordinate tree
         '''
-        self.coordinates[lat][lng]['Households'].update(household)        
-    
+        self.coordinates[lat][lng]['Households'].update(household)
+
     def __str__(self):
         return 'Coordinate Object. can_proceed  = {} and has made {} calls'.format(self.can_proceed, self.calls)
 
@@ -641,7 +655,7 @@ class Source_Address():
         self.error_dictionary = {'source_address_error': False, # could not parse source address !valid decon_address
                                  'post_parse_evf': False, # it says st. when it should be dr. etc. 
                                  'boundary_error': False, # invalid City
-                                 'no_address_supplied' True # No address input
+                                 'no_address_supplied': False # No address input
                                     }
         self.go_to_next_step = True  # a T|F flag for being error free
         
@@ -693,6 +707,10 @@ class Source_Address():
         exist, or True, if they do not
         This is used in logic to procede with geocoding
         '''
+        print('checking status')
+        print(f'source_string = {self.source_string}')
+        print(f'decon.address = {self.decon_address}')
+        print(f'error dict values = {self.error_dictionary.values()}')
         if self.source_string == None:
             # no address was input
             self.go_to_next_step = False
@@ -703,7 +721,7 @@ class Source_Address():
         if any(self.error_dictionary.values()):
             # is there at lease one error?
             self.go_to_next_step = False
-        
+        print(f'go status is: {self.go_to_next_step}') 
         return self.go_to_next_step
 
 class Database_View():
@@ -837,9 +855,19 @@ class line_obj_parser():
     this object wraps the process of looking at an address
     parsing it, evaluating it, coding it and logging its bits into a db
 
-    the VLO is the model
-    the address object is the view
-    this is the controller?
+    After setup of the necessary objects
+    a line, header dictionary, database, and coordinate manager are 
+    passed into the l_o_p 
+    it instantiates a Visit_Line_Object()
+    and then exposes methods to deal with the address
+    the sequences of method calls should then be
+    .deconstruct()
+    .poll_db()
+    .diff_results()
+    .attempt_db_write()
+    .log_results()
+
+    
     '''    
     def __init__(self, line, fnamedict, dbase, co_d_m):
         self.line_object = Visit_Line_Object(line, fnamedict)
@@ -887,6 +915,9 @@ class line_obj_parser():
         check if the city is valid,
         look at the post type labels,
         check if the source is a valid input 
+        if the address is valid
+        set self.can_proceed_to_gc
+        which is a flag that allows or fails a geocoding call
         '''  
         print('SA loaded with {} {} {}'.format(self.address, self.city, self.applicant))
         self.SAO.deconstruct_view(add_parser)
@@ -981,7 +1012,7 @@ class line_obj_parser():
             self.flags['missing_unit_num'] = True
 
         # DIFF GOOGLE RESULT WITH SOURCE ADDRESS
-        if self.google_pinged:
+        if self.google_pinged and self.GOO.coding_result:
             self.flags['geocode_attempt'] = True              
             g_city = self.GOO.coding_result.city
             google_address = f'{self.GOO.coding_result.house_number} {self.GOO.coding_result.street}'
@@ -1037,10 +1068,11 @@ class line_obj_parser():
                       self.lat,
                       self.lng)
         #print(f'base tuple is {base_tuple}')
-        wf = (self.should_write_uf,
-              self.should_write,
-              self.should_write_g,
-              self.should_write_et)
+        # WRITE FLAGS
+        wf = (self.should_write_uf, # unit flag
+              self.should_write, # address table
+              self.should_write_g, # to google table
+              self.should_write_et) # error table
 
        # print('Write unit flag: {} Write address: {} Write google: {} Write errors: {}'.format(*wf))
        # print(f'should write {sum(wf)} times')
@@ -1072,7 +1104,7 @@ class line_obj_parser():
                     )
             print(f'google result = {google_result}')
             self.DBV.write_db(google_result, 'google_result')            
-            
+
         if self.should_write_et: # set in the diff_results method
             city_error = False # cities don't match
             dir_error = False # N vs S
@@ -1091,7 +1123,7 @@ class line_obj_parser():
 
             e_tpl = (*base_tuple, city_error, unit_flag, dir_error, post_error, parse_error, use_google)
             self.DBV.write_db(e_tpl, 'errors')
-    
+
     def log_results(self, meta_errors):
         '''
         This method reviews the various error flags and makes decisions on what
@@ -1128,7 +1160,7 @@ class line_obj_parser():
         #    meta_log.info(f'3,{who},at,{where},returned no google result,Flags are as follows: {self.flags}')
         if self.flags.get('pt_eval',False):
             meta_log.info(f'3,{who},at,{where},failed attempt to compare with google or database, Flags are as follows: {self.flags}')
-        
+
         # FOURTH ORDER ISSUES we found issues with the source when matched against google or database values
         # refernce is self.pt_eval_errors (status: 'valid'|'failed', error_free: T|F, sn_error, dt_error, fl_error)
         c_com = self.cities_valid_and_matching == True     
@@ -1137,43 +1169,44 @@ class line_obj_parser():
         #print(f'pt_eval_errors: {self.pt_eval_errors} db_derived flags {self.db_flags}')
         dat_b = self.db_flags
         goo_p = self.pt_eval_errors
-        
+
         if not all((c_com, c2, c3)):
             e = sum(((c_com != True),dat_b.unit_flag, (dat_b.dir_flag or goo_p.dt_error),(dat_b.post_type or goo_p.sn_error)))
             #print(c_com,dat_b.unit_flag, (dat_b.dir_flag or goo_p.dt_error),(dat_b.post_type or goo_p.sn_error)) 
             #print(f'write {e} times for {(c_com, c2, c3)}')
             if e > 0:
                 meta_log.info(f'4,{who},{where},has,{e} error(s),City mismatch,{c_com != True },Missing Unit Number,{dat_b.unit_flag},Direction Error,{dat_b.dir_flag or goo_p.dt_error},Street Type Error,{dat_b.post_type or goo_p.sn_error}') 
-        
+
         # SPECIAL CASES
         if self.flags.get('at_limit', False):
             meta_log.info(f'X,{who},at,{where},hit the google api wall')      
 
 if __name__ == '__main__':
+    # SETUP CLASSES AND CONFIG
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('Address.db', create=True) # testing = atest.db
-    
+
     fnames = Field_Names(config.target) # I am header names
     fnames.init_index_dict() 
     export_file = Export_File_Parser(config.target, fnames) # I open a csv 
-    # for testing use test_export.csv
     export_file.open_file()
-    
+    # ITERATE THROUGH THE INPUT FILE LINE BY LINE
     for line in export_file: # I am a csv object
         error_stack = {'d_parse': False, 'dbase_write': False}
+        # the lop controls the address parsing pipeline
         lop = line_obj_parser(line, fnames.ID, dbase, coordinate_manager) #.ID 
-        try: # parse address
+        try: # parse address 
             lop.deconstruct(address_parser)
         except:
             print('could not successfully call deconstruct method')
             error_stack['d_parse'] = True  
-        if not lop.poll_db(): # poll db - set lat,lng or...
-            lop.try_gc_api() # attempt to geocode
+        if not lop.poll_db(): # poll db - for results
+            lop.try_gc_api() # attempt to geocode if needed
         lop.diff_results() # compare source + db as well as source + google - set error flags
         try:
-            lop.attempt_db_write()
+            lop.attempt_db_write() # attempt to write to necessary db tables
         except:
             print('could not write to db.')
             error_stack['dbase_write'] = True
@@ -1182,4 +1215,4 @@ if __name__ == '__main__':
         print('############')
 
     dbase.close_db()
-    print('proccess complete on source file {}'.format(config.target))
+    print(f'proccess complete on source file {config.target}')
