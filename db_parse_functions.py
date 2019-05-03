@@ -28,14 +28,21 @@ def hamper_type_parser(days_of_food):
     '''
     return days_of_food > 1
         
-def diet_parser(diet_string):
+def diet_parser(diet_string, special_diets=['halal','diabetic','gluten free']):
     '''
     this function returns the string of redundant dietary conditions
-    minus the redundant conditions
+    minus the redundant conditions and the conditions tha are not relevant
+    to the boxes we are putting together
+    param special diets is a list of the dietary conditions that merit
+    inclusion in the output we wish to print
     '''
-    diet_conditions = set(diet_string.split(',')) # a unique list of conditions split on the commas
-    if 'Other' in diet_conditions:
-        diet_conditions.remove('Other') # we don't want this because it has zero information
+    diet_conditions = set(diet_string.lower().split(',')) # a unique list of conditions split on the commas
+    out_put_s = []
+    for diet in diet_conditions:
+        if diet in special_diets:
+            out_put_s.append(diet)
+    return ', '.join(out_put_s)
+
 
     return ', '.join(diet_conditions)
 
