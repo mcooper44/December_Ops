@@ -61,6 +61,7 @@ def haversine(lon1, lat1, lon2, lat2):
     km = 6367 * c
     return km
 
+
 class Route_Summary():
     '''
     A central collection of relevant information that is helpful
@@ -95,7 +96,7 @@ class Route_Summary():
                               # when printing columns such as:  
                               # | streets | household info |
     
-    def add_household(self, sum_tp):
+    def add_household_summary(self, sum_tp):
         '''
         adds household data to the data structure as some other method
         iterates through a range of households that have been sorted 
@@ -122,11 +123,12 @@ class Route_Summary():
 
 class Route_Database():
     '''
-    This is a SQL database of households and contains three tables
+    This is a SQL database of households and contains the following tables
     1. 'applicants' = base data encapsulated by a delivery card
     2. 'family' = family member data keyed off a main applicant file id 
     3. 'routes' = file id for a main applicant and their route, route letter 
     4. 'sponsor' = file id for main applicant, food_sponsor, gift_sponsor
+    5. 'gift_table' = file_id for main applicant, sa_app_num
     It is the central database that will recieve routes, reproduce them
     and return route specific information when needed by other classes
     and methods
@@ -148,7 +150,8 @@ class Route_Database():
             self.cur.execute('''CREATE TABLE IF NOT EXISTS applicants (file_id
                              INT UNIQUE, f_name TEXT, l_name TEXT, family_size INT, phone TEXT,
                              email TEXT, address_1 TEXT, address_2 TEXT, city
-                             TEXT, diet TEXT, neighbourhood TEXT)''')
+                             TEXT, diet TEXT, neighbourhood TEXT, 
+                             sms_target TEXT )''')
             self.conn.commit()
             # FAMILY MEMBERS
             self.cur.execute('''CREATE TABLE IF NOT EXISTS family
@@ -158,6 +161,10 @@ class Route_Database():
             self.cur.execute('''CREATE TABLE IF NOT EXISTS sponsor (file_id INT
                              UNIQUE, food_sponsor TEXT, gift_sponsor TEXT)''')
             
+            # GIFT TABLE
+            self.cur.execute('''CREATE TABLE IF NOT EXISTS gift_table (file_id
+                             INT UNIQUE, app_num INT)''')
+
             self.conn.commit()
 
     def add_route(self, file_id, rn, rl):
@@ -183,6 +190,17 @@ class Route_Database():
         self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
                          db_tple)
         self.conn.commit()
+    
+    def add_sa_appointment(self, file_id, app_num):
+        '''
+        logs a salvation army gift appointment number to the database
+        takes the file_id, app_num and wraps them in a tuple
+        and inserts them into the 'gift_table'
+        '''
+        db_tple = (file_id, app_num)
+        self.cur.execute("INSERT OR IGNORE INTO gift_table VALUES (?, ?)",
+                         db_tple)
+        self.conn.commit()
 
     def add_family(self, family_tple):
         '''
@@ -193,7 +211,7 @@ class Route_Database():
         '''
 
         self.cur.execute('''INSERT OR IGNORE INTO applicants VALUES 
-                         (?,?,?,?,?,?,?,?,?,?,?)''',family_tple)
+                         (?,?,?,?,?,?,?,?,?,?,?,?)''',family_tple)
         self.conn.commit()
 
     def add_family_member(self, app_id, person):
@@ -317,6 +335,10 @@ class Delivery_Household():
 
     It provides the data needed sort routes, and eventually add to the various
     files that are needed for operations in the warehouse
+    
+    A key source of household information that the DH() contains is located in
+    the summary parameter which is a named tupled created by the
+    Visit_Line_Object class get_HH_summary() method
 
     '''
 
@@ -335,6 +357,7 @@ class Delivery_Household():
         self.summary = summary # route card data with address et al. 
                                # created by the visit line object .get_HH_summary()
         self.family_members = None # family members in tuples
+
     
     def return_hh(self):
         '''
@@ -397,7 +420,7 @@ class Delivery_Household():
         returns the HH summary.  Data needed to put on the route card like
         name, address, etc. in the form of a named tuple with labels
         'applicant, fname, lname, size, phone, email, address, 
-        address2, city, postal, diet'
+        address2, city, postal, diet, sa_app_num, sms_target'
         this named tuple is created by the .get_HH_summary() method 
         in the Visit_Line_Object() class found in db_data_models
         '''
@@ -415,7 +438,7 @@ class Delivery_Household():
 
         it is called by the label_route()  method in the 
         Delivery_Household_Collection() class to provide input to the
-        Route_Summary() classes .add_household() method 
+        Route_Summary() classes .add_household_summary() method 
 
         '''
 
@@ -434,11 +457,12 @@ class Delivery_Household_Collection():
     sort into routes and a way of interfacing with the Delivery_Routes() 
     either inserting information like route numbers and letters or asking the 
     objects to report on what info they contain to provide inputs to the various 
-    classes and methods used 
+    classes and methods used in the pipeline 
     '''
 
     def __init__(self):
-        self.hh_dict = {} # this is the collection of Households
+        self.hh_dict = {} # this is the collection of Delivery_Households()
+                          # keyed to file_id
         self.fids_routed = set()
         self.route_summaries = {} # summarized routes rn: summary_objects
                                   # these are the collections of information
@@ -448,9 +472,19 @@ class Delivery_Household_Collection():
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
                       hood, postal=None, rn=None, rl=None):
         '''
-        add a household object to the .hh_dict attribute
+        add a Delivery_Household() object to the .hh_dict attribute
+        of this class
         '''
-        self.hh_dict[file_id] = Delivery_Household(file_id, hh_id, family_size, lat, lng, summary, hood, postal, rn, rl)
+        self.hh_dict[file_id] = Delivery_Household(file_id, 
+                                                   hh_id, 
+                                                   family_size, 
+                                                   lat, 
+                                                   lng, 
+                                                   summary, 
+                                                   hood, 
+                                                   postal, 
+                                                   rn, 
+                                                   rl)
 
     def add_hh_family(self, applicant, familytples):
         '''
@@ -467,13 +501,15 @@ class Delivery_Household_Collection():
     def add_to_route_summary(self, rn, r_summary):
         '''
         adds a household to a Route_Summary() object
+        by calling the Route_Summary.add_household_summary() method
+        the Route_Summary is 
         an object that will be used to create a summary
         card to put at the head of a route stack
         
         r_summary is tuple (fid, family_size, diet, letter, street, hood)
         '''
         
-        self.route_summaries[rn].add_household(r_summary)
+        self.route_summaries[rn].add_household_summary(r_summary)
 
     def get_HH_set(self):
         '''
@@ -500,6 +536,7 @@ class Delivery_Household_Collection():
         object and stores it in the .route_summaries attribute which is a
         dictionary keyed off route numbers
 
+
         route_key = route number
         route = container of fid's 
         
@@ -512,7 +549,7 @@ class Delivery_Household_Collection():
         r_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] 
         letter_map = zip(route, r_letters) # [(fid1, 'A'), (fid2, 'B')]
 
-        #create a route_summary object
+        #create a Route_Summary() object
         self.route_summaries[route_key] = Route_Summary(route_key)
 
         # unzip the file id and letter combos
@@ -521,9 +558,13 @@ class Delivery_Household_Collection():
             # and assign the route number and sub route (the letter) to the 
             # Delivery_Household() that corresponds to the file id and that is 
             # stored in the .hh_dict attribute of this class
+            
+            # add a route number to Delivery_Household() keyed to main app fid
             self.hh_dict[fid].add_routing(route_key, lttr)
+            
+            # extract a summary of that newly routed Delivery_Household()
             rt_hh = self.hh_dict[fid].return_card_summary()
-            self.route_summaries[route_key].add_household(rt_hh)
+            self.route_summaries[route_key].add_household_summary(rt_hh)
 
     def get_size(self, fid):
         '''
@@ -603,7 +644,6 @@ class Delivery_Routes():
                     '18':4 }
         max_box_count = self.max_boxes
         route_counter = self.start_count
-        #route_counter = self.start_count # this is where we start counting the routes
         #routes = {} # labeled routes and the families they contain
         assigned = set() # container to add hh that have been assigned
         print('starting sort_method')
