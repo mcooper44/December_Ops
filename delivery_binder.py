@@ -191,7 +191,7 @@ class Office_Sheet():
         the first three items of which are written to the sheet
         '''
         
-        _, rn, rl = route
+        _, rn, rl, _ = route
 
         if self.title_flag:
             # write the titles
