@@ -16,7 +16,9 @@ It allows access to the following objects
 import db_parse_functions as parse_functions
 import db_tuple_collection as tuple_collection
 import csv
+
 from collections import Counter, defaultdict, namedtuple
+import phonenumbers as pn
 
 class Field_Names():
     '''
@@ -314,7 +316,7 @@ class Visit_Line_Object():
     '''    
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
-        #self.vline = visit_line
+        self.vline = visit_line
         self.visit_Date = None
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
@@ -348,7 +350,11 @@ class Visit_Line_Object():
         self.xmas_items_provided = None
         self.xmas_notes = None
         self.xmas_application_site = None
-       
+        self.sa_status = None # has SA appointment?
+        self.sa_app_num = None # SA appointment number
+        self.sms_target = None # the phone number to send sms messages to
+        self.ex_reference = None
+
         if fnamedict.get('Dietary Considerations', False):
             self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         if fnamedict.get('Client Ethnicities', False):
@@ -413,10 +419,67 @@ class Visit_Line_Object():
             self.xmas_items_provided = visit_line[fnamedict['Items Provided']]
             self.xmas_notes = visit_line[fnamedict['Notes Recorded']]
             self.xmas_application_site = visit_line[fnamedict['Requesting Agency']]
+            self.ex_reference = visit_line[fnamedict['External Reference']]
 
+
+    @staticmethod
+    def get_special_string(notes_string, char_string= '##'):
+        '''
+        looks for the char_string in the notes_string
+        and if it finds it, returns the value that the char_string
+        brackets i.e if ##123## is in the notes string
+        it will return 123
+
+        if the char_string is not in the notes_string it will return 
+        False
+        or if something that is not an int is nestled between the marks
+        then it will return false
+        '''
+        # if '##' in '##123##'
+        if char_string in notes_string:
+            # _, _, 123## = notes_string.partition...
+            _, _, val_str_char_str = notes_string.partition(char_string)
+            # 123, _, _ = ...
+            val_str, _, _ = val_str_char_str.partition(char_string)
+            
+            try: 
+                return int(val_str)
+            except:
+                return False
+        else:
+            return False
+
+    @staticmethod
+    def get_sms_target(sms_string):
+        '''
+        takes the string that likely contains a cell phone number and attempts 
+        to parse and format it correctly for use in the sms message pipeline
+        
+        this method uses the phonenumbers library
+        https://github.com/daviddrysdale/python-phonenumbers
+
+        and should return a properly formated string '+15195555555' for use in
+        the sms pipeline or False
+        
+        this method is used by the is_army() method to set the .sms_target
+        attribute
+
+        '''
+        try:
+            # imported phonenumbers library as pn
+            n =  pn.parse(number, 'US')
+            if pn.is_valid_number(n):
+                # returns a formatted string
+                return pn.format_number(n, pn.PhoneNumberFormat.E164)
+            else:
+                return False
+        except:
+            return False
+    
     def get_address(self):
         '''
         returns the address for the visit formatted as a tuple address, city, postal code
+        or returns a 3 tuple of False
         '''
         address_3tuple = (self.visit_Address, self.visit_City, self.visit_Postal_Code)
         if any(address_3tuple):
@@ -443,10 +506,15 @@ class Visit_Line_Object():
         basket_sorting script and provides access to the key bits of data that we need 
         to construct a route card
         (applicant, fname, lname, fam size, phone, email, address1, address2,
-        city, diet)
+        city, diet, sa_app, sms_target)
+
+        it is input as a paramter the an instatiation of a Delivery_Household
+        class in the basket_sorting_G.. file
+
+
         '''
         visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, size, phone, email,\
-                               address, address2, city, postal, diet')
+                               address, address2, city, postal, diet, sa_app_num, sms_target')
         return visit_sum(self.main_applicant_ID,
                          self.main_applicant_Fname,
                          self.main_applicant_Lname,
@@ -457,7 +525,9 @@ class Visit_Line_Object():
                          self.visit_Address_Line2,
                          self.visit_City, 
                          self.visit_Postal_Code,
-                         self.visit_household_Diet)
+                         self.visit_household_Diet,
+                         self.sa_app_num,
+                         self.sms_target)
 
     def get_hh_id_number(self):
         '''
@@ -547,7 +617,7 @@ class Visit_Line_Object():
         to determine what to do with the line
         '''
         if self.food:
-            return 'Christmas Hamper|Emergency Hampers' in self.food
+            return 'Christmas Hamper' and 'Emergency Hampers' in self.food
 
     def is_sponsored_hamper(self, 
                             food_sponsors=('DOON', 'REITZEL'), 
@@ -570,6 +640,34 @@ class Visit_Line_Object():
                     sponsored = True
                     toy_provider = sponsor
         return (sponsored, food_provider, toy_provider)
+
+    def is_army(self):
+        '''
+        looks to see if there has been a Salvation Army appointment
+        booked, attempts to collect a sms_number and
+        an appointment number, returning a three tuple of those values
+        (sa_status, sms_target, app_number)
+        all values have defaults of False so if one of the values is missing
+        they will pass through.
+        The three tuples should be able to pass an all() test at the point
+        of use for it go forward into the sms pipleline
+        
+        the values created by this method are used by the Route_Database 
+        class add_sa_appointment method to insert the app_num
+        into the gift_table
+
+        '''
+        if 'Salvation Army' and 'Gifts' in self.xmas_items_provided:
+            self.sa_status = True
+            self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
+            if all((self.sa_status, self.sa_app_num)):
+
+                sms = Visit_Line_Object.get_sms_target(self.ex_reference)
+                if sms:
+                    self.sms_target = sms
+
+        return (self.sa_status, self.sms_target, self.sa_app_num)
+
 
     def has_family(self):
         '''

@@ -21,6 +21,8 @@ and should be more portable
 sponsor report files are also created out of the appropriate datatypes
 everyone wins!
 
+It is also a complete mess and needs some refactoring love
+
 '''
 
 
@@ -124,27 +126,33 @@ sponsor_dictionary = {'food': {},
 ###### PARSE THE SOURCE FILE LINE BY LINE ######
 
 # open the source file and parse the households out of it
-# it determines hamper type and if there is a sponsor and if it has previously
-# been routed then it then
-# stores the main applicant info, address etc. as well as family member details
-# for use later if needed.
+# it determines hamper type and if there is a sponsor or sa appointment
+# and if it has previously been routed 
+# it then stores the main applicant info, address etc. as well as family 
+# member details for use later if needed.
 
 for line in export_file: # I am a csv object
     line_object = Visit_Line_Object(line,fnames.ID, december_flag = True)
+    # FOOD
     is_xmas = line_object.is_christmas_hamper()
+    # SPONSOR
     sponsored, food_sponsor, gift_sponsor = line_object.is_sponsored_hamper()
-    summary = line_object.get_HH_summary() # returns a named tuple
-    applicant = summary.applicant
+    # SA - set sms and app num if SA and return 3 tuple for unpacking
+    # must use is_army() method to set SA related attributes
+    with_sa, sms_target, sa_app_num = line_object.is_army() 
+    
+    # extract summary from the visit line 
+    summary = line_object.get_HH_summary() # a named tuple
+    applicant = summary.applicant 
     is_routed = route_database.prev_routed(applicant)
 
-    # extract summary from the visit line
     # this will be inserted into a HH object and provides the key
     # bits of info that we need to build a route card
 
     print(f'applicant: {applicant} christmas status: {is_xmas} route status:{is_routed}')
     print(f'sponsored: {sponsored} by {food_sponsor} and-or {gift_sponsor}')
 
-    if ((is_xmas or sponsored) and not is_routed) or sponsored:
+    if (is_xmas and not is_routed) or (sponsored or with_sa):
         address = summary.address
         pos_code = summary.postal
         city = summary.city
@@ -161,7 +169,8 @@ for line in export_file: # I am a csv object
             nr_logger.error(f'{applicant} raised an error during address parse')
         # ping database with simle address  to see if there is a geocoded address
         try:
-            lt, lg = address_dbase.get_coordinates(simple_address, city)   
+            crds = address_dbase.get_coordinates(simple_address, city)   
+            lt, lg = crds.lat, crds.lng
             if all([lt, lg]): # if there is a previously geocoded address
                 # insert base information needed to build a route and card
                 n_hood = k_w.find_in_shapes(lt, lg) # find neighbourhood
@@ -203,6 +212,8 @@ for line in export_file: # I am a csv object
                                                                      lt, lg,
                                                                      summary,
                                                                      n_hood)
+                # -->potential to add sponsor style calls for SA here<--
+                
             else: # if we have not geocoded the address
             # we need to raise and exception.  It is better to 
             # run the geocoding script first and dealing with potential errors
@@ -239,6 +250,7 @@ for line in export_file: # I am a csv object
 # Sort the Households into Routes and 
 # pass the route numbers and labels back into the delivery households
 # object
+# ALSO MANAGES DATABASE INSERTIONS
 starting_rn = route_database.return_last_rn() # find last rn
 a2018routes.start_count = int(starting_rn) + 1 # reset rn to resume from last route
 a2018routes.sort_method(delivery_households) # start sorting
@@ -247,7 +259,7 @@ print('picking up after route number: {}'.format(starting_rn))
 
 # populate the database with summary and route data
 for house in delivery_households:
-    applicant, rn, rl = house.return_route()
+    applicant, rn, rl, n_hd = house.return_route()
     # get the summary from the HH object
     # created by the visit_line
     summ = house.return_summary()  
@@ -261,7 +273,8 @@ for house in delivery_households:
     city = summ.city
     family_size = summ.size
     diet = summ.diet
-    n_hd = house.neighbourhood
+    sa_app_num = summ.sa_app_num
+    sms_target = summ.sms_target
     # add household to the summary data
     app_tupe = (applicant,
                 fname,
@@ -273,15 +286,18 @@ for house in delivery_households:
                 add2,
                 city,
                 diet,
-                n_hd,)
-    ops_logger.info('{}'.format(app_tupe))                              
+                n_hd,
+                sms_target,)
+    ops_logger.info(f'{app_tupe}')
+    # ADD ROUTE INFORMATION TO DATABASE
     if not route_database.prev_routed(applicant):
         route_database.add_route(applicant, rn, rl)
         ops_logger.info('{} has been added to rt db'.format(applicant))
     else:
         ops_logger.error('{} has been added to route db already'.format(applicant)) 
+    # ADD HOUSEHOLD TO THE APPLICANTS TABLE  
     if not route_database.fam_prev_entered(applicant):
-        route_database.add_family(app_tupe) # add info for routecard
+        route_database.add_family(app_tupe) 
         ops_logger.info('{} has been logged to applicants db'.format(applicant))
     else:
         ops_logger.error('{} has prev. been logged to applicants db'.format(applicant)) 
@@ -298,7 +314,9 @@ for house in delivery_households:
                 ops_logger.info('added {} to family db table'.format(person))
             else:
                 ops_logger.info('{} already exists in family table'.format(pid))
-
+    # ADD SALVATION GIFT APP to database
+    if sa_app_num:
+        route_database.add_sa_appointment(applicant, sa_app_num)
 
 ###### ROUTE BINDER; OPS REFERENCE; SPONSOR REPORT
 
