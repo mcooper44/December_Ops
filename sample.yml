@@ -1,0 +1,23 @@
+# for reference go to
+# https://en.wikipedia.org/wiki/YAML
+# this is a sample of the configuration file
+# replace teh api_key with your own google 
+# provided key 
+
+# what is this config file for?
+whoami: 'routing config' 
+# and when is it for?
+session: '2019_testing_'
+
+# project structure
+db_src: 'databases/' # database sources
+inputs: 'sources/'   # input files
+outputs: 'products/' # output locations
+
+# Google creds
+api_key: 'wouldnt you like to know'
+
+# source file
+target: 'l2f_export.csv'
+
+
