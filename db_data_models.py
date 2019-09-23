@@ -14,11 +14,17 @@ It allows access to the following objects
 '''
 
 import db_parse_functions as parse_functions
-import db_tuple_collection as tuple_collection
 import csv
 
 from collections import Counter, defaultdict, namedtuple
 import phonenumbers as pn
+
+
+person_ethno_profile = namedtuple('person_ethno_profile', 'visible_minority, first_nations, metis, inuit, NA, undisclosed')
+self_identifies_profile = namedtuple('self_identifies_profile', 'disabled, less_than_ten, other, NA, undisclosed')
+visit_tuple_structure = namedtuple('visit_tuple_structure', 'date, main_applicant_id, visit_object')
+a_person = namedtuple('a_person', 'ID, Lname, Fname, DOB, Age, Gender, Ethnicity, SelfIdent')
+
 
 class Field_Names():
     '''
@@ -178,7 +184,7 @@ class Person():
             immigrant = True
         if 'other' in self.person_Idenifies_As:
             other = True
-        bool_self_ident_profile = tuple_collection.self_identifies_profile(disabled, immigrant, other, no, undisco)
+        bool_self_ident_profile = self_identifies_profile(disabled, immigrant, other, no, undisco)
         return bool_self_ident_profile
 
     def Get_Ethno_Profile_Tuple(self):
@@ -204,7 +210,7 @@ class Person():
             metis = True
         if 'inuit' in self.person_Ethnicity:
             inuit = True
-        bool_ethno_profile = tuple_collection.person_ethno_profile(visi_minor, first_nat, metis, inuit, nat_applic, undisco)
+        bool_ethno_profile = person_ethno_profile(visi_minor, first_nat, metis, inuit, nat_applic, undisco)
         return bool_ethno_profile
     
     def add_HH_visit(self, HHID):
@@ -467,13 +473,14 @@ class Visit_Line_Object():
         '''
         try:
             # imported phonenumbers library as pn
-            n =  pn.parse(number, 'US')
+            n =  pn.parse(sms_string, 'US')
             if pn.is_valid_number(n):
                 # returns a formatted string
                 return pn.format_number(n, pn.PhoneNumberFormat.E164)
             else:
                 return False
-        except:
+        except Exception as sms_fail:
+            print(f'invalid sms_input {sms_string} - {sms_fail}')
             return False
     
     def get_address(self):
@@ -587,7 +594,7 @@ class Visit_Line_Object():
         '''
         returns tuple of (address, city, main_applicant)
         '''
-        print('{} {} {}'.format(self.visit_Address, self.visit_City, self.main_applicant_ID))
+        #print('{} {} {}'.format(self.visit_Address, self.visit_City, self.main_applicant_ID))
         return (self.visit_Address, self.visit_City, self.main_applicant_ID)
 
     def get_household_type(self, relationship_collection):
@@ -617,11 +624,17 @@ class Visit_Line_Object():
         to determine what to do with the line
         '''
         if self.food:
-            return 'Christmas Hamper' and 'Emergency Hampers' in self.food
+            delivery_test = 'Christmas Hamper' and 'Emergency Hampers' in self.food
+            if delivery_test:
+                sms = Visit_Line_Object.get_sms_target(self.ex_reference)
+                if sms:
+                    self.sms_target = sms
 
-    def is_sponsored_hamper(self, 
-                            food_sponsors=('DOON', 'REITZEL'), 
-                            toy_sponsors=('Sertoma',)):
+            return delivery_test
+
+
+    def is_sponsored_hamper(self, food_sponsors=('DOON', 'REITZEL'), 
+                            toy_sponsors=('Sertoma','Salvation Army')):
         '''
         performs a check to see if this a Sponsored Hamper
         returns a tuple:
@@ -635,10 +648,10 @@ class Visit_Line_Object():
                 if sponsor in food:
                     sponsored = True
                     food_provider = sponsor
-            for sponsor in toy_sponsors:
-                if sponsor in toys:
+            for g_sponsor in toy_sponsors:
+                if g_sponsor in toys:
                     sponsored = True
-                    toy_provider = sponsor
+                    toy_provider = g_sponsor
         return (sponsored, food_provider, toy_provider)
 
     def is_army(self):
@@ -660,6 +673,7 @@ class Visit_Line_Object():
         if 'Salvation Army' and 'Gifts' in self.xmas_items_provided:
             self.sa_status = True
             self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
+            #print(f'### SA: {self.sa_app_num} ###')
             if all((self.sa_status, self.sa_app_num)):
 
                 sms = Visit_Line_Object.get_sms_target(self.ex_reference)

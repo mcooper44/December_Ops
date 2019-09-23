@@ -32,7 +32,9 @@ import sqlite3
 from time import gmtime, strftime, sleep
 import logging
 import re
-import config	# secret api key and file target source 
+
+from r_config import configuration
+
 from db_data_models import Field_Names
 from db_data_models import Visit_Line_Object
 from db_data_models import Export_File_Parser
@@ -47,8 +49,10 @@ from address_audit_tools import boundary_checker
 from address_audit_tools import boundary_logger
 from address_audit_tools import missing_unit_logger
 
+config = configuration.return_r_config()
+
 #api key
-myapikey = config.api_key
+myapikey = config.get_g_creds()
 
 # error logging is handled by functions that carry out parsing and geocoding
 # they pass False or None on to the objects using them and are handled by the objects
@@ -236,7 +240,7 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
             if try_again:
                 print('got None from google api, trying again for {}'.format(address))
                 sleep(10) # wait and try again once more after waiting
-                returnGeocoderResult(address, myapikey=config, second_chance=False)
+                returnGeocoderResult(address, myapikey, second_chance=False)
             else:
                 return (None, None) # tried to see if a second attempt would work, but it didn't
     except Exception as boo:
@@ -1187,10 +1191,10 @@ if __name__ == '__main__':
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('Address.db', create=True) # testing = atest.db
-
-    fnames = Field_Names(config.target) # I am header names
+    t_file = config.get_target() # string of target file location
+    fnames = Field_Names(t_file) # I am header names
     fnames.init_index_dict() 
-    export_file = Export_File_Parser(config.target, fnames) # I open a csv 
+    export_file = Export_File_Parser(t_file, fnames) # I open a csv 
     export_file.open_file()
     # ITERATE THROUGH THE INPUT FILE LINE BY LINE
     for line in export_file: # I am a csv object
@@ -1215,4 +1219,4 @@ if __name__ == '__main__':
         print('############')
 
     dbase.close_db()
-    print(f'proccess complete on source file {config.target}')
+    print(f'proccess complete on source file {t_file}')

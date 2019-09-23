@@ -132,6 +132,8 @@ class Route_Database():
     It is the central database that will recieve routes, reproduce them
     and return route specific information when needed by other classes
     and methods
+    including information about sponsors and gift appointments since there is a
+    very high degree of overlap between households requesting those services
     '''
 
     def __init__(self, path_name):
@@ -144,7 +146,8 @@ class Route_Database():
             self.cur = self.conn.cursor()
             # ROUTE TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS routes (file_id INT
-                             UNIQUE, route_number INT, route_letter TEXT)''')
+                             UNIQUE, route_number INT, route_letter TEXT,
+                             sorting_date timestamp, message_sent INT)''')
             self.conn.commit()
             # APPLICANTS
             self.cur.execute('''CREATE TABLE IF NOT EXISTS applicants (file_id
@@ -155,15 +158,15 @@ class Route_Database():
             self.conn.commit()
             # FAMILY MEMBERS
             self.cur.execute('''CREATE TABLE IF NOT EXISTS family
-                             (main_applicant INT, client_id INT, fname TEXT,
+                             (main_applicant INT, client_id INT UNIQUE, fname TEXT,
                              lname TEXT, age INT)''')
             # SPONSOR TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS sponsor (file_id INT
-                             UNIQUE, food_sponsor TEXT, gift_sponsor TEXT)''')
+                             NOT NULL UNIQUE, food_sponsor TEXT, gift_sponsor TEXT)''')
             
             # GIFT TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS gift_table (file_id
-                             INT UNIQUE, app_num INT)''')
+                             INT NOT NULL UNIQUE, app_num INT, message_sent INT)''')
 
             self.conn.commit()
 
@@ -173,34 +176,65 @@ class Route_Database():
 
         takes a file id, route number and route letter, wraps them in a tuple
         and inserts them into the table
-        '''
 
-        db_tple = (file_id, rn, rl)
-        self.cur.execute("INSERT OR IGNORE INTO routes VALUES (?, ?, ?)", db_tple)
+        the current date is also added for auditing purposes and 
+        for potential rollback scenarios
+        '''
+        dt = datetime.date.today()
+        db_tple = (file_id, rn, rl, dt, 0)
+        self.cur.execute("INSERT OR IGNORE INTO routes VALUES (?, ?, ?, ?, ?)", db_tple)
         self.conn.commit()  
 
-    def add_sponsor(self, file_id, food_sponsor, gift_sponsor):
+    def add_sponsor(self, file_id, food_sponsor, gift_sponsor,\
+                    new=(False,False)):
         '''
-        logs a family in the database with their assigned sponsors
+        logs a main applicant file id in the database with their assigned sponsors
 
         takes a file id, food provider and gift provider wraps them in a tuple
         and inserts them into the table
+
+        if there are new service providers this method will update the value
+        in the table where appropriate
         '''
+        
         db_tple = (file_id, food_sponsor, gift_sponsor)
-        self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
-                         db_tple)
-        self.conn.commit()
+        new_food, new_gift = new
+        if not any(new): # service providers
+            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
+                             db_tple)
+            self.conn.commit()
+        elif all(new):
+            self.cur.execute("UPDATE sponsor SET food_sponsor=?,gift_sponsor=?\
+                             WHERE file_id=?", db_tple)
+            self.conn.commit()
+        elif new_food and not new_gift:
+            self.cur.execute("UPDATE sponsor SET food_sponsor=? WHERE\
+                             file_id=?", (food_sponsor, file_id,))
+            self.conn.commit()
+        elif new_gift and not new_food:
+            self.cur.execute("UPDATE sponsor SET gift_sponsor=? WHERE\
+                             file_id=?", (gift_sponsor, file_id,))
+            self.conn.commit()
     
     def add_sa_appointment(self, file_id, app_num):
         '''
         logs a salvation army gift appointment number to the database
         takes the file_id, app_num and wraps them in a tuple
         and inserts them into the 'gift_table'
+        but if there is a duplicated values
+        it will bounce back with an error that will be caught and returned 
+        in a 2 tuple (True, error_string) if
+        the insertion attempt has no errors it will return a 2 tuple 
+        of (False, None) for no error and no error retrn
         '''
-        db_tple = (file_id, app_num)
-        self.cur.execute("INSERT OR IGNORE INTO gift_table VALUES (?, ?)",
+        try:
+            db_tple = (file_id, app_num, 0)
+            self.cur.execute("INSERT INTO gift_table VALUES (?, ?, ?)",
                          db_tple)
-        self.conn.commit()
+            self.conn.commit()
+            return (False, None)
+        except Exception as sqlerror:
+            return (True, sqlerror)
 
     def add_family(self, family_tple):
         '''
@@ -357,8 +391,27 @@ class Delivery_Household():
         self.summary = summary # route card data with address et al. 
                                # created by the visit line object .get_HH_summary()
         self.family_members = None # family members in tuples
+        self.sa_app_num = False
+        self.food_sponsor = False
+        self.gift_sponsor = False
 
+    def return_sponsor_package(self):
+        '''
+        returns a 3 tuples of app num, food sponsor, gift sponsor
+        default values are False
+        '''
+        return (self.sa_app_num, self.food_sponsor, self.gift_sponsor)
     
+    def set_sa_status(self, sa_app_num):
+        self.sa_app_num = sa_app_num
+        self.gift_sponsor = 'Salvation Army'
+
+    def set_sponsors(self, food, gift):
+        if food:
+            self.food_sponsor = food
+        if gift:
+            self.gift_sponsor = gift
+
     def return_hh(self):
         '''
         returns the input values needed to sort a route
@@ -448,6 +501,9 @@ class Delivery_Household():
                 self.route_letter, 
                 self.summary.address,
                 self.neighbourhood)
+    
+    def __str__(self):
+        return f'{self.summary} {self.family_members}' 
 
 class Delivery_Household_Collection():
     '''
@@ -469,11 +525,19 @@ class Delivery_Household_Collection():
                                   # that are used to generate the summary
                                   # cards that sit at the head of the route
                                   # in the card stack
+        self.delivery_targets = [] # list of HH that are registered
+                                   # for delivery
+
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
-                      hood, postal=None, rn=None, rl=None):
+                      hood, postal=None, rn=None, rl=None,food=False):
         '''
         add a Delivery_Household() object to the .hh_dict attribute
         of this class
+        param: food - is a toggle to add the fild_id to an internal list of 
+        households that are going to be delivered to
+        the route iterator will yield households that are on that last only
+        and avoid situations where sponsored households are routed
+        when they are not to be setup for that service
         '''
         self.hh_dict[file_id] = Delivery_Household(file_id, 
                                                    hh_id, 
@@ -485,16 +549,19 @@ class Delivery_Household_Collection():
                                                    postal, 
                                                    rn, 
                                                    rl)
+        if food:
+            self.delivery_targets.append(file_id)
 
     def add_hh_family(self, applicant, familytples):
         '''
         adds tuples of the family members to a Delivery_Household
         using its add_family_members() method
         '''
-        print('trying to add family to key {}'.format(applicant))
+        #print('trying to add family to key {}'.format(applicant))
         if self.hh_dict.get(applicant, False):
+
             self.hh_dict[applicant].add_family_members(familytples)
-            print('added family members to {}'.format(applicant))
+            #print('added family members to {}'.format(applicant))
         else:
             print('Attempting to add {} family members but they have not been recorded as a HH yet'.format(applicant))
     
@@ -580,6 +647,31 @@ class Delivery_Household_Collection():
         '''
         return self.hh_dict[fid].return_summary()
 
+
+    def get_sponsors(self, fid):
+        '''
+        returns a 3 tuple of sa_app_num, food sponsor, gift sponsor
+        '''
+        return self.hh_dict[fid].return_sponsor_package()
+
+
+    def add_sa_app_number(self, fid, app_num):
+        '''
+        for hh with main app  fid, add app_num to 
+        the sa_app_num attribute and set
+        self.gift_sponsor = 'Salvation Army'
+        '''
+        self.hh_dict[fid].set_sa_status(app_num)
+
+    def add_sponsors(self, fid, food=False, gift=False):
+        '''
+        for hh with main app fid, add food and or
+        gift sponsors to the .food_sponsor or .gift_sponsor
+        attributes
+        '''
+        
+        self.hh_dict[fid].set_sponsors(food, gift)
+
     def __iter__(self):
         '''
         An iterator that yields Delivery_Households() containted in the
@@ -603,6 +695,18 @@ class Delivery_Household_Collection():
                           key=attrgetter('route_number','route_letter'))):
             yield hh
 
+    def delivery_iter(self):
+        '''
+        yields an iterator made up of all the hh that have registered for
+        delivery and need to be routed.  This should exclude hh that
+        have registered for food from a sponsor group
+
+        '''
+        for hh in self.delivery_targets:
+            yield self.hh_dict[hh]
+
+    def __str__(self):
+        return f'{self.hh_dict}'
 
 class Delivery_Routes():
     '''
@@ -649,7 +753,7 @@ class Delivery_Routes():
         print('starting sort_method')
         # for key in dictionary of households in the
         # Delivery_Households_Collection class...
-        for applicant in households:
+        for applicant in households.delivery_iter():
             h1_lat, h1_long = applicant.geo_tuple # a tuple of (lat, lng)
             applicant_route = [] # the working container that we will then add to the route dictionary
             size = str(applicant.hh_size) # turn the size into a string so we can...
@@ -665,7 +769,7 @@ class Delivery_Routes():
                 # that are at that distance            
                 distance_hh_dictionary = defaultdict(list)                                                                                                             
                 # ITERATE THROUGH THE HOUSEHOLDS AND CALCULATE DISTANCES FROM THE CHOSEN STARTING HH
-                for HH in households: # iterate through the keys to find the distances of remaining households                    
+                for HH in households.delivery_iter(): # iterate through the keys to find the distances of remaining households                    
                     if HH.main_app_ID != app_file_id: # if this is a new household
                         if not HH.routed(): # and we have not already used them in a route
                             ident = HH.main_app_ID # their file number
