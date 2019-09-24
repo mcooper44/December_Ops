@@ -107,6 +107,7 @@ names
 *.txt
 config.py
 December_Ops.code-workspace
+test_export.csv
 *.csv
 *.db
 *.xlsx
