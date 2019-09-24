@@ -114,3 +114,4 @@ test_export.csv
 *.swp
 *.py.swp
 *.zip
+*.yml
