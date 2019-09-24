@@ -31,7 +31,7 @@ from collections import namedtuple
 import logging
 from datetime import datetime
 
-from config import target
+from r_config import configuration
 
 from basket_sorting_Geocodes import Delivery_Household
 from basket_sorting_Geocodes import Delivery_Routes
@@ -56,9 +56,17 @@ from delivery_binder import Office_Sheet
 
 from sponsor_reports import Report_File
 
+# INITIALIZE CONFIGURATION FILE
+conf = configuration.return_r_config()
+target = conf.get_target # source file
+db_src, _, outputs = conf.get_folders()
+_, session = conf.get_meta
+
+# NAMED TUPLES
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
 
+# LOGGING
 ops_logger = logging.getLogger('ops')
 ops_logger.setLevel(logging.INFO)
 ops_logger_formatter = logging.Formatter('%(message)s')
@@ -96,9 +104,9 @@ address_parser = AddressParser() # I strip out extraneous junk from address stri
 coordinate_manager = Coordinates()
 
 address_dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-address_dbase.connect_to('Address.db', create=True) # testing = atest.db
+address_dbase.connect_to(f'{db_src}Address.db', create=True) # testing = atest.db
 
-route_database = Route_Database('2018rdb.db')
+route_database = Route_Database(f'{db_src}{session}rdb.db')
 
 fnames = Field_Names(target) # I am header names
 export_file = Export_File_Parser(target, fnames) # I open a csv 
@@ -116,7 +124,7 @@ sponsored_households = {'DOON': Delivery_Household_Collection(),
 k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
 k_w.extract_shapes() # get shapes ready to test points
 
-slips = Delivery_Slips('2018_test.xlsx') # source file for the households
+slips = Delivery_Slips(f'{outputs}{session}_delivery_slips_{datetime.now()}.xlsx') # source file for the households
 
 sponsor_dictionary = {'food': {}, 
                       'gifts':{}
@@ -217,7 +225,7 @@ for line in export_file: # I am a csv object
             else: # if we have not geocoded the address
             # we need to raise and exception.  It is better to 
             # run the geocoding script first and dealing with potential errors
-                raise NotCoded('{} has not been geocoded! Run the gc script 1st'.format(address))
+                raise ValueError('{} has not been geocoded! Run the gc script 1st'.format(address))
                 
         except Exception as errr:
             nr_logger.error('{} has raised {} and was not routed'.format(applicant, 
@@ -323,13 +331,14 @@ for house in delivery_households:
 # lets print some slips!
 # and the delivery binder
 # and some sponsor reports
-
-route_binder = Binder_Sheet('2018_route_binder.xlsx') # 
-ops_ref = Office_Sheet('2018_operations_reference.xlsx')
+b_now = f'{datetime.now()}'
+b_head = f'{outputs}{session}'
+route_binder = Binder_Sheet(f'{b_head}_route_binder_{b_now}.xlsx') # 
+ops_ref = Office_Sheet('{b_head}_operations_reference_{b_now}.xlsx')
 # the sponsor report dictionary will produce a report for each organization
-s_report = {'DOON': Report_File('2018_sponsor_report_DOON.xlsx'),
-            'Sertoma': Report_File('2018_sponsor_report_SERTOMA.xlsx'),
-            'REITZEL': Report_File('2018_sponsor_report_REITZEL.xlsx')
+s_report = {'DOON': Report_File(f'{b_head}_sponsor_report_DOON_{b_now}.xlsx'),
+            'Sertoma': Report_File(f'{b_head}_sponsor_report_SERTOMA_{b_now}.xlsx'),
+            'REITZEL': Report_File(f'{b_head}_sponsor_report_REITZEL_{b_now}.xlsx')
            }
 
 
