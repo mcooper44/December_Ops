@@ -334,6 +334,7 @@ def family_to_db(house, route_database):
     family_size = summ.size
     diet = summ.diet
     sms_target = summ.sms_target
+    postal = summ.postal
     # add household to the summary data
     app_tupe = (applicant,
                 fname,
@@ -344,6 +345,7 @@ def family_to_db(house, route_database):
                 address,
                 add2,
                 city,
+                postal,
                 diet,
                 n_hd,
                 sms_target,)
@@ -453,7 +455,10 @@ def log_routes_to_database(route_database, delivery_households):
     the logic is based on the idea that only routes will
     have a rn, rl so the is_route boolian test should keep
     hh that are not routes out of the route table
-
+    
+    and the log_sponsors... function will let any non sponsor HH
+    fall through, or log them to the db if they are reg. for
+    sponsor and/or sa services
 
     '''
     # populate the database with summary and route data

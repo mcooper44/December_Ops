@@ -471,6 +471,7 @@ class Visit_Line_Object():
         attribute
 
         '''
+        #if sms_string[0] != '1': sms_string = f'{1}{sms_string}'
         try:
             # imported phonenumbers library as pn
             n =  pn.parse(sms_string, 'US')

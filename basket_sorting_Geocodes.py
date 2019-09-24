@@ -153,7 +153,7 @@ class Route_Database():
             self.cur.execute('''CREATE TABLE IF NOT EXISTS applicants (file_id
                              INT UNIQUE, f_name TEXT, l_name TEXT, family_size INT, phone TEXT,
                              email TEXT, address_1 TEXT, address_2 TEXT, city
-                             TEXT, diet TEXT, neighbourhood TEXT, 
+                             TEXT, postal TEXT, diet TEXT, neighbourhood TEXT, 
                              sms_target TEXT )''')
             self.conn.commit()
             # FAMILY MEMBERS
@@ -200,7 +200,7 @@ class Route_Database():
         db_tple = (file_id, food_sponsor, gift_sponsor)
         new_food, new_gift = new
         if not any(new): # service providers
-            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",
+            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",\
                              db_tple)
             self.conn.commit()
         elif all(new):
@@ -245,7 +245,7 @@ class Route_Database():
         '''
 
         self.cur.execute('''INSERT OR IGNORE INTO applicants VALUES 
-                         (?,?,?,?,?,?,?,?,?,?,?,?)''',family_tple)
+                         (?,?,?,?,?,?,?,?,?,?,?,?,?)''',family_tple)
         self.conn.commit()
 
     def add_family_member(self, app_id, person):
@@ -358,6 +358,29 @@ class Route_Database():
         self.conn.close()
         print('db connection closed')
 
+def prep_geolocation(lat, lng, give_null=False):
+    '''
+    this is a kludge to deal with the scenario
+    where we are extracting routes from the database
+    and creating slips, reports
+    but we no longer need geolocation data.
+
+    param give_null is passed in through the Delivery_Household
+    null_geo parameter.
+
+    if we are no longer at the point where we care about
+    sorting, and just need a Delivery_Household
+    to print cards null_geo=True should be used.
+    if only 2018 me knew what 2019 would need and spent some
+    time doing proper architecture
+    '''
+
+    if not give_null:
+        return Geolocation(float(lat), float(lng))
+    elif give_null:
+        return (None, None)
+
+
 class Delivery_Household():
     '''
     a collection of datapoints needed to assemble a delivery route
@@ -377,12 +400,12 @@ class Delivery_Household():
     '''
 
     def __init__(self, file_id, hh_id, family_size, lat, lng, summary, hood,
-                 postal=None, rn=None, rl=None):
+                 postal=None, rn=None, rl=None, null_geo=False):
         self.main_app_ID = file_id
         self.household_ID = hh_id
         self.hh_size = family_size
         # used by the Delivery_Routes().sort_method()
-        self.geo_tuple = Geolocation(float(lat), float(lng)) 
+        self.geo_tuple = prep_geolocation(lat, lng, null_geo) 
         self.route_number = rn
         self.route_letter = rl
         self.neighbourhood = hood
@@ -394,6 +417,7 @@ class Delivery_Household():
         self.sa_app_num = False
         self.food_sponsor = False
         self.gift_sponsor = False
+        self.sa_time = False
 
     def return_sponsor_package(self):
         '''
@@ -403,8 +427,19 @@ class Delivery_Household():
         return (self.sa_app_num, self.food_sponsor, self.gift_sponsor)
     
     def set_sa_status(self, sa_app_num):
+        '''
+        adds an appointment number to the sa_app_num attribute
+        and sets gift sponsor to 'Salvation Army'
+        '''
         self.sa_app_num = sa_app_num
         self.gift_sponsor = 'Salvation Army'
+
+    def set_sa_time(self, sa_time):
+        '''
+        sets the sa_time attribute to equal param sa_time
+        this will be a date and time string i.e. Dec 1 at 1:00pm
+        '''
+        self.sa_time = sa_time
 
     def set_sponsors(self, food, gift):
         if food:
@@ -529,15 +564,17 @@ class Delivery_Household_Collection():
                                    # for delivery
 
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
-                      hood, postal=None, rn=None, rl=None,food=False):
+                      hood, postal=None, rn=None,
+                      rl=None,food=False,null_g=False):
         '''
         add a Delivery_Household() object to the .hh_dict attribute
         of this class
         param: food - is a toggle to add the fild_id to an internal list of 
         households that are going to be delivered to
-        the route iterator will yield households that are on that last only
+        the route iterator will yield households that are on that list only
         and avoid situations where sponsored households are routed
         when they are not to be setup for that service
+        param: null_g trips the no geotuples flag in the Delivery_Household
         '''
         self.hh_dict[file_id] = Delivery_Household(file_id, 
                                                    hh_id, 
@@ -548,7 +585,8 @@ class Delivery_Household_Collection():
                                                    hood, 
                                                    postal, 
                                                    rn, 
-                                                   rl)
+                                                   rl,
+                                                   null_geo=null_g)
         if food:
             self.delivery_targets.append(file_id)
 
@@ -563,7 +601,10 @@ class Delivery_Household_Collection():
             self.hh_dict[applicant].add_family_members(familytples)
             #print('added family members to {}'.format(applicant))
         else:
-            print('Attempting to add {} family members but they have not been recorded as a HH yet'.format(applicant))
+            print('Attempting to add {applicant} family members \
+                  but {applicant} is not in the \
+                  Delivery_Household_Collection. .add_hh_family \
+                  has failed')
     
     def add_to_route_summary(self, rn, r_summary):
         '''
@@ -590,6 +631,21 @@ class Delivery_Household_Collection():
         in the self.hh_dict dictionary which returns either True or False
         '''
         return self.hh_dict[fid].routed()
+
+    def setup_rt_summary(self, rn):
+        '''
+        when pulling data out of the route database to print
+        cards et al.
+        this method is needed to instantiat a Route_Summary() object
+        that existing routes can be added to
+        so summary cards can be extracted and printed
+        if the batch script ops_route_creator is being used
+        the label_route method does this in the process of labelling 
+        the routes that it has created. 
+        '''
+        if rn not in self.route_summaries.keys():
+            self.route_summaries[rn] = Route_Summary(rn)
+
 
     def label_route(self, route_key, route):
         '''
@@ -662,6 +718,13 @@ class Delivery_Household_Collection():
         self.gift_sponsor = 'Salvation Army'
         '''
         self.hh_dict[fid].set_sa_status(app_num)
+    
+    def add_sa_app_time(self, fid, sa_time):
+        '''
+        calls teh .set_sa_time method of the HH and inserts 
+        a pickup time retrieved from the database
+        '''
+        self.hh_dict[fid].set_sa_time(sa_time)
 
     def add_sponsors(self, fid, food=False, gift=False):
         '''
