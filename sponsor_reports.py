@@ -25,7 +25,7 @@ def extract_special_number(notes_string, double_symbol='##'):
         return False
 
 # MAIN FILE WRITING FUNCTIONS
-class Report_File():
+class Report_File(object):
     '''
     This class provides methods to write summary data into a report that 
     partners can use to move forward with their work
@@ -79,7 +79,10 @@ class Report_File():
                             None))
         adults.append(applicant)
         if family:
-            for family_member in family:
+            for ft in family:
+                # fid, fname, lname, dob, age, gender, ethno, sia, hh, idents
+                family_member = (ft[0],ft[2],ft[1], None, ft[3], ft[4], None,
+                                 None, None, None)
                 po = Person(family_member)
                 if po.is_adult(Age = age_cutoff):
                     adults.append(po)
@@ -162,4 +165,16 @@ class Report_File():
         '''
         self.workbook.close()
         print('workbook {} closed'.format(self.name))
+
+class Default_Report_File(dict):
+    '''
+    this class allows the Report_File to be used like a default dict
+    refer to Martijn here:
+    https://stackoverflow.com/questions/25951966/python-defaultdict-with-non-default-argument
+
+
+    '''
+    def __missing__(self, key):
+        res = self[key] = Report_File(key)
+        return res
 

@@ -293,13 +293,20 @@ def parse_and_sort_file(export_file, address_database, kw, delivery_households):
             nr_logger.info(f'{applicant} is not ours? is xmas:{is_xmas} \
                            route:{is_routed} sa:{with_sa}')
 
-def sort_routes(route_database, delivery_households, routes):
+def sort_routes(route_database, delivery_households):
     '''
     works through the delivery households and sorts them into routes
     if they have not been previously routed.
     finds a starting route number and then
     calls the sort_method of the database on the delivery_household_collection
     '''
+
+    # Configure the max number of boxes and
+    # the starting route number and pass in the route database
+    # for checking existing file numbers to see if they have been
+    # previously routed
+    routes = Delivery_Routes(route_database, 7, 1)
+
     tic = timeit.default_timer()
     print(f'ROUTE SORTING BEGIN: {str(datetime.now())}')
 
@@ -383,7 +390,7 @@ def parse_sponsor_db_return(f_sponsor, g_sponsor, route_database, applicant):
     food_flag = False
 
     if data_base_return:
-        _, fs, gs = data_base_return
+        _, fs, gs, sd = data_base_return
         # is there new information that we need to overwrite 
         # or add to?
         if f_sponsor and fs:
@@ -503,8 +510,7 @@ fnames = Field_Names(target) # I am header names
 export_file = Export_File_Parser(target, fnames) # I open a csv 
 export_file.open_file()
 
-routes = Delivery_Routes(7, 1)  # Configure the max number of boxes and
-                                     # the starting route number
+
 
 # delivery and sponsor households go into this object
 delivery_households = Delivery_Household_Collection()
@@ -517,7 +523,7 @@ k_w.extract_shapes() # get shapes ready to test points
 ### open, parse lines, sort into services, sort routes, log routes and sponsors
 ### to database
 parse_and_sort_file(export_file, address_dbase, k_w, delivery_households)
-sort_routes(route_database, delivery_households, routes)
+sort_routes(route_database, delivery_households)
 log_routes_to_database(route_database, delivery_households)
 
 # close databases

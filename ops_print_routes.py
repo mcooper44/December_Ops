@@ -169,7 +169,7 @@ class Service_Database:
             print('could not close connection')
 
 
-class Database_Manager:
+class Service_Database_Manager:
     '''
     Interface for the Database class
     contains methods for making specific calls to the database
@@ -263,9 +263,10 @@ class Database_Manager:
     def get_family_members(self, database, file_id):
         '''
         returns tuples of family members from the family table
-        for a givien main applicant
+        for a given main applicant
+        (file id f name, l name, age
         '''
-        ls = f'''SELECT * FROM family WHERE main_applicant={file_id}'''
+        ls = f'''SELECT client_id, fname, lname, age, gender FROM family WHERE main_applicant={file_id}'''
         
         return self.db_struct[database].lookup_string(ls, None)
 
@@ -322,6 +323,11 @@ class Database_Manager:
         if echo: print(f'found {day_time}')
         return day_time
 
+    def return_sponsor_hh(self, database):
+        ls = '''SELECT file_id, food_sponsor, gift_sponsor, sorting_date FROM sponsor'''
+        return self.db_struct[database].lookup_string(ls, None)
+
+
 def package_applicant(main, sa, rn, rl):
     '''
     rebuilds the datastructures that are needed to by the route
@@ -330,6 +336,8 @@ def package_applicant(main, sa, rn, rl):
     this function rebuilds the structure needed to instantiate a 
     Delivery_Household via a Delivery_Household_Collection
     .add_household() call
+
+    and a route summary object
 
     '''
     # use a named tuple to alias all the fields
@@ -354,8 +362,13 @@ def package_applicant(main, sa, rn, rl):
         raise ValueError('There is no main applicant for package_applicant!')
 
 def get_hh_from_database(database, r_start=1, r_end=900):
+    '''
+    This function gets routes out of the database
+    and structures them into a delivery_household_collection
+    and returns that structure
 
-    rdbm = Database_Manager.get_service_db() 
+    '''
+    rdbm = Service_Database_Manager.get_service_db() 
     rdbm.initialize_connections()
 
     dhc = Delivery_Household_Collection()
@@ -367,7 +380,8 @@ def get_hh_from_database(database, r_start=1, r_end=900):
         fid, rn, rl = drt
 
         main_applicant = rdbm.get_main_applicant('rdb', fid)[0]
-
+        # get gift appointment number (gan) gift app time (gat)
+        # or False, False
         gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid)
 
         hh_package, rt_sp  = package_applicant(main_applicant, gan, rn, rl)
@@ -395,7 +409,7 @@ def write_delivery_tools(delivery_households, start_rt=1):
     route_binder = Binder_Sheet(f'{b_head}_route_binder_{b_now}.xlsx')  
     ops_ref = Office_Sheet(f'{b_head}_operations_reference_{b_now}.xlsx')
 
-    current_rt = start_rt  # to keep track of the need to print 
+    current_rt = (start_rt -1)  # to keep track of the need to print 
                                     # a summary card or not
     rt_written_set = set()
 

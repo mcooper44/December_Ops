@@ -159,11 +159,13 @@ class Route_Database():
             # FAMILY MEMBERS
             self.cur.execute('''CREATE TABLE IF NOT EXISTS family
                              (main_applicant INT, client_id INT UNIQUE, fname TEXT,
-                             lname TEXT, age INT)''')
+                             lname TEXT, age INT, gender TEXT)''')
+            self.conn.commit()
             # SPONSOR TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS sponsor (file_id INT
-                             NOT NULL UNIQUE, food_sponsor TEXT, gift_sponsor TEXT)''')
-            
+                             NOT NULL UNIQUE, food_sponsor TEXT, gift_sponsor
+                             TEXT, sorting_date timestamp )''')
+            self.conn.commit()
             # GIFT TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS gift_table (file_id
                              INT NOT NULL UNIQUE, app_num INT, message_sent INT)''')
@@ -197,10 +199,11 @@ class Route_Database():
         in the table where appropriate
         '''
         
-        db_tple = (file_id, food_sponsor, gift_sponsor)
+        dt = datetime.date.today()
+        db_tple = (file_id, food_sponsor, gift_sponsor, dt)
         new_food, new_gift = new
         if not any(new): # service providers
-            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?)",\
+            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?, ?)",\
                              db_tple)
             self.conn.commit()
         elif all(new):
@@ -254,12 +257,14 @@ class Route_Database():
         
         it expects to recieve a tuple created by the 
         Person.get_base_profile() method in the following format
-        (file id, fname, lname, age)
+        (file id, fname, lname, age, gender)
 
         '''
 
-        five_tuple = (app_id, person[0], person[1], person[2], person[3])
-        self.cur.execute("INSERT OR IGNORE INTO family VALUES (?,?,?,?,?)", five_tuple)
+        six_tuple = (app_id, person[0], person[1], person[2], person[3],
+                      person[4])
+        self.cur.execute("INSERT OR IGNORE INTO family VALUES (?,?,?,?,?,?)",
+                         six_tuple)
         self.conn.commit()
 
 
@@ -629,8 +634,16 @@ class Delivery_Household_Collection():
         '''
         calls the .routed() method of the Delivery_Household() contained
         in the self.hh_dict dictionary which returns either True or False
+        FOR THE CURRENT SORTING SESSION not in the DATABASE
         '''
         return self.hh_dict[fid].routed()
+
+    def has_been_routed_in_db(self, fid, database):
+        '''
+        takes a Route_Database object and calls
+        a method to see if the hh has been previously entered as a route
+        '''
+        return database.prev_routed(fid)
 
     def setup_rt_summary(self, rn):
         '''
@@ -768,8 +781,13 @@ class Delivery_Household_Collection():
         for hh in self.delivery_targets:
             yield self.hh_dict[hh]
 
+    def army_iter(self):
+        for hh in (sorted(self.hh_dict.values(),
+                          key=attrgetter('sa_app_num')))
+            yield self.hh_dict[hh]
+
     def __str__(self):
-        return f'{self.hh_dict}'
+        return f'{self.hh_dict.keys()}'
 
 class Delivery_Routes():
     '''
@@ -787,11 +805,12 @@ class Delivery_Routes():
 
     '''    
 
-    def __init__(self, max_boxes = 7, start_count = 1):
+    def __init__(self, route_db, max_boxes = 7, start_count = 1):
         self.max_boxes = max_boxes # max number of boxes per/route
         self.start_count = start_count # what we start counting routes at
+        self.route_db = route_db # a Delivery_Database object
 
-    def sort_method(self, households):
+    def sort_method(self, households, stop_on_dupes=False):
         '''
         Uses a brute force method to sort households into geographically
         proximate piles and labels them with a route number and letter
@@ -816,13 +835,21 @@ class Delivery_Routes():
         print('starting sort_method')
         # for key in dictionary of households in the
         # Delivery_Households_Collection class...
-        for applicant in households.delivery_iter():
-            h1_lat, h1_long = applicant.geo_tuple # a tuple of (lat, lng)
+        for applicant in households.delivery_iter(): 
             applicant_route = [] # the working container that we will then add to the route dictionary
+
+            h1_lat, h1_long = applicant.geo_tuple # a tuple of (lat, lng)
             size = str(applicant.hh_size) # turn the size into a string so we can...
             boxes = box_mask[size] # start building the route with the household
             app_file_id = applicant.main_app_ID
-            if not applicant.routed():
+            
+            #sort_log.info(f'type of app_file_id is {type(app_file_id)}')
+            routed_in_session = applicant.routed()
+            routed_in_db = households.has_been_routed_in_db(app_file_id, self.route_db)
+            sort_log.info(f'{app_file_id} Routed in Session? \
+                          {routed_in_session} Routed in DB {routed_in_db}')
+            if not routed_in_session and not routed_in_db:
+            
                 # add them to list of assigned HH to avoid adding them again
                 #assigned.add(applicant) 
                 # start by adding the household we are starting with to the container for this route
@@ -833,17 +860,27 @@ class Delivery_Routes():
                 distance_hh_dictionary = defaultdict(list)                                                                                                             
                 # ITERATE THROUGH THE HOUSEHOLDS AND CALCULATE DISTANCES FROM THE CHOSEN STARTING HH
                 for HH in households.delivery_iter(): # iterate through the keys to find the distances of remaining households                    
-                    if HH.main_app_ID != app_file_id: # if this is a new household
-                        if not HH.routed(): # and we have not already used them in a route
-                            ident = HH.main_app_ID # their file number
-                            # TO DO - clarify how to access households in this
-                            # block.  Should we iterate through objects or file
-                            # ids and then grab the object?
-                            h2_lat, h2_long = HH.geo_tuple # their lat,long
-                            # caculated the distance between the two households
-                            distance_between = haversine(h1_long, h1_lat, h2_long, h2_lat) # returns float distance in KM                        
-                            d_key = str(distance_between) # convert to string so we can use it as a dictionary key
-                            distance_hh_dictionary[d_key].append(ident) # update dictionary of distances: HH identifier
+                    ident = HH.main_app_ID
+                    not_currently_routed = (ident not in assigned and ident \
+                                            not in applicant_route)
+                    routed_previously = households.has_been_routed_in_db(ident,
+                                                                         self.route_db)
+
+
+                    sort_log.info(f'looking at {ident}. not currently routed is\
+                                  {not_currently_routed} not in db\
+                                  {routed_previously}')
+                    #sort_log.info(f'type of ident {ident} is {type(ident)}')
+                    if not_currently_routed and not routed_previously:
+                        # TO DO - clarify how to access households in this
+                        # block.  Should we iterate through objects or file
+                        # ids and then grab the object?
+                        h2_lat, h2_long = HH.geo_tuple # their lat,long
+                        # caculated the distance between the two households
+                        distance_between = haversine(h1_long, h1_lat, h2_long, h2_lat) # returns float distance in KM                        
+                        d_key = str(distance_between) # convert to string so we can use it as a dictionary key
+                        distance_hh_dictionary[d_key].append(ident) # update dictionary of distances: HH identifier
+
                 # now we have calculated all the distances from Route #X A to all of the other households in the caseload
                 # sort a list of all the distances so we can skim the shortest off
                 distances = sorted([float(k) for k in distance_hh_dictionary.keys()])
@@ -852,7 +889,8 @@ class Delivery_Routes():
                     key = str(float_value) # convert the float to a string so we can use it in the distance : families at that distance dictionary
                     # now we need to iterate through the list of HH at this distance.
                     for fam in distance_hh_dictionary[key]: # for the individual or family in the list of households at this distance
-                        if not households.has_been_routed(fam): # if we haven't sorted them into a route yet
+                        if not households.has_been_routed(fam) and (fam not in\
+                                                                    applicant_route): # if we haven't sorted them into a route yet
                             fam_size = households.get_size(fam) # determine family size
                             box_num = box_mask[fam_size] # determine number of boxes
                             # do math to determine if we can add them to the route
@@ -862,7 +900,14 @@ class Delivery_Routes():
                             if box_num + boxes <= max_box_count: # if we added this family to the pile and they didn't add too many boxes
                                 boxes += box_num
                                 assigned.add(fam) # add them to the assigned list
+
                                 applicant_route.append(fam) # add them to the route
+            
+            else:
+                if stop_on_dupes:
+                    raise ValueError(f'FILE {ident} is a duplicate')
+                else:
+                    sort_log.info(f'ERROR: {ident} is a duplicate')
             
             if applicant_route:
                 sort_log.info('we have iterated and made a route! It is {}'.format(applicant_route))
