@@ -148,21 +148,23 @@ class Person():
         provide a different value for parameter Age for testing different ages
 
         This method is helpful in the December Ops pipeline for sorting
-        household members into appropriate adult/child buckets
+        household members into appropriate adult/child buckets for the
+        sponsor reports
         '''
         return int(self.person_Age) >= Age
 
     def get_base_profile(self):
         '''
-        returns a tuple of (ID, Fname, Lname, Age)
+        returns a tuple of (ID, Fname, Lname, Age, Gender)
 
         this method is used for inserting family member information in a
         Route_Database() object coded in basket sorting_Geocodes.py
+        via the .add_family_member() method
         
-        it is called in december_ops
+        it is called in december ops in the sort_routes, and print scripts
         '''
         return (self.person_ID, self.person_Fname, self.person_Lname,
-                self.person_Age)
+                self.person_Age, self.person_Gender)
 
     def Get_Self_Ident_Profile_Tuple(self):
         '''
