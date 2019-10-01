@@ -430,7 +430,10 @@ class Delivery_Household():
         default values are False
         '''
         return (self.sa_app_num, self.food_sponsor, self.gift_sponsor)
-    
+   
+    def get_sa_day_time(self):
+        return self.sa_app_num, self.sa_time
+
     def set_sa_status(self, sa_app_num):
         '''
         adds an appointment number to the sa_app_num attribute
@@ -783,8 +786,8 @@ class Delivery_Household_Collection():
 
     def army_iter(self):
         for hh in (sorted(self.hh_dict.values(),
-                          key=attrgetter('sa_app_num')))
-            yield self.hh_dict[hh]
+                          key=attrgetter('sa_app_num'))):
+            yield hh
 
     def __str__(self):
         return f'{self.hh_dict.keys()}'

@@ -1,6 +1,9 @@
 """
 This provides classes and methods to write the reports that partners need
 to conduct their branch of the operations
+
+
+
 """
 import xlsxwriter
 from db_data_models import Person
@@ -29,6 +32,15 @@ class Report_File(object):
     '''
     This class provides methods to write summary data into a report that 
     partners can use to move forward with their work
+
+    It needs to be instantiated with a book_name which will be the name of the
+    file that it outputs.
+
+    then, an entry will be added by using the .add_household() method
+
+    at the end of the session call close_workbook method and it will properly
+    close the file
+
     '''
     def __init__(self, book_name):
         self.name = book_name
@@ -55,7 +67,7 @@ class Report_File(object):
             self.bold = self.workbook.add_format({'bold': True})
 
 
-    def add_household(self, summary, family, age_cutoff = 18): 
+    def add_household(self, summary, family, age_cutoff = 18, app_pack=False): 
         '''
         Adds a formatted summary to the xlsx file for the household
         that lists address, dietary issues, and family member details
@@ -63,6 +75,9 @@ class Report_File(object):
         family = family tuples
         age_cutoff = default age divider to separate kids who get services
         and 'adults' or people who are too old depending on service provider
+
+        app_pack is a 2 tuple of appointment number and appointment time string
+
         '''
         #gift_appointment = extract_special_number(request[11], double_symbol='##')
         
@@ -78,16 +93,24 @@ class Report_File(object):
                             None,
                             None))
         adults.append(applicant)
+        
+        if app_pack:
+            nm, tm = app_pack
+            self.worksheet1.write(f'E{self.l_n[1]}', nm)
+            self.worksheet1.write(f'F{self.l_n[1]}', tm)
+
+
         if family:
             for ft in family:
+                if any(ft):
                 # fid, fname, lname, dob, age, gender, ethno, sia, hh, idents
-                family_member = (ft[0],ft[2],ft[1], None, ft[3], ft[4], None,
+                    family_member = (ft[0],ft[2],ft[1], None, ft[3], ft[4], None,
                                  None, None, None)
-                po = Person(family_member)
-                if po.is_adult(Age = age_cutoff):
-                    adults.append(po)
-                else:
-                    kids.append(po)
+                    po = Person(family_member)
+                    if po.is_adult(Age = age_cutoff):
+                        adults.append(po)
+                    else:
+                        kids.append(po)
 
         # client info
         self.worksheet1.write('A{}'.format(self.l_n[1]), 
@@ -102,7 +125,7 @@ class Report_File(object):
         self.worksheet1.write('A{}'.format(self.l_n[4]),
                                            itr_joiner(summary.phone))
         # title strings
-        self.worksheet1.write('A{}'.format(self.l_n[5]), 'ADULTS', self.bold)
+        self.worksheet1.write('A{}'.format(self.l_n[5]), 'FAMILY', self.bold)
         self.worksheet1.write('D{}'.format(self.l_n[5]), 'CHILDREN', self.bold)
         self.worksheet1.write('F{}'.format(self.l_n[5]), 'AGE', self.bold)
         self.worksheet1.write('G{}'.format(self.l_n[5]), 'GENDER', self.bold)

@@ -98,7 +98,7 @@ class Service_Database:
             if first_time == True and any(strings):
                 for string in strings:
                     self.cur.execute(string)
-                    print(f'executing: {string}')
+                    #print(f'executing: {string}')
                     self.conn.commit()
             elif first_time == True and not any(strings):
                 print('no strings provided to provision tables')
@@ -135,7 +135,7 @@ class Service_Database:
             print('input for SQL update operation is none')
             return False
 
-    def lookup_string(self, string, tple):
+    def lookup_string(self, string, tple, echo=False):
         '''
         executes sql string with values tple
         if tple != None asuming it a fetchone scenario
@@ -152,7 +152,7 @@ class Service_Database:
             self.cur.execute(string)
             rows = self.cur.fetchall()
         
-        if not rows: print('WARNING: NO DATABASE RESULT')
+        if echo and not rows: print('WARNING: NO DATABASE RESULT')
 
         return rows
 
@@ -235,13 +235,21 @@ class Service_Database_Manager:
             ls1 = f'SELECT app_num FROM gift_table WHERE file_id={fid}'
             num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
             ls2 = f'SELECT day,time FROM Appointments WHERE ID={num}'
-            print(ls2)
             a_day, a_time = self.db_struct[app_db].lookup_string(ls2, None)[0]
             time_str = f'{a_day} {a_time}'
             return (num, time_str)
         except:
             return (False, False)
-            
+
+    def return_sa_app_time(self, app_db, num):
+        '''
+        gets a string representing the Day and Time of a given
+        salvation army appointment number (num)
+
+        '''
+        ls = f'SELECT day, time FROM Appointments WHERE ID={num}'
+        a_day, a_time = self.db_struct[app_db].lookup_string(ls, None)[0]
+        return f'{a_day} {a_time}'
 
     def get_main_applicant(self, database, file_id):
         '''
