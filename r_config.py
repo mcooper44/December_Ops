@@ -28,6 +28,8 @@ class configuration:
         self.outputs = None
         self.g_api_key = None
         self.target = None
+        self.rdb = None
+        self.sa_db = None
 
         if self.config:
             try:
@@ -42,7 +44,9 @@ class configuration:
                     self.outputs = yfile['outputs']
                     self.g_api_key = yfile['api_key']
                     self.target = yfile['target']
-                    print(f'op success for {self.whoami} {self.session}')
+                    self.rdb = yfile['rdb_nm']
+                    self.sa_db = yfile['sadb_nm']
+                    print(f'loaded {self.whoami} {self.session}')
             except:
                 print('failed to open config file')
 
@@ -80,9 +84,20 @@ class configuration:
         return file name of input file
         '''
         return f'{self.inputs}{self.target}'
-
+    
+    def get_bases(self):
+        '''
+        returns a dictionary of databases and path to them
+        for use in the various database interfaces
+        '''
+        return {'rdb': f'{self.db_src}{self.rdb}',
+                'sa': f'{self.db_src}{self.sa_db}'}
+    
+    
     def set_target(self, new_target):
         '''
         sets a new file target for processing
         '''
         self.target = new_target
+
+
