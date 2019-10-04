@@ -32,6 +32,7 @@ import sqlite3
 from time import gmtime, strftime, sleep
 import logging
 import re
+import sys
 
 from r_config import configuration
 
@@ -49,10 +50,7 @@ from address_audit_tools import boundary_checker
 from address_audit_tools import boundary_logger
 from address_audit_tools import missing_unit_logger
 
-config = configuration.return_r_config()
-
-#api key
-myapikey = config.get_g_creds()
+from file_iface import Menu
 
 # error logging is handled by functions that carry out parsing and geocoding
 # they pass False or None on to the objects using them and are handled by the objects
@@ -223,8 +221,8 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
     try:
         sleep(1)
         result = geocoder.google(address, key=myapikey)
-        print(result.status)
-        print(result.lat, result.lng)
+        meta_log.info(f'{result.status}')
+        meta_log.info(f'{result.lat}, {result.lng}')
         if result is not None:
             if result.status == 'OK':
                 geocoding_logger.info('##500## {} is {}'.format(address, result.status))
@@ -238,7 +236,7 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
         else:
             geocoding_logger.error('##401## Result is None with status {} on {}'.format(result.status, address))
             if try_again:
-                print('got None from google api, trying again for {}'.format(address))
+                meta_log.info('got None from google api, trying again for {}'.format(address))
                 sleep(10) # wait and try again once more after waiting
                 returnGeocoderResult(address, myapikey, second_chance=False)
             else:
@@ -263,7 +261,7 @@ class AddressParser():
         a tuple of  ('unit number street', error_flags) or False
         '''
         key_list = list(self.errors.keys()) + list(self.parsed.keys())
-        print(f'attempting to parse {address}')
+        meta_log.info(f'attempting to parse {address}')
         if address not in key_list and address is not (False or None):            
             worked, in_put, out_put  = full_address_parser(address, file_id)
             
@@ -329,7 +327,7 @@ class Coordinates():
         '''
         address_tpl = namedtuple('address_tpl', 'g_address_str, house_number, street, city, lat, lng')
         if address is None:
-            print('blank address provided to Coordinates.lookup() method')
+            meta_log.info('blank address provided to Coordinates.lookup() method')
             return address
         
         if address in self.coordinates:
@@ -510,7 +508,7 @@ class SQLdatabase():
             self.cursor.execute("SELECT * FROM errors WHERE source_street=? AND source_city=?",(parsed_address,source_city,))
             error_ping = self.cursor.fetchone()
             if error_ping:
-                print('found result {} {} in error table'.format(parsed_address, source_city))
+                sort_log.info('found result {} {} in error table'.format(parsed_address, source_city))
                 return True
             else:
                 return False
@@ -682,7 +680,6 @@ class Source_Address():
             # flags = {'MultiUnit': False, 'Direction': False, 'PostType': False}   
         except:
             self.error_dictionary['source_address_error'] = True
-            # print('address error for {}. check logs for {}'.format(self.applicant, self.source_string))
 
         if not self.in_bounds:
             # boundary_logger(self.applicant, self.city)
@@ -711,10 +708,10 @@ class Source_Address():
         exist, or True, if they do not
         This is used in logic to procede with geocoding
         '''
-        print('checking status')
-        print(f'source_string = {self.source_string}')
-        print(f'decon.address = {self.decon_address}')
-        print(f'error dict values = {self.error_dictionary.values()}')
+        meta_log.info('checking status')
+        meta_log.info(f'source_string = {self.source_string}')
+        meta_log.info(f'decon.address = {self.decon_address}')
+        meta_log.info(f'error dict values = {self.error_dictionary.values()}')
         if self.source_string == None:
             # no address was input
             self.go_to_next_step = False
@@ -725,7 +722,7 @@ class Source_Address():
         if any(self.error_dictionary.values()):
             # is there at lease one error?
             self.go_to_next_step = False
-        print(f'go status is: {self.go_to_next_step}') 
+        meta_log.info(f'go status is: {self.go_to_next_step}') 
         return self.go_to_next_step
 
 class Database_View():
@@ -756,7 +753,7 @@ class Database_View():
                 if dbr.exists:
                     return dbr
                 else:
-                    print('address is not in database')
+                    meta_log.info(f'address: {address} is not in database')
                     return dbr # (None, None, None, False, 'no_results')
         except:
             return Fail_package(None, None, None, False, 'failed', None, None)
@@ -782,12 +779,12 @@ class Database_View():
         'errors'
         'google_result'
         '''
-        print(f'attempting to write {input_tuple} to db in the {table} table')
+        meta_log.info(f'attempting to write {input_tuple} to db in the {table} table')
         try:
             self.db.insert_into_db(table, input_tuple)
 
         except:
-            print(f'could not write {input_tuple} to dbase table {table}')
+            meta_log.info(f'could not write {input_tuple} to dbase table {table}')
 
     def set_unit_flag(self, lat, lng):
         '''
@@ -824,7 +821,7 @@ class Geocode_View():
             self.flags['gc_failed'] = False
             self.flags['no_result'] = True
         except:
-            print('geocoding attempt failed. Geocode_View.gc_address() failed')
+            meta_log.info('geocoding attempt failed. Geocode_View.gc_address() failed')
 
         if self.coding_result == None:                    
             self.flags['no_result'] = True
@@ -923,7 +920,7 @@ class line_obj_parser():
         set self.can_proceed_to_gc
         which is a flag that allows or fails a geocoding call
         '''  
-        print('SA loaded with {} {} {}'.format(self.address, self.city, self.applicant))
+        #print('SA loaded with {} {} {}'.format(self.address, self.city, self.applicant))
         self.SAO.deconstruct_view(add_parser)
         
         self.flags.update(self.SAO.return_error_flags())
@@ -931,7 +928,7 @@ class line_obj_parser():
         
         self.can_proceed_to_gc = self.SAO.return_go_status() # True if no errors or False if at least 1
 
-        print('OK to do GC attempt: {}'.format(self.can_proceed_to_gc))
+        #print('OK to do GC attempt: {}'.format(self.can_proceed_to_gc))
         if self.can_proceed_to_gc:
             self.simplified_address = self.SAO.simplified_address            
             #print(f'parsed and moving forward with {self.simplified_address}')
@@ -944,12 +941,12 @@ class line_obj_parser():
         else: return False
         '''
         # database view named tuple from .in_db call
-        print(f'polling database with {self.simplified_address} {self.city}')
+        meta_log.info(f'polling database with {self.simplified_address} {self.city}')
         dbv_nt = self.DBV.in_db(self.simplified_address, self.city, bool_flag=False)
         self.db_flags = self.DBV.extract_flags(self.lat, self.lng)
         
         if dbv_nt.status == 'valid':
-            print(dbv_nt)
+            meta_log.info(dbv_nt)
             if dbv_nt.exists:
                 self.lat = dbv_nt.lat
                 self.lng = dbv_nt.lng 
@@ -962,15 +959,12 @@ class line_obj_parser():
                         self.google_city = dbv_nt.city
                         self.cities_valid_and_matching = two_city_parser(self.city, self.google_city)[0]
                 self.in_table = dbv_nt.source
-                print('in database')
                 return True
             else:
-                print('not in database')
                 return False
         else:
             self.done_b4 = False
             self.can_proceed_to_gc = True
-            print('not in database')
             return False          
 
     def try_gc_api(self):
@@ -980,7 +974,7 @@ class line_obj_parser():
 		in the Source Address object view
 		
         '''
-        print(f'trying to geocode {self.simplified_address} {self.city}')
+        meta_log.info(f'trying to geocode {self.simplified_address} {self.city}')
         if self.can_proceed_to_gc:
             self.GOO = Geocode_View(self.simplified_address, self.city, self.coordinate_man)
             self.GOO.gc_address()
@@ -992,7 +986,7 @@ class line_obj_parser():
             self.google_db_entry = self.DBV.google_tab_entry(self.lat, self.lng) # see if there is a database result somehow
             return True
         else:
-            print('cannot proceed to geocoding step - flag not set True')
+            meta_log.info('cannot proceed to geocoding step - flag not set True')
             self.flags.update(self.GOO.flags)
             return False
 
@@ -1008,7 +1002,7 @@ class line_obj_parser():
         if self.SAO.flagged_unit and self.done_b4: # if the input string has a unit number and we have already coded it
              # and use that to get the unit flag from database
             if self.db_flags.valid and not self.db_flags.unit_flag: # if the input string has one, but the database does not, we need to update the database
-                print(f'unit flag was missing from {self.address} in the database.')
+                meta_log.info(f'unit flag was missing from {self.address} in the database.')
                 self.should_write_uf = True
         
                 #dbase.set_unit_flag_in_db(lat, lng)
@@ -1031,7 +1025,7 @@ class line_obj_parser():
 
             self.cities_valid_and_matching = two_city_parser(self.city, g_city)[0] # True or False
         else:
-            print('no flags to set.  Google was not pinged')
+            meta_log.info('no flags to set.  Google was not pinged')
             self.flags['geocode_attempt'] = False
             if self.google_city and self.google_h_street:
                 self.google_post_types = parse_post_types(self.google_h_street) # GOOGLE PT
@@ -1090,7 +1084,7 @@ class line_obj_parser():
 
         # ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
         if self.should_write_g and not self.google_db_entry: # flag set when a valid gc result returns in the try_gc_api method
-            g_dir_type_tp, g_post_type_tp, _ = self.google_post_types     
+            g_post_type_tp, g_dir_type_tp, _ = self.google_post_types     
             flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
             flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type 
             #print(f'coding result = {self.GOO.coding_result}')                        
@@ -1106,7 +1100,7 @@ class line_obj_parser():
                     flagged_post_type, # street, drive etc. T | F
                     pt_str # s, d etc. 
                     )
-            print(f'google result = {google_result}')
+            sort_log.info(f'google result = {google_result}')
             self.DBV.write_db(google_result, 'google_result')            
 
         if self.should_write_et: # set in the diff_results method
@@ -1186,12 +1180,37 @@ class line_obj_parser():
             meta_log.info(f'X,{who},at,{where},hit the google api wall')      
 
 if __name__ == '__main__':
+    
+    config = configuration.return_r_config()
+
+    t_file = config.get_target() # string of target file location
+    #api key
+    myapikey = config.get_g_creds()
+
+    
+    # MENU INPUT
+    menu = Menu(base_path='sources/' )
+    menu.get_file_list()
+    s_target = menu.handle_input(menu.prompt_input())
+
+    confirm = input(f''''1. Use default {t_file}\n2. Use choice {s_target}\n3. Exit\n ''')
+
+    if str(confirm) == '1':
+        print(f'using: {confirm}') 
+    elif str(confirm) == '2':
+        t_file = s_target
+        print(f'using: {t_file}')
+    else:
+        print(f'exiting. Input was: {confirm}')
+        sys.exit(0)
+
+
+
     # SETUP CLASSES AND CONFIG
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
     dbase.connect_to('Address.db', create=True) # testing = atest.db
-    t_file = config.get_target() # string of target file location
     fnames = Field_Names(t_file) # I am header names
     fnames.init_index_dict() 
     export_file = Export_File_Parser(t_file, fnames) # I open a csv 
@@ -1204,7 +1223,7 @@ if __name__ == '__main__':
         try: # parse address 
             lop.deconstruct(address_parser)
         except:
-            print('could not successfully call deconstruct method')
+            meta_log.info('could not successfully call deconstruct method')
             error_stack['d_parse'] = True  
         if not lop.poll_db(): # poll db - for results
             lop.try_gc_api() # attempt to geocode if needed
@@ -1212,11 +1231,11 @@ if __name__ == '__main__':
         try:
             lop.attempt_db_write() # attempt to write to necessary db tables
         except:
-            print('could not write to db.')
+            meta_log.info('could not write to db.')
             error_stack['dbase_write'] = True
 
         lop.log_results(error_stack)
-        print('############')
+        meta_log.info('############')
 
     dbase.close_db()
     print(f'proccess complete on source file {t_file}')

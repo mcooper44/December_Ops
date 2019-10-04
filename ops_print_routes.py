@@ -6,16 +6,18 @@ the ops_sort script and rebuilds HH objects and a
 Delivery_Household_Collection and then writes delivery
 slips and other products that are essential to the 
 effort of getting services out to everyone
-
+it prompts the user for input and utilizes that input 
+to print the correct range
 '''
 
-
+import logging
+import sys
 import sqlite3
 from collections import namedtuple
-import logging
 from datetime import datetime
 
 from r_config import configuration
+from file_iface import Menu
 
 from basket_sorting_Geocodes import Delivery_Household
 from basket_sorting_Geocodes import Delivery_Routes
@@ -45,7 +47,7 @@ conf = configuration.return_r_config()
 target = conf.get_target() # source file
 db_src, _, outputs = conf.get_folders()
 _, session = conf.get_meta()
-
+db_dictionary = conf.get_bases() # {rdb: file, sa: file}
 
 # LOGGING
 ops_logger = logging.getLogger('ops')
@@ -76,6 +78,12 @@ add_log.info('Running new session {}'.format(datetime.now()))
 
 
 class Service_Database:
+    '''
+    this is a  model of the route database
+
+    '''
+    
+    
     def __init__(self, path_name):
         self.path_name = path_name
         self.conn = None
@@ -193,8 +201,15 @@ class Service_Database_Manager:
 
     @classmethod
     def get_service_db(cls):
-        return cls({'rdb': 'databases/2019_testing_rdb.db',
-                   'sa' : 'databases/sa_2019_appointments.db'})
+        '''
+        standard files that will be used and are located in the
+        databases folder
+
+        keys are 'rdb' for the route database
+                 'sa' for the app # day time mapping
+
+        '''
+        return cls(db_dictionary)
 
     def close_all(self):
         '''
@@ -411,13 +426,13 @@ def get_hh_from_database(database, r_start=1, r_end=900):
 
 def write_delivery_tools(delivery_households, start_rt=1):
 
-    b_now = f'{datetime.now()}'
+    b_now = f'{datetime.now()}'[:16] # cut off the miliseconds
     b_head = f'{outputs}{session}'
-    slips = Delivery_Slips(f'{outputs}{session}_delivery_slips_{datetime.now()}.xlsx') # source file for the households
+    slips = Delivery_Slips(f'{outputs}{session}_delivery_slips_{b_now}.xlsx') # source file for the households
     route_binder = Binder_Sheet(f'{b_head}_route_binder_{b_now}.xlsx')  
     ops_ref = Office_Sheet(f'{b_head}_operations_reference_{b_now}.xlsx')
 
-    current_rt = (start_rt -1)  # to keep track of the need to print 
+    current_rt = (int(start_rt) -1)  # to keep track of the need to print 
                                     # a summary card or not
     rt_written_set = set()
 
@@ -435,7 +450,7 @@ def write_delivery_tools(delivery_households, start_rt=1):
         # the following two lines need to be pulled out into a separate 
         # pipeline - we need a hh structure for true sponsored households
         #s_report.add_household(summ, fam) # sponsor report
-           
+                   
         rt_str = rn # because the route number is an int 
         # decide if now is the right time to insert a route summay on the stack
         rt_card_summary = delivery_households.route_summaries.get(rt_str, None) 
@@ -459,8 +474,78 @@ def write_delivery_tools(delivery_households, start_rt=1):
     route_binder.close_worksheet()
     ops_ref.close_worksheet() 
 
-route_database = Route_Database(f'{db_src}{session}rdb.db')
+def input_check(inp):
+    '''
+    validates user input for the route ranges
+    and returns True if inp is a number or False
+    if it is something else
+    '''
+    try:
+        x = int(inp)
+        if isinstance(x, int):
+            return True
+        else:
+            return False
+    except:
+        return False
 
-dh = get_hh_from_database(route_database)
-write_delivery_tools(dh)
+def val_start_end(start, end):
+    '''
+    prompts the user to input the start and end range of the routes
+    to print and validates the input, exiting if it is invalid
+    or returning the start, end range if valid
 
+    '''
+    
+    # check that numbers were input
+    if not all((input_check(start), input_check(end))):
+        print(f'Invalid input {start} {end}')
+        sys.exit(1)
+    # validate that we have a valid range
+    if int(end) < int(start):
+        print('We cannot run backwards!')
+        print(f'end point {end} < {start}')
+        sys.exit(1)
+
+    return start, end
+
+def main():
+    '''
+    prompts the user to input a starting route number
+    and an ending number
+    validates input
+    asks for confirmation
+    and then preps route cards, delivery binder
+    and operation summary files
+    '''
+
+    print('### TIME TO PRINT SOME ROUTES ###')
+
+    route_database = Route_Database(f'{db_src}{session}rdb.db')
+    last_number = route_database.return_last_rn()
+
+    if last_number == 0:
+        raise ValueError(f'THERE ARE NO ROUTES IN {db_src}{session}rdb.db ')
+    else:
+        print(f'There are currently {last_number} routes in the database')
+
+    menu = Menu()
+    start_p, end_p = menu.prompt_input('s_routes'), menu.prompt_input('e_routes')
+    start_r, end_r = val_start_end(start_p, end_p)
+        
+    conf_all = input(f'Please confirm (y/n) print of routes {start_r} to {end_r}')
+
+    if conf_all.lower() == 'n':
+        print('exiting...')
+        sys.exit(0)
+    elif conf_all.lower() == 'y':
+        dh = get_hh_from_database(route_database, r_start=start_r, r_end=end_r)
+        write_delivery_tools(dh, start_rt=start_r)
+
+        print('...Route Printing Process Complete...')
+    else:
+        print(f'invalid input {conf_all}')
+        raise ValueError('input either y or n')
+
+if __name__ == '__main__':
+    main()

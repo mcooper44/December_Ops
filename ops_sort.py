@@ -39,6 +39,7 @@ import logging
 from collections import namedtuple
 from datetime import datetime
 import timeit
+import sys
 
 from r_config import configuration
 
@@ -47,7 +48,6 @@ from basket_sorting_Geocodes import Delivery_Routes
 from basket_sorting_Geocodes import Route_Database
 from basket_sorting_Geocodes import Delivery_Household_Collection
 
-from address_parser_and_geocoder import Coordinates
 from address_parser_and_geocoder import SQLdatabase
 from address_parser_and_geocoder import AddressParser
 
@@ -65,11 +65,8 @@ from delivery_binder import Office_Sheet
 
 from sponsor_reports import Report_File
 
-# CONFIGURATION SETUP
-conf = configuration.return_r_config()
-target = conf.get_target() # source file
-db_src, _, outputs = conf.get_folders()
-_, session = conf.get_meta()
+from file_iface import Menu
+
 
 
 # NAMED TUPLES
@@ -496,10 +493,32 @@ def log_routes_to_database(route_database, delivery_households):
 
 
 
+# CONFIGURATION SETUP
+conf = configuration.return_r_config()
+target = conf.get_target() # source file
+db_src, _, outputs = conf.get_folders()
+_, session = conf.get_meta()
 
-# CONFIG AND SETUP 
+
+# MENU INPUT
+menu = Menu(base_path='sources/' )
+menu.get_file_list()
+s_target = menu.handle_input(menu.prompt_input())
+
+confirm = input(f''''1. Use default {target}\n2. Use choice {s_target}\n3. Exit\n ''')
+
+if str(confirm) == '1':
+    print(f'using: {confirm}') 
+elif str(confirm) == '2':
+    target = s_target
+    print(f'using: {target}')
+else:
+    print(f'exiting. Input was: {confirm}')
+    sys.exit(0)
+
+
+# CONFIG AND SETUP of objects 
 address_parser = AddressParser() # I strip out extraneous junk from address strings
-coordinate_manager = Coordinates()
 
 address_dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
 address_dbase.connect_to(f'{db_src}Address.db', create=True) # testing = atest.db
@@ -509,8 +528,6 @@ route_database = Route_Database(f'{db_src}{session}rdb.db')
 fnames = Field_Names(target) # I am header names
 export_file = Export_File_Parser(target, fnames) # I open a csv 
 export_file.open_file()
-
-
 
 # delivery and sponsor households go into this object
 delivery_households = Delivery_Household_Collection()
@@ -529,3 +546,5 @@ log_routes_to_database(route_database, delivery_households)
 # close databases
 route_database.close_db()
 address_dbase.close_db()
+
+
