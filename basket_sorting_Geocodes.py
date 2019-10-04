@@ -96,6 +96,17 @@ class Route_Summary():
                               # when printing columns such as:  
                               # | streets | household info |
     
+    def get_service_dict(self):
+        hh_pack = namedtuple('hh_pack', 'applicant, letter, size, street')
+
+        dict_package = {f[1] : hh_pack(*f) for f in zip(self.applicant_list, 
+                                              self.letters, 
+                                              self.sizes,
+                                              self.street_list)
+                       }
+        return dict_package
+
+
     def add_household_summary(self, sum_tp):
         '''
         adds household data to the data structure as some other method
@@ -609,9 +620,9 @@ class Delivery_Household_Collection():
             self.hh_dict[applicant].add_family_members(familytples)
             #print('added family members to {}'.format(applicant))
         else:
-            print('Attempting to add {applicant} family members \
-                  but {applicant} is not in the \
-                  Delivery_Household_Collection. .add_hh_family \
+            sort_log.info(f'Attempting to add {applicant} family members\
+                  but {applicant} is not in the\
+                  Delivery_Household_Collection. .add_hh_family\
                   has failed')
     
     def add_to_route_summary(self, rn, r_summary):
@@ -908,9 +919,9 @@ class Delivery_Routes():
             
             else:
                 if stop_on_dupes:
-                    raise ValueError(f'FILE {ident} is a duplicate')
+                    raise ValueError(f'FILE {app_file_id} is a duplicate')
                 else:
-                    sort_log.info(f'ERROR: {ident} is a duplicate')
+                    sort_log.info(f'ERROR: {app_file_id} is a duplicate')
             
             if applicant_route:
                 sort_log.info('we have iterated and made a route! It is {}'.format(applicant_route))
