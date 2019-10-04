@@ -76,6 +76,8 @@ class Binder_Sheet():
         street_list= summary.street_list # list of streets
         letter_map = summary.letters # container holding 'Box: A Family: 2 Diet:'
 
+        package = summary.get_service_dict()
+        
         self.worksheet.merge_range('A{}:A{}'.format(self.l_n[2],
                                                     self.l_n[8]),'')
         self.worksheet.merge_range('B{}:B{}'.format(self.l_n[2],
@@ -98,13 +100,15 @@ class Binder_Sheet():
         # self.worksheet.write('C{}'.format(l_n[2]), rn, self.route_cell_size)
 
         rl_c = self.l_n[2] # Route Letter counter
-        for letter in letter_map: # for box, size, diet in ...
-            rl = letter
+        for family in sorted(package.keys()): # for box, size, diet in ...
+            
+            rl = package[family].letter
             self.worksheet.write('D{}'.format(rl_c), rl)
             rl_c +=1
 
         s_c = self.l_n[2] # street counter
-        for street in street_list:
+        for family in sorted(package.keys()):
+            street = package[family].street
             self.worksheet.write('E{}'.format(s_c), street, self.cell_format_size)
             s_c +=1
 

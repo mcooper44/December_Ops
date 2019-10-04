@@ -127,7 +127,8 @@ class Delivery_Slips():
         #applicant_list = summary.applicant_list
         #size_counter = summary.sizes
         letter_map = summary.letter_map # 'Box: A Family: 3 Diet: Halal
-        
+        all_hh = summary.get_service_dict()
+
         # write client info to worksheet
         self.worksheet.write('A{}'.format(self.l_n[1]), 
                              'Route: {}'.format(rn))
@@ -141,15 +142,18 @@ class Delivery_Slips():
                              'SUMMARY OF BOXES') # Title
 
         s_c = self.l_n[4]
-        for street in street_collection: 
+        for family in sorted(all_hh.keys()): 
             # writes delivery streets as a column matching family diet info
-            self.worksheet.write('A{}'.format(s_c), street, 
+            street = all_hh[family].street
+            self.worksheet.write(f'A{s_c}',street, 
                                  self.cell_format_size)
             s_c +=1
         
         lmap = self.l_n[4]
-        for hh_sum in letter_map: # writes 'Box A Family: 2 Diet: Diabetic'
-            self.worksheet.write('C{}'.format(lmap), letter_map[hh_sum])
+        for family in sorted(all_hh.keys()): # writes 'Box A Family: 2 Diet: Diabetic'
+            fid = all_hh[family].applicant
+
+            self.worksheet.write('C{}'.format(lmap), letter_map[fid])
             lmap += 1
         
         b_f = self.l_n[4]
