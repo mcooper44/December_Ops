@@ -68,8 +68,6 @@ class Delivery_Slips():
         self.worksheet.write('C{}'.format(self.l_n[2]), summary.address) # address
         self.worksheet.write('C{}'.format(self.l_n[3]), summary.address2) # address 2
         self.worksheet.write('A{}'.format(self.l_n[3]), 'CHRISTMAS ID#')
-        self.worksheet.write('A{}'.format(self.l_n[4]), 'LOG BINDER #')  
-        self.worksheet.write('A{}'.format(self.l_n[4]), 'LOG PAGE #')
         self.worksheet.write('B{}'.format(self.l_n[3]), summary.applicant) # ID number
         self.worksheet.write('C{}'.format(self.l_n[4]), '{},  {}'.format(summary.city, summary.postal)) # city, postal code
         self.worksheet.write('F{}'.format(self.l_n[4]), 'Neighbourhood {}'.format(nhood)) # Neighbourhood
@@ -77,11 +75,11 @@ class Delivery_Slips():
         self.worksheet.write('H{}'.format(self.l_n[1]), 'ROUTE:')
         self.worksheet.write('I{}'.format(self.l_n[1]), rn)
         self.worksheet.write('J{}'.format(self.l_n[1]), rl)
-        at_home_str = '                           AT HOME:     YES  /  NO                  AT HOME:     YES  /  NO                     AT HOME:     YES  /  NO'
-        left_with_str = '                           LEFT HAMPER: YES  /  NO             LEFT HAMPER: YES  /  NO                 LEFT HAMPER: YES  /  NO'
+        at_home_str = '                            AT HOME:     YES  /  NO                  AT HOME:     YES  /  NO                     AT HOME:     YES  /  NO'
+        left_with_str = '                           LEFT HAMPER: YES  /  NO               LEFT HAMPER: YES  /  NO               LEFT HAMPER: YES  /  NO'
         # Driving related text strings
         self.worksheet.write('A{}'.format(self.l_n[7]),
-                             'DRIVER(S):     ATTEMPT 1_________________ ATTEMPT 2: _________________ ATTEMPT 3:_________________ ')
+                             'DRIVER(S):       ATTEMPT 1_________________ ATTEMPT 2: _________________ ATTEMPT 3:_________________ ')
         self.worksheet.write('A{}'.format(self.l_n[8]), at_home_str)
         self.worksheet.write('A{}'.format(self.l_n[9]), left_with_str)
         self.worksheet.write('A{}'.format(self.l_n[10]),'LEFT HAMPER WITH: _________________________________')
