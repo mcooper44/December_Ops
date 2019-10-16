@@ -13,7 +13,7 @@ import logging
 from collections import namedtuple
 
 address_audit_log = logging.getLogger(__name__)
-address_audit_log.setLevel(logging.ERROR)
+address_audit_log.setLevel(logging.INFO)
 #address_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
 address_log_formatter = logging.Formatter('%(message)s')
 address_log_file_handler = logging.FileHandler(r'Logging/address_audit_errors.log')
@@ -86,7 +86,7 @@ def parse_post_types(address):
         return ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
 		
     else:
-        print('attempting to parse post types. Got invalid tag response for {}'.format(address))
+        address_audit_log.error('attempting to parse post types. Got invalid tag response for {}'.format(address))
         return (None, None, True)    
 
 def evaluate_post_types(source_types, db_types):
@@ -104,13 +104,10 @@ def evaluate_post_types(source_types, db_types):
     sn_error = False # street name error
     dt_error = False # direction type error
     fl_error = False # eval_flag mismatch
-    #print('input types {} {}'.format(source_types, db_types))
     PT_package = namedtuple('Pt_package', 'status, error_free, sn_error, dt_error, fl_error')
     try:
         source_nt_tpl, source_dt_tpl, s_e_flag = source_types
-        #print('source types {}'.format(source_types))
         db_nt_tpl, db_dt_tpl, db_e_flag = db_types        
-        #print('db types {}'.format(db_types))
         if source_nt_tpl != db_nt_tpl: # Str != Ave
             sn_error = True
         if source_dt_tpl != db_dt_tpl:  # North != South
@@ -129,7 +126,7 @@ def evaluate_post_types(source_types, db_types):
         else:
             return PT_package('valid', False, *e_state)
     except:
-        print('Error matching post types source v. google')
+        address_audit_log.error('Error matching post types source v. google')
         return PT_package('failed', False, True, True, True)
 		
 
@@ -188,6 +185,7 @@ def write_to_logs(applicant, flags=None, flag_type=None):
         s_add, s_city = flags
         address_audit_log.error('##10## {} has errors in address {} and/or city {}'.format(applicant, s_add, s_city))
     if not flag_type:
+        address_audit_log.error(f'NO FLAG can be derived from {applicant}')
         raise Exception('FLAG NOT PRESENT in write_to_logs call')
 
 def missing_unit_logger(applicant, address):
@@ -212,7 +210,7 @@ def boundary_checker(city):
         else:
             return False
     else:
-        print('missing City value in boundary checker')
+        address_audit_log.info('missing City value in boundary checker')
         return False
 
 def source_error_logger(applicant, address, city):
@@ -276,9 +274,6 @@ def letter_match(source_city, g_city):
         gc = g_city.lower()
         # b/c there are only 2 valid cities, we can see if the first letters
         # are the same to test equivalence.
-        print('####################')
-        print(f'Source is: {source_city} G is: {g_city}')
-        print('####################')
         if sc[0] == gc[0]: 
             return True # they both match
         else:

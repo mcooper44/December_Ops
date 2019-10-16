@@ -12,7 +12,8 @@ class Menu:
               's_routes': 'Input starting route to print  ',
               'e_routes': 'Input ending route to print  ',
               'sms_hampers': 'Input Starting Route Number: ',
-              'sms_army': 'Gift Appointment Block  '
+              'sms_army': 'Gift Appointment Block  ',
+              'sponsor': 'Enter a date to print entries '
              }
 
 

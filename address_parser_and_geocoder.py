@@ -78,6 +78,16 @@ meta_log_fh = logging.FileHandler(r'Logging/meta.log')
 meta_log_fh.setFormatter(meta_log_format)
 meta_log.addHandler(meta_log_fh)
 
+
+errors_log = logging.getLogger('errors')
+errors_log.setLevel(logging.INFO)
+errors_log_format = logging.Formatter('%(asctime)s:,%(message)s')
+errors_log_fh = logging.FileHandler(r'Logging/parse_gcode_errors.log')
+errors_log_fh.setFormatter(errors_log_format)
+errors_log.addHandler(errors_log_fh)
+
+
+
 ## Address Parsing
 
 def street_number_parser(number_string):
@@ -193,7 +203,8 @@ def full_address_parser(address, file_id):
                 # log address format error and flag for manual follow up
                 address_str_parse_logger.error('##71## Could not derive Street Address from {}'.format(file_id))
                 return usaparsed_street_address(False, addr, 'address_type Error')
-                
+        except KeyboardInterrupt:
+            raise
         except usaddress.RepeatedLabelError:
             # log address format error and flag for manual follow up
             address_str_parse_logger.error('##72## RepeatedLabelError from {}'.format(file_id))            
@@ -241,6 +252,8 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
                 returnGeocoderResult(address, myapikey, second_chance=False)
             else:
                 return (None, None) # tried to see if a second attempt would work, but it didn't
+    except KeyboardInterrupt:
+        raise
     except Exception as boo:
         geocoding_logger.critical('##400## Try Block in returnGeocoderResult raised Exception {} from {}'.format(boo, address))
         return False
@@ -288,6 +301,8 @@ class AddressParser():
             _, _, parsed_address = full_address_parser(source_address, file_id)
             simple_address, _ = parsed_address
             return simple_address
+        except KeyboardInterrupt:
+            raise
         except:
             return None
 
@@ -464,6 +479,8 @@ class SQLdatabase():
                                                                          parse_error BOOLEAN,
                                                                          use_google BOOLEAN)""")
                 self.conn.commit()
+        except KeyboardInterrupt:
+            raise
         except:
             print('error with database connection')
          
@@ -508,7 +525,7 @@ class SQLdatabase():
             self.cursor.execute("SELECT * FROM errors WHERE source_street=? AND source_city=?",(parsed_address,source_city,))
             error_ping = self.cursor.fetchone()
             if error_ping:
-                sort_log.info('found result {} {} in error table'.format(parsed_address, source_city))
+                meta_log.info('found result {} {} in error table'.format(parsed_address, source_city))
                 return True
             else:
                 return False
@@ -678,6 +695,8 @@ class Source_Address():
         try:
             self.simplified_address, self.flags = self.decon_address
             # flags = {'MultiUnit': False, 'Direction': False, 'PostType': False}   
+        except KeyboardInterrupt:
+            raise
         except:
             self.error_dictionary['source_address_error'] = True
 
@@ -711,7 +730,8 @@ class Source_Address():
         meta_log.info('checking status')
         meta_log.info(f'source_string = {self.source_string}')
         meta_log.info(f'decon.address = {self.decon_address}')
-        meta_log.info(f'error dict values = {self.error_dictionary.values()}')
+        meta_log.info(f'error dict values = {self.error_dictionary.values()}') 
+                
         if self.source_string == None:
             # no address was input
             self.go_to_next_step = False
@@ -755,6 +775,8 @@ class Database_View():
                 else:
                     meta_log.info(f'address: {address} is not in database')
                     return dbr # (None, None, None, False, 'no_results')
+        except KeyboardInterrupt:
+            raise
         except:
             return Fail_package(None, None, None, False, 'failed', None, None)
     
@@ -783,6 +805,8 @@ class Database_View():
         try:
             self.db.insert_into_db(table, input_tuple)
 
+        except KeyboardInterrupt:
+            raise
         except:
             meta_log.info(f'could not write {input_tuple} to dbase table {table}')
 
@@ -820,8 +844,11 @@ class Geocode_View():
             self.coding_result = self.c_m.lookup(self.address_for_api)
             self.flags['gc_failed'] = False
             self.flags['no_result'] = True
-        except:
-            meta_log.info('geocoding attempt failed. Geocode_View.gc_address() failed')
+        except KeyboardInterrupt:
+            raise
+        except Exception as gc_error:
+            meta_log.info(f'geocoding failed. Geocode_View.gc_address() raised\
+                          {gc_error}')
 
         if self.coding_result == None:                    
             self.flags['no_result'] = True
@@ -849,6 +876,9 @@ class Geocode_View():
             return Package('no_result', None, None)
         if self.flags.get('gc_failed', False):
             return Package('null', None, None) # no coding attempt has been done
+
+    def __str__(self):
+        return f'input: {self.input_address} result: {self.coding_result}'
 
 class line_obj_parser():
     '''
@@ -929,7 +959,7 @@ class line_obj_parser():
         self.can_proceed_to_gc = self.SAO.return_go_status() # True if no errors or False if at least 1
 
         #print('OK to do GC attempt: {}'.format(self.can_proceed_to_gc))
-        if self.can_proceed_to_gc:
+        if self.can_proceed_to_gc == True:
             self.simplified_address = self.SAO.simplified_address            
             #print(f'parsed and moving forward with {self.simplified_address}')
 
@@ -974,8 +1004,8 @@ class line_obj_parser():
 		in the Source Address object view
 		
         '''
-        meta_log.info(f'trying to geocode {self.simplified_address} {self.city}')
-        if self.can_proceed_to_gc:
+        if self.can_proceed_to_gc and (self.simplified_address != None):
+            meta_log.info(f'trying to geocode {self.simplified_address} {self.city}')
             self.GOO = Geocode_View(self.simplified_address, self.city, self.coordinate_man)
             self.GOO.gc_address()
             self.flags.update(self.GOO.flags)
@@ -987,7 +1017,8 @@ class line_obj_parser():
             return True
         else:
             meta_log.info('cannot proceed to geocoding step - flag not set True')
-            self.flags.update(self.GOO.flags)
+            
+            self.flags.update({'gc_failed': True})
             return False
 
     def diff_results(self):
@@ -1025,7 +1056,9 @@ class line_obj_parser():
 
             self.cities_valid_and_matching = two_city_parser(self.city, g_city)[0] # True or False
         else:
-            meta_log.info('no flags to set.  Google was not pinged')
+            meta_log.info(f'no flags to set. Google pinged:\
+                          {self.google_pinged} Returned Address:\
+                          {self.GOO}')
             self.flags['geocode_attempt'] = False
             if self.google_city and self.google_h_street:
                 self.google_post_types = parse_post_types(self.google_h_street) # GOOGLE PT
@@ -1084,11 +1117,15 @@ class line_obj_parser():
 
         # ((streetnameptype, street_key), (streetnamepdir, dir_key), eval_flag)
         if self.should_write_g and not self.google_db_entry: # flag set when a valid gc result returns in the try_gc_api method
-            g_post_type_tp, g_dir_type_tp, _ = self.google_post_types     
-            flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
-            flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type 
-            #print(f'coding result = {self.GOO.coding_result}')                        
-            google_result = (self.GOO.lat, 
+            
+            try:
+                g_post_type_tp, g_dir_type_tp, _ = self.google_post_types     
+                flagged_dir, dir_str = g_dir_type_tp # True/False, None or first letter of dir_type
+                flagged_post_type, pt_str = g_post_type_tp # True/False, None or first letter of post_type 
+            
+            
+            #print(f'coding result = {self.GOO.coding_result}')
+                google_result = (self.GOO.lat, 
                     self.GOO.lng,
                     self.GOO.coding_result.g_address_str, # full string with Prov, Pcode et al.
                     self.GOO.coding_result.house_number,
@@ -1100,8 +1137,17 @@ class line_obj_parser():
                     flagged_post_type, # street, drive etc. T | F
                     pt_str # s, d etc. 
                     )
-            sort_log.info(f'google result = {google_result}')
-            self.DBV.write_db(google_result, 'google_result')            
+                meta_log.info(f'google result = {google_result}')
+                self.DBV.write_db(google_result, 'google_result')            
+
+            except KeyboardInterrupt:
+                raise
+            except TypeError as terror:
+                meta_log.info(f'{self.applicant} raised {terror} when gcode\
+                              attempt was made for {self.simplified_address}')
+                raise terror
+
+
 
         if self.should_write_et: # set in the diff_results method
             city_error = False # cities don't match
@@ -1109,6 +1155,13 @@ class line_obj_parser():
             post_error = False # St vs Ave
             parse_error = False # issues with the usa address tags
             use_google = False # in production overwrite source with google?
+
+            post_error = None
+            dir_error = None
+            parse_error = None
+            unit_flag = None
+
+
             if not self.cities_valid_and_matching:
                 city_error = True
             if not self.pt_eval_errors.error_free:
@@ -1141,23 +1194,34 @@ class line_obj_parser():
         write_failed = meta_errors['dbase_write']
         # FIRST ORDER ERRORS with basic I/O        
         if parse_failed:
-            meta_log.info(f'1,{who},at,{where},could not be parsed as input')
+            s1_1 = f'1,{who},at,{where},could not be parsed as input'
+            meta_log.info(s1_1)
+            errors_log.info(s1_1)
         if write_failed:
-            meta_log.info(f'1,{who},at,{where},failed .db_attempt_write() call')
+            s1_2 = f'1,{who},at,{where},failed .db_attempt_write() call'
+            meta_log.info(s1_2)
+            errors_log.info(s1_2)
         if self.flags.get('source_address_error', False):
-            meta_log.info(f'1,{who},at,{where},could not be deconstructed into a simplier address')
+            s1_3 = f'1,{who},at,{where},could not be deconstructed into a simplier address'
+            meta_log.info(s1_3)
+            errors_log.info(s1_3)
 
         # SECOND ORDER ISSUES with source inputs after some basic parsing
         if self.flags.get('post_parse_evf', False):
-            meta_log.info(f'2,{who},at,{where},may have some address format/content issues')
+            s2_1 = f'2,{who},at,{where},may have some address format/content issues'
+            meta_log.info(s2_1)
+            errors_log.info(s2_1)
         if self.flags.get('boundary_error', False):
-            meta_log.info(f'2,{who},at,{where},has an invalid city as input')
-
+            s2_2 = f'2,{who},at,{where},has an invalid city as input'
+            meta_log.info(s2_2)
+            errors_log.info(s2_2)
         # THIRD ORDER ISSUES could not get a google result or could not compare source vs. database/google
         #if self.flags.get('no_result', False) and not self.done_b4:
         #    meta_log.info(f'3,{who},at,{where},returned no google result,Flags are as follows: {self.flags}')
         if self.flags.get('pt_eval',False):
-            meta_log.info(f'3,{who},at,{where},failed attempt to compare with google or database, Flags are as follows: {self.flags}')
+            s3_1 = f'3,{who},at,{where},failed attempt to compare with google or database, Flags are as follows: {self.flags}'
+            meta_log.info(s3_1)
+            errors_log.info(s3_1)
 
         # FOURTH ORDER ISSUES we found issues with the source when matched against google or database values
         # refernce is self.pt_eval_errors (status: 'valid'|'failed', error_free: T|F, sn_error, dt_error, fl_error)
@@ -1173,17 +1237,25 @@ class line_obj_parser():
             #print(c_com,dat_b.unit_flag, (dat_b.dir_flag or goo_p.dt_error),(dat_b.post_type or goo_p.sn_error)) 
             #print(f'write {e} times for {(c_com, c2, c3)}')
             if e > 0:
-                meta_log.info(f'4,{who},{where},has,{e} error(s),City mismatch,{c_com != True },Missing Unit Number,{dat_b.unit_flag},Direction Error,{dat_b.dir_flag or goo_p.dt_error},Street Type Error,{dat_b.post_type or goo_p.sn_error}') 
-
+                s4_1 = f'4,{who},{where},has,{e} error(s),City mismatch,{c_com != True },Missing Unit Number,{dat_b.unit_flag},Direction Error,{dat_b.dir_flag or goo_p.dt_error},Street Type Error,{dat_b.post_type or goo_p.sn_error}'
+                meta_log.info(s4_1) 
+                errors_log.info(s4_1)
         # SPECIAL CASES
         if self.flags.get('at_limit', False):
-            meta_log.info(f'X,{who},at,{where},hit the google api wall')      
+            meta_log.info(f'X,{who},at,{where},hit the google api wall')
+            sys.exit(0)
+            stop_now = input('API limit reached.  Continue "y" or "n"  ')
+            if not stop_now.lower()[0] == 'y': 
+                sys.exit(0)
+            else:
+                print('ok then... continuing...')
 
 if __name__ == '__main__':
     
     config = configuration.return_r_config()
 
     t_file = config.get_target() # string of target file location
+    add_base = config.get_bases()['address'] 
     #api key
     myapikey = config.get_g_creds()
 
@@ -1191,7 +1263,7 @@ if __name__ == '__main__':
     # MENU INPUT
     menu = Menu(base_path='sources/' )
     menu.get_file_list()
-    s_target = menu.handle_input(menu.prompt_input())
+    s_target = menu.handle_input(menu.prompt_input('files'))
 
     confirm = input(f''''1. Use default {t_file}\n2. Use choice {s_target}\n3. Exit\n ''')
 
@@ -1204,13 +1276,11 @@ if __name__ == '__main__':
         print(f'exiting. Input was: {confirm}')
         sys.exit(0)
 
-
-
     # SETUP CLASSES AND CONFIG
     coordinate_manager = Coordinates() # I lookup and manage coordinate data
     address_parser = AddressParser() # I strip out extraneous junk from address strings
     dbase = SQLdatabase() # I recieve the geocoded information from parsed address strings
-    dbase.connect_to('Address.db', create=True) # testing = atest.db
+    dbase.connect_to(add_base, create=True) # testing = atest.db
     fnames = Field_Names(t_file) # I am header names
     fnames.init_index_dict() 
     export_file = Export_File_Parser(t_file, fnames) # I open a csv 
@@ -1220,19 +1290,28 @@ if __name__ == '__main__':
         error_stack = {'d_parse': False, 'dbase_write': False}
         # the lop controls the address parsing pipeline
         lop = line_obj_parser(line, fnames.ID, dbase, coordinate_manager) #.ID 
+        
         try: # parse address 
             lop.deconstruct(address_parser)
+        except KeyboardInterrupt:
+            raise
         except:
             meta_log.info('could not successfully call deconstruct method')
             error_stack['d_parse'] = True  
+        
         if not lop.poll_db(): # poll db - for results
             lop.try_gc_api() # attempt to geocode if needed
         lop.diff_results() # compare source + db as well as source + google - set error flags
+        
         try:
             lop.attempt_db_write() # attempt to write to necessary db tables
-        except:
+        except KeyboardInterrupt:
+            raise
+        except Exception as ex:
             meta_log.info('could not write to db.')
+            meta_log.info(f'raised: {ex}')
             error_stack['dbase_write'] = True
+
 
         lop.log_results(error_stack)
         meta_log.info('############')
