@@ -503,7 +503,7 @@ _, session = conf.get_meta()
 # MENU INPUT
 menu = Menu(base_path='sources/' )
 menu.get_file_list()
-s_target = menu.handle_input(menu.prompt_input())
+s_target = menu.handle_input(menu.prompt_input('files'))
 
 confirm = input(f''''1. Use default {target}\n2. Use choice {s_target}\n3. Exit\n ''')
 
