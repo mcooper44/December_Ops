@@ -19,7 +19,7 @@ class configuration:
 
     '''
 
-    def __init__(self, config_file):
+    def __init__(self, config_file, echo=False):
         self.config = config_file 
         self.whoami = None
         self.session = None
@@ -30,10 +30,15 @@ class configuration:
         self.target = None
         self.rdb = None
         self.sa_db = None
+        self.add_db = None
+        self.sa_day = None
+        self.sa_times = None
+        self.sa_multipliers = None
+        self.sa_day_mult = None
 
         if self.config:
             try:
-                print(f'trying to open {self.config}')
+                if echo: print(f'trying to open {self.config}')
                 f = self.config
                 with open(f, 'r') as ymlfile:
                     yfile = yaml.load(ymlfile)
@@ -46,7 +51,12 @@ class configuration:
                     self.target = yfile['target']
                     self.rdb = yfile['rdb_nm']
                     self.sa_db = yfile['sadb_nm']
-                    print(f'loaded {self.whoami} {self.session}')
+                    self.add_db = yfile['add_db_nm']
+                    self.sa_day = yfile['day']
+                    self.sa_times = yfile['times']
+                    self.sa_multipliers = yfile['multipliers']
+                    self.sa_day_mult = yfile['day_mult']
+                    if echo: print(f'loaded {self.whoami} {self.session}')
             except:
                 print('failed to open config file')
 
@@ -91,8 +101,9 @@ class configuration:
         for use in the various database interfaces
         '''
         return {'rdb': f'{self.db_src}{self.rdb}',
-                'sa': f'{self.db_src}{self.sa_db}'}
-    
+                'sa': f'{self.db_src}{self.sa_db}',
+                'address': f'{self.db_src}{self.add_db}'
+               }
     
     def set_target(self, new_target):
         '''
@@ -100,4 +111,12 @@ class configuration:
         '''
         self.target = new_target
 
-
+    def get_sa_app_package(self):
+        '''
+        returns a 4 tuple of the four lists
+        day, times, multipliers, day_mult
+        that are needed to print out the SA app sheets
+        and provision the SA appointment database
+        '''
+        return (self.sa_day, self.sa_times, 
+                self.sa_multipliers, self.sa_day_mult)
