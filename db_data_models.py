@@ -337,7 +337,7 @@ class Visit_Line_Object():
         self.main_applicant_Ethnicity = None
         self.main_applicant_Self_Identity = None
         self.household_primary_SOI = None # Client Primary Source of Income
-        self.visit_Address = visit_line[fnamedict['Address']]
+        self.visit_Address = None 
         self.visit_Address_Line2 = None
         self.visit_City = visit_line[fnamedict['City']]
         self.visit_Postal_Code = None
@@ -379,6 +379,11 @@ class Visit_Line_Object():
             self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
         if fnamedict.get('Client Date of Birth', False):
             self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+        # ADDRESS RELATED SWITCHES
+        if fnamedict.get('Address', False): # used by the L2F Services Export
+            self.visit_Address = visit_line[fnamedict['Address']] 
+        if fnamedict.get('Street', False): # used by the normal L2F Export
+            self.visit_Address = visit_line[fnamedict['Street']]
         if fnamedict.get('Line 2', False):
             self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
         if fnamedict.get('Latitude', False):
