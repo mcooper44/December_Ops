@@ -23,12 +23,14 @@ last minute pickups that are scheduled (or rescheduled) in
 
 
 import sqlite3
+import sys
 from collections import namedtuple
 from collections import defaultdict
 import logging
 from datetime import datetime
 
 from r_config import configuration
+from file_iface import Menu
 
 from basket_sorting_Geocodes import Route_Database
 from basket_sorting_Geocodes import Delivery_Household_Collection
@@ -63,14 +65,14 @@ ops_log_file_handler.setFormatter(ops_logger_formatter)
 ops_logger.addHandler(ops_log_file_handler)
 ops_logger.info('Running new session {}'.format(datetime.now()))
 
-def get_hh_from_sponsor_table(database):
+def get_hh_from_sponsor_table(database,criteria=None):
     
     rdbm = Service_Database_Manager.get_service_db()
     rdbm.initialize_connections()
 
     dhc = Delivery_Household_Collection()
 
-    sponsor_families = rdbm.return_sponsor_hh('rdb')
+    sponsor_families = rdbm.return_sponsor_hh('rdb',crit=criteria)
     # tuples of (fid, food sponsor, gift_sponsor)
     for sfam in sponsor_families:
         fid, f_sponsor, g_sponsor, sort_date = sfam
@@ -177,7 +179,20 @@ def write_sponsor_reports(delivery_households, r_dbs):
     dbs.close_all()
 
 
+sponsor_date = None
+menu = Menu()
+
+input_all = input('do you want to print all? Enter y or n  ')
+if input_all == 'y':
+    print('printing all of them!')
+elif input_all == 'n':
+    print('enter a date YYYY-MM-DD')
+    sponsor_date = menu.prompt_input('sponsor')
+else:
+    print('invalid input!')
+    sys.exit(1)
+
 
 route_database = Route_Database(f'{db_src}{session}rdb.db')
-dh, dbs = get_hh_from_sponsor_table(route_database)
+dh, dbs = get_hh_from_sponsor_table(route_database, criteria=sponsor_date)
 write_sponsor_reports(dh,dbs)

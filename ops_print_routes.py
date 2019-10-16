@@ -346,9 +346,19 @@ class Service_Database_Manager:
         if echo: print(f'found {day_time}')
         return day_time
 
-    def return_sponsor_hh(self, database):
-        ls = '''SELECT file_id, food_sponsor, gift_sponsor, sorting_date FROM sponsor'''
-        return self.db_struct[database].lookup_string(ls, None)
+    def return_sponsor_hh(self, database, crit=None):
+        '''
+        param crit is a date in the format of YYYY-MM-DD
+        wrapped in quotes
+        '''
+        if not crit:
+            ls = '''SELECT file_id, food_sponsor, gift_sponsor, sorting_date FROM sponsor'''
+            return self.db_struct[database].lookup_string(ls, None)
+        elif crit:
+            ls2 = f'SELECT file_id, food_sponsor, gift_sponsor, sorting_date\
+                    FROM sponsor WHERE sorting_date >= {crit}'
+            return self.db_struct[database].lookup_string(ls2, None)
+
 
 
 def package_applicant(main, sa, rn, rl):
