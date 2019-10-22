@@ -9,8 +9,8 @@ The primary focus is on:
 - creating the paper artifacts necessary for deliveries (route cards, route binder sheets etc)
 - handling sponsor requests and outputting custom reports for them to use in service delivery
 
-## Project Structure			![project_structure](sources/project_structure.png)
-
+## Project Structure			
+![project_structure](sources/project_structure.png)
 Configuration data is in the config.yml file.  An example of fields is in the sample.yml file.
 
 ## How to use
