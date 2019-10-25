@@ -312,6 +312,7 @@ def sort_routes(route_database, delivery_households):
     routes.sort_method(delivery_households) # start sorting
     toc = timeit.default_timer()
     print(f'ROUTES SORTED: it took {toc-tic} seconds')
+    print(f'                 ...or {(toc-tic)/60} minutes')
 
 def family_to_db(house, route_database):
     '''
@@ -505,7 +506,7 @@ menu = Menu(base_path='sources/' )
 menu.get_file_list()
 s_target = menu.handle_input(menu.prompt_input('files'))
 
-confirm = input(f''''1. Use default {target}\n2. Use choice {s_target}\n3. Exit\n ''')
+confirm = input(f'''1. Use default {target}\n2. Use choice {s_target}\n3. Exit\n ''')
 
 if str(confirm) == '1':
     print(f'using: {confirm}') 
