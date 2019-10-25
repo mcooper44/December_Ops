@@ -39,7 +39,25 @@ sort_log.info('Running new session: {}'.format(datetime.datetime.now()))
 Client = namedtuple('Client', 'size location')
 Geolocation = namedtuple('Geolocation', 'lat long')
 
-
+BOX_MASK = {'0' : 1, 
+            '1' : 1, 
+            '2' : 1, 
+            '3' : 1, 
+            '4' : 1, 
+            '5': 1, 
+            '6' : 1, 
+            '7' : 2, 
+            '8' : 2, 
+            '9' : 2, 
+            '10': 2, 
+            '11': 2, 
+            '12': 3, 
+            '13':3, 
+            '14':3, 
+            '15':3, 
+            '16':3, 
+            '17':3, 
+            '18':3 }
 
 def haversine(lon1, lat1, lon2, lat2):
     """
@@ -257,9 +275,9 @@ class Route_Database():
         it accepts a tuple in the following order:
         (applicant name, address, contact info etc)
         '''
-
-        self.cur.execute('''INSERT OR IGNORE INTO applicants VALUES 
-                         (?,?,?,?,?,?,?,?,?,?,?,?,?)''',family_tple)
+        self.cur.execute("INSERT OR IGNORE INTO applicants VALUES\
+                         (?,?,?,?,?,?,?,?,?,?,?,?,?)",\
+                         family_tple)
         self.conn.commit()
 
     def add_family_member(self, app_id, person):
@@ -785,7 +803,7 @@ class Delivery_Household_Collection():
                           key=attrgetter('route_number','route_letter'))):
             yield hh
 
-    def delivery_iter(self):
+    def delivery_iter_one(self):
         '''
         yields an iterator made up of all the hh that have registered for
         delivery and need to be routed.  This should exclude hh that
@@ -793,6 +811,17 @@ class Delivery_Household_Collection():
 
         '''
         for hh in self.delivery_targets:
+            yield self.hh_dict[hh]
+
+    def delivery_iter(self):
+        '''
+        yields an iterator made up of all the hh that have registered for
+        delivery and need to be routed.  This should exclude hh that
+        have registered for food from a sponsor group
+
+        '''
+        for hh in (self.delivery_targets.pop() for x in\
+                   range(len(self.delivery_targets))):
             yield self.hh_dict[hh]
 
     def army_iter(self):
@@ -824,7 +853,7 @@ class Delivery_Routes():
         self.start_count = start_count # what we start counting routes at
         self.route_db = route_db # a Delivery_Database object
 
-    def sort_method(self, households, stop_on_dupes=False):
+    def sort_method(self, households, mask=BOX_MASK, stop_on_dupes=False):
         '''
         Uses a brute force method to sort households into geographically
         proximate piles and labels them with a route number and letter
@@ -838,10 +867,7 @@ class Delivery_Routes():
 
         '''
         
-        box_mask = {'0' : 1, '1' : 1, '2' : 1, '3' : 1, '4' : 1, '5': 2, 
-                    '6' : 2, '7' : 2, '8' : 3, '9' : 3, '10': 3, '11': 3, 
-                    '12': 4, '13':4, '14':4, '15':4, '16':4, '17':4, 
-                    '18':4 }
+        box_mask = mask
         max_box_count = self.max_boxes
         route_counter = self.start_count
         #routes = {} # labeled routes and the families they contain
@@ -849,6 +875,8 @@ class Delivery_Routes():
         print('starting sort_method')
         # for key in dictionary of households in the
         # Delivery_Households_Collection class...
+
+        # this method call pops the applicant from the list
         for applicant in households.delivery_iter(): 
             applicant_route = [] # the working container that we will then add to the route dictionary
 
@@ -873,17 +901,15 @@ class Delivery_Routes():
                 # that are at that distance            
                 distance_hh_dictionary = defaultdict(list)                                                                                                             
                 # ITERATE THROUGH THE HOUSEHOLDS AND CALCULATE DISTANCES FROM THE CHOSEN STARTING HH
-                for HH in households.delivery_iter(): # iterate through the keys to find the distances of remaining households                    
+                for HH in households.delivery_iter_one(): # iterate through the keys to find the distances of remaining households                    
+                    # this method call does not pop the hh from the list
                     ident = HH.main_app_ID
                     not_currently_routed = (ident not in assigned and ident \
                                             not in applicant_route)
                     routed_previously = households.has_been_routed_in_db(ident,
                                                                          self.route_db)
 
-
-                    sort_log.info(f'looking at {ident}. not currently routed is\
-                                  {not_currently_routed} not in db\
-                                  {routed_previously}')
+                    #sort_log.info(f'looking at {ident}. not currently routed is {not_currently_routed} not in db {routed_previously}')
                     #sort_log.info(f'type of ident {ident} is {type(ident)}')
                     if not_currently_routed and not routed_previously:
                         # TO DO - clarify how to access households in this
@@ -918,10 +944,10 @@ class Delivery_Routes():
                                 applicant_route.append(fam) # add them to the route
             
             else:
-                if stop_on_dupes:
+                if stop_on_dupes and routed_in_db:
                     raise ValueError(f'FILE {app_file_id} is a duplicate')
                 else:
-                    sort_log.info(f'ERROR: {app_file_id} is a duplicate')
+                    if routed_in_db: sort_log.info(f'ERROR: {app_file_id} is a duplicate. In session: {routed_in_session} In db: {routed_in_db}')
             
             if applicant_route:
                 sort_log.info('we have iterated and made a route! It is {}'.format(applicant_route))
@@ -934,3 +960,4 @@ class Delivery_Routes():
                 # this step records the routes on the households
                 households.label_route(r_key, applicant_route)
                 route_counter += 1
+
