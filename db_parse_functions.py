@@ -14,12 +14,26 @@ def itr_joiner(list_etc):
 
     main use is taking a list of phone numbers and putting them in a nicer
     format when printed
-    '''
-    try:
-        return ', '.join([str(x) for x in set(list_etc)])
-    except:
-        return list_etc
 
+    When dealing with strings from the database the set operation will
+    make a mess of the phone numbers i.e 555-123-4567 will become 
+    '3', '1', '2', '5', '4', '6', '-', '7'
+    but there are many instances of the same phone number
+    being entered in the database
+
+    '''
+    if isinstance(list_etc, (list, tuple)):
+        
+        try:
+            return ', '.join([str(x) for x in set(list_etc)])
+        except:
+            return list_etc
+    else:
+        try:
+            listified = list_etc.split(',')
+            return itr_joiner(listified)
+        except:
+            return list_etc
 
 def hamper_type_parser(days_of_food):
     '''
@@ -43,9 +57,6 @@ def diet_parser(diet_string, special_diets=['halal','diabetic','gluten free']):
             out_put_s.append(diet)
     return ', '.join(out_put_s)
 
-
-    return ', '.join(diet_conditions)
-
 def extract_families_into_list_slices(l,n):
     '''
     takes a list slice of family member information from a visit and produces a generator
@@ -60,7 +71,6 @@ def extract_families_into_list_slices(l,n):
     '''
     for i in range(0,len(l), n):
         yield l[i:i +n]
-
 
 def create_list_of_family_members_as_tuples(family_range_frm_visit, len_of_family_sub_slice, h_d):
     '''    
