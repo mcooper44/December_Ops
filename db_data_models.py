@@ -479,17 +479,21 @@ class Visit_Line_Object():
 
         '''
         #if sms_string[0] != '1': sms_string = f'{1}{sms_string}'
-        try:
-            # imported phonenumbers library as pn
-            n =  pn.parse(sms_string, 'US')
-            if pn.is_valid_number(n):
-                # returns a formatted string
-                return pn.format_number(n, pn.PhoneNumberFormat.E164)
-            else:
+
+        if sms_string:
+            try:
+                # imported phonenumbers library as pn
+                n =  pn.parse(sms_string, 'US')
+                if pn.is_valid_number(n):
+                    # returns a formatted string
+                    return pn.format_number(n, pn.PhoneNumberFormat.E164)
+                else:
+                    return False
+            except Exception as sms_fail:
+                if sms_string: print(f'invalid sms_input: {sms_string} = {sms_fail}')
                 return False
-        except Exception as sms_fail:
-            print(f'invalid sms_input {sms_string} - {sms_fail}')
-            return False
+        else:
+            return None
     
     def get_address(self):
         '''
