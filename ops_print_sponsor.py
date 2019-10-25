@@ -18,6 +18,9 @@ because salvation army may have blank appiontment slots
 for the sa report some logic is needed to insert blank entries
 so that the report product can accomodate
 last minute pickups that are scheduled (or rescheduled) in
+it is important to note that if there are appointment numbers
+outside of the established range.  They will appear at the start
+of the file with False in the App # and Time cells
 
 '''
 
@@ -42,10 +45,6 @@ from ops_print_routes import Service_Database_Manager
 # functions
 from ops_print_routes import package_applicant
 
-
-
-
-
 # INITIALIZE CONFIGURATION FILE
 conf = configuration.return_r_config()
 target = conf.get_target # source file
@@ -64,6 +63,7 @@ ops_log_file_handler = logging.FileHandler('Logging/ops.log')
 ops_log_file_handler.setFormatter(ops_logger_formatter)
 ops_logger.addHandler(ops_log_file_handler)
 ops_logger.info('Running new session {}'.format(datetime.now()))
+ops_logger.info('Printing Sponsor Reports')
 
 def get_hh_from_sponsor_table(database,criteria=None):
     
@@ -133,11 +133,13 @@ def write_sponsor_reports(delivery_households, r_dbs):
         fam = house.family_members    
         
         sap, fs, gs = house.return_sponsor_package()
-        saa, sat = house.get_sa_day_time()
+        saa, sat = house.get_sa_day_time() # application # application time
         spg = [fs, gs]
         
         groups = [x for x in spg if len(x) > 2]
 
+        ops_logger.debug(f'operating on {fid} SAP = {sap}, fs = {fs} gs = {gs} saa = {saa} sat = {sat}')
+        
         for g in groups: 
             age_cut = {'Salvation Army': 16, 
                    'DOON': 18,
@@ -146,14 +148,21 @@ def write_sponsor_reports(delivery_households, r_dbs):
             aco = age_cut.get(g, 18)
             if not g == 'Salvation Army':
                 s_report[g].add_household(summ, fam, age_cutoff=aco) # sponsor report
-            else:
+            else: 
+                # this logic is for determining if there is a need to 
+                # print a blank entry for the SA to keep the spacing 
+                # and order of appointments
                 if running_sa_count == 0:
+                    ops_logger.debug(f'running count = 0')
+                    ops_logger.debug(f'saa = {saa} sap = {sap}')
                     running_sa_count = sap 
                     s_report[g].add_household(summ, fam, age_cutoff=15,
                                               app_pack=(saa, sat))
 
                 else:
                     dif_count = sap - running_sa_count
+                    ops_logger.debug(f'dif_count= {dif_count}')
+                    ops_logger.debug(f'saa = {saa} sap = {sap}')
                     if dif_count == 1:
                         s_report[g].add_household(summ, fam, age_cutoff=15,
                                               app_pack=(saa, sat))
