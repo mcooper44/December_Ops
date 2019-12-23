@@ -19,7 +19,7 @@ class configuration:
 
     '''
 
-    def __init__(self, config_file, echo=False):
+    def __init__(self, config_file, echo=True):
         self.config = config_file 
         self.whoami = None
         self.session = None

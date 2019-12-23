@@ -6,7 +6,10 @@ import string
 import random
 import xlsxwriter
 
-turkey_output = '2018_voucher_run.xlsx'
+
+YEAR = '2019'
+VOUCHER_MAX = 4500
+turkey_output = f'products/{YEAR}_voucher_run.xlsx'
 
 def key_code_generator(number):
     '''
@@ -34,12 +37,12 @@ def code_string(code_set):
     number = 1
     out = []
     for code in code_set:
-        string = '{}  2018 {} {}'.format(number,code[:5],code[5:])
+        string = f'{number}  {YEAR} {code[:5]} {code[5:]}'
         out.append(string)
         number += 1
     return out
    
-def write_turkey_vouchers(turkey_output, target=4000):
+def write_turkey_vouchers(turkey_output, target=VOUCHER_MAX):
     '''
     :param: turkey_output = name of the file to output
     :param: target  = the number of coded number tagged vouchers to output
@@ -79,13 +82,19 @@ def write_turkey_vouchers(turkey_output, target=4000):
         ID_log_cell = 'A{}'.format(ID_counter_store)
 
         # Filler text and name and address information for the recipient
-        worksheet.write('A{}'.format(l_n[7]), 'Turkey Pick Up Times:', bold)
-        worksheet.write('A{}'.format(l_n[8]), 'Wednesday December 12 to Friday December 14 between 9:00am and 6:00pm')
-        worksheet.write('A{}'.format(l_n[9]), 'Saturday December 15 between 9:30am and 4:30pm')
-        worksheet.write('A{}'.format(l_n[10]), 'Sunday December 16 between 1:30pm and 4:30pm')
-        worksheet.write('A{}'.format(l_n[11]), 'Monday December 17 to Wednesday December 19 between 9:00am and 6:00pm')
-        worksheet.write('A{}'.format(l_n[12]), 'Questions?  Call  519-742-5860', bold)
-        worksheet.write('A{}'.format(l_n[14]), 'ID # {}'.format(code_ID))
+        worksheet.write('A{}'.format(l_n[8]), 'KITCHENER TURKEY PICKUP TIMES:', bold)
+        worksheet.write('A{}'.format(l_n[9]), 'Wed-Fri. Dec 4-6: 9:00am to 6:00pm')
+        worksheet.write('A{}'.format(l_n[10]), 'Sat. Dec. 7: 9:00am to 4:00pm')
+        worksheet.write('A{}'.format(l_n[11]), 'Sun. Dec. 8: 1:00pm to 4:00pm')
+        worksheet.write('A{}'.format(l_n[12]), 'Mon-Wed. Dec. 9-11: 9:00am to 6:00pm')
+        worksheet.write('A{}'.format(l_n[14]), 'Questions?  Call  519-742-5860', bold)
+
+        worksheet.write('G{}'.format(l_n[8]), 'WATERLOO TURKEY PICKUP TIMES:', bold)
+        worksheet.write('G{}'.format(l_n[9]), 'Wed-Sat. Dec 4-7: 11:00am to 4:00pm')
+        worksheet.write('G{}'.format(l_n[10]), 'Sun. Dec. 8: CLOSED')
+        worksheet.write('G{}'.format(l_n[11]), 'Mon-Wed. Dec. 9-11: 11:00am to 4:00pm')
+
+        worksheet.write('A{}'.format(l_n[15]), 'ID # {}'.format(code_ID))
         #worksheet.write('A{}'.format(l_n[5]), 'Please bring a bag with you to carry the turkey',bold)
         worksheet.write('A{}'.format(l_n[6]), 'You MUST bring this voucher with you. Please bring a bag with you to carry the turkey.',bold)
         #worksheet.write('G' + str(l_n[10]), 'ID MAY BE REQUIRED.', bold)

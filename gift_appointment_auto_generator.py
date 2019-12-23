@@ -21,7 +21,8 @@ Visit = namedtuple('Visit', 'slot_number, day, time')
 
 # CONFIGURATION FILE AND GLOBAL VARIABLES
 conf_file = configuration.return_r_config() # use class method to instantiate
-file_output = '2019_gift_app_times.xlsx'
+_, sesh = conf_file.get_meta() # 'year_prod/testing_'
+file_output = f'products/{sesh}gift_app_times.xlsx'
 dy, tms, mlt, dmlt = conf_file.get_sa_app_package()
 sa_db = conf_file.get_bases()['sa']
 
@@ -139,19 +140,34 @@ def write_gift_sheet(gift_times):
     worksheet.set_column(8, 8, 12) # Boys Ages
     worksheet.set_column(9, 9, 20) # Signature
     
-    # headers on the columns as a dictionary 
+    # headers on the columns - this is for use when
+    # printing out and using the sheets as is
+    column_heads_a = {1 : 'App #',
+                    2 : 'Day',
+                    3 : 'Time',
+                    4 : 'Name (First + Last)',
+                    5 : 'File #',
+                    6 : ' ',
+                    7 : '# of kids',
+                    8 : 'Girls Ages',
+                    9 : 'Boys Ages',
+                    10 : 'Signature' 
+                    }
+    # use this dictionary when using the sheets
+    # as a backup only - and generating a sponsor report
+    # for the actual appointment sheet pickup process
     column_heads = {1 : 'App #',
                     2 : 'Day',
                     3 : 'Time',
                     4 : 'Name (First + Last)',
                     5 : 'File #',
                     6 : 'Phone #',
-                    7 : '# of kids',
-                    8 : 'Girls Ages',
-                    9 : 'Boys Ages',
-                    10 : 'Signature' 
-                 
+                    7 : ' ',
+                    8 : 'Food Hamper',
+                    9 : 'Turkey',
+                    10 : 'Checked by:' 
                     }
+
     for slot in gift_times: # for each timeslot
         
         if header_counter == 0: # if we are starting a new page write the headers

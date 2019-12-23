@@ -76,7 +76,12 @@ def get_hh_from_sponsor_table(database,criteria=None):
     # tuples of (fid, food sponsor, gift_sponsor)
     for sfam in sponsor_families:
         fid, f_sponsor, g_sponsor, sort_date = sfam
-        main_applicant = rdbm.get_main_applicant('rdb', fid)[0]
+        main_applicant = None
+        try:
+            main_applicant = rdbm.get_main_applicant('rdb', fid)[0]
+        except IndexError: # a real edge case from mucking about in the tables!
+            print(f'{fid} is not in the applicants table!')
+            ops_logger.info(f'ERROR: {fid} is not in applicants! ERROR!')
         gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid)
         
         hh_package, _ = package_applicant(main_applicant, gan, None, None)
@@ -141,10 +146,11 @@ def write_sponsor_reports(delivery_households, r_dbs):
         ops_logger.debug(f'operating on {fid} SAP = {sap}, fs = {fs} gs = {gs} saa = {saa} sat = {sat}')
         
         for g in groups: 
+            
             age_cut = {'Salvation Army': 16, 
                    'DOON': 18,
-                   'Sertoma': 12,
-                   'REITZEL': 18}
+                   'Sertoma': 13,
+                   'REITZEL': 19}
             aco = age_cut.get(g, 18)
             if not g == 'Salvation Army':
                 s_report[g].add_household(summ, fam, age_cutoff=aco) # sponsor report
@@ -156,7 +162,7 @@ def write_sponsor_reports(delivery_households, r_dbs):
                     ops_logger.debug(f'running count = 0')
                     ops_logger.debug(f'saa = {saa} sap = {sap}')
                     running_sa_count = sap 
-                    s_report[g].add_household(summ, fam, age_cutoff=15,
+                    s_report[g].add_household(summ, fam, age_cutoff=16,
                                               app_pack=(saa, sat))
 
                 else:
@@ -164,7 +170,7 @@ def write_sponsor_reports(delivery_households, r_dbs):
                     ops_logger.debug(f'dif_count= {dif_count}')
                     ops_logger.debug(f'saa = {saa} sap = {sap}')
                     if dif_count == 1:
-                        s_report[g].add_household(summ, fam, age_cutoff=15,
+                        s_report[g].add_household(summ, fam, age_cutoff=16,
                                               app_pack=(saa, sat))
                         running_sa_count += 1
                     else:
@@ -175,11 +181,11 @@ def write_sponsor_reports(delivery_households, r_dbs):
                                                                  blank_num)
                             s_report[g].add_household(null_app,
                                                     null_fam, 
-                                                    age_cutoff=15,
+                                                    age_cutoff=16,
                                                     app_pack =  (blank_num,
                                                               blank_time))
                         
-                        s_report[g].add_household(summ, fam, age_cutoff=15,
+                        s_report[g].add_household(summ, fam, age_cutoff=16,
                                               app_pack=(saa, sat))
                         running_sa_count = sap
 

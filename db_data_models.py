@@ -636,7 +636,7 @@ class Visit_Line_Object():
         to determine what to do with the line
         '''
         if self.food:
-            delivery_test = 'Christmas Hamper' and 'Emergency Hampers' in self.food
+            delivery_test = 'Delivery Christmas Hamper' in self.food and 'Emergency Hampers' in self.food
             if delivery_test:
                 sms = Visit_Line_Object.get_sms_target(self.ex_reference)
                 if sms:
@@ -682,7 +682,7 @@ class Visit_Line_Object():
         into the gift_table
 
         '''
-        if 'Salvation Army' and 'Gifts' in self.xmas_items_provided:
+        if 'Salvation Army' in self.xmas_items_provided and 'Gifts' in self.xmas_items_provided:
             self.sa_status = True
             self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
             #print(f'### SA: {self.sa_app_num} ###')
