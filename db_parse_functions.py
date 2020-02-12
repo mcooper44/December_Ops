@@ -4,7 +4,7 @@ to parse or organize different bits of data contained in the lines
 of a l2f export
 
 '''
-
+s_diets = ['halal','diabetic','gluten free','no pork','vegetarian','nursing']
 
 
 def itr_joiner(list_etc):
@@ -42,7 +42,7 @@ def hamper_type_parser(days_of_food):
     '''
     return days_of_food > 1
         
-def diet_parser(diet_string, special_diets=['halal','diabetic','gluten free']):
+def diet_parser(diet_string, special_diets=s_diets):
     '''
     this function returns the string of redundant dietary conditions
     minus the redundant conditions and the conditions tha are not relevant
@@ -84,6 +84,9 @@ def create_list_of_family_members_as_tuples(family_range_frm_visit, len_of_famil
     having to manually calibrate where items are and allows the use of 
     exports that have super.  It is made up of header: index value 
     pairs this function uses to find the values 
+
+    returns a list of tuples or an empty list
+
     '''
     # create a nested list of family member chunks via the extract_families function
     nested_list_of_family_data = [x for x in extract_families_into_list_slices(family_range_frm_visit, len_of_family_sub_slice)]    
@@ -107,8 +110,9 @@ def create_list_of_family_members_as_tuples(family_range_frm_visit, len_of_famil
         if any(f_set):
             list_of_family_member_tuples.append(tuple(f_set)) # add the tuple 
     
-    # ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity
-    return list_of_family_member_tuples # return the list of tuples
+    # ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity,relationship,
+    # immigration date
+    return list_of_family_member_tuples # the list of tuples or an empty list
 
 
 def any_one_in(tup_1, tup_2):

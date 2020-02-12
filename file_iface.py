@@ -17,7 +17,7 @@ class Menu:
              }
 
 
-    def __init__(self, base_path='December_Ops/databases/'):
+    def __init__(self, base_path='databases/'):
         self.base_path = base_path
         self.path_dict = None
 

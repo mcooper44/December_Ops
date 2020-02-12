@@ -18,16 +18,16 @@ STRUCTURE = ('CREATE TABLE Visit_Table (Visit_Number_Key INTEGER ' \
              + '(Visit_Number_Key))',
              'CREATE TABLE Household_Demo_Table'\
              + '(Visit_Number_Key INT, hh_size INT, hh_lang TEXT, hh_diet TEXT, ' \
-             + 'hh_housing_type TEXT,'\
+             + 'hh_housing_type TEXT,hh_primary_SOI TEXT,'\
              + ' FOREIGN KEY (Visit_Number_Key) REFERENCES Visit_Table'\
              + '(Visit_Number_Key))',
              'CREATE TABLE Visit_Coordinates_Table ' \
              +'(Visit_Number_Key INT, lat FLOAT, long FLOAT, verified INT,'\
              + 'FOREIGN KEY (Visit_Number_Key) REFERENCES Visit_Table'\
              +' (Visit_Number_Key))',
-             'CREATE TABLE Person_Table (Person_fid INTEGER NOT NULL, ' \
-             +'fname TEXT, lname TEXT, bday TEXT, age INT,'\
-             +' ethnicity TEXT, identitiy TEXT, immigation TEXT)',
+             'CREATE TABLE Person_Table (Person_fid INTEGER NOT NULL UNIQUE, ' \
+             +'fname TEXT, lname TEXT, bday TEXT, age INT, gender TEXT, '\
+             +' ethnicity TEXT, identitiy TEXT, immigation TEXT, fvisit TEXT)',
              'CREATE TABLE Service_Provider_Table ' \
              + '(Service_Provider_Code INT, service_name TEXT)')
 
@@ -117,12 +117,17 @@ class Database():
         pk = self.cur.lastrowid
         
         for s in many:
-            print('s')
-            print(s)
-            s1, s2 = s
-            print(pk,s1,s2)
-            self.cur.execute(s1,(pk,*s2))
-        self.conn.commit()
+            if any((s)):
+
+                try:
+                    s1, s2 = s
+                    self.cur.execute(s1,(pk,*s2))
+                    self.conn.commit()
+                except Exception as insert_fail:
+                    print(f'{s1} with values {s2}')
+                    print('yielded...')
+                    print(insert_fail)
+                
 
     def lookup(self, target, table, row, paramater):
         '''
@@ -249,20 +254,15 @@ class caseload_manager:
              in the hh
         
         '''
-        for x in tples:
-            print(x)
+        #for x in tples:
+        #    print(x)
         vt, vat, vs, hvt, hdt, vct, pt = tples
 
-        hh_id, date, agency, primary = vt
         VISIT = (f"INSERT INTO Visit_Table VALUES(NULL, ?, ?, ?,?)",vt)
         
-        a1,a2,cty,pos,ht = vat
-        #ADDRESS = f"""INSERT INTO Visit_Address_Table VALUES(?,{a1},{a2},{cty},{pos},{ht})"""
                    
         ADDRESS = (f"""INSERT INTO Visit_Address_Table VALUES(?,?,?,?,?,?)""",vat)
 
-        q, fp, ip, d, rf = vs
-        #VISIT_SERVICES = f"""INSERT INTO Visit_Services VALUES (?,{q},{fp},{ip},{d},{rf})"""
         
         VISIT_SERVICES = (f"""INSERT INTO Visit_Services VALUES (?,?,?,?,?,?)""",
                          vs)
@@ -271,35 +271,38 @@ class caseload_manager:
             p_fid, ship = hh_
             HH_VT.append(("""INSERT INTO Household_Visit_Table VALUES (?, ?, ?)""",hh_))
 
-        hh_s, hh_l, hh_d, hh_ht = hdt
-        HH_DEMO = ("""INSERT INTO Household_Demo_Table VALUES (?,?,?,?,?)""",hdt)
+        HH_DEMO = ("""INSERT INTO Household_Demo_Table VALUES (?,?,?,?,?,?)""",hdt)
         
-        lt,lng,cd = vct
         VISIT_COORD = ("INSERT INTO Visit_Coordinates_Table VALUES (?, ?, ?, ?)",vct)
 
         SONS = []
-        person_t_str = "(?,?,?,?,?,?,?,?)"
+        person_t_str = "(?,?,?,?,?,?,?,?,?,?)"
         for son in pt:
+            print('person')
+            print(son)
             SONS.append(son)
 
         MANY = (ADDRESS, VISIT_SERVICES,*HH_VT, HH_DEMO, VISIT_COORD)
         self.db_struct[database].o2m_insert(VISIT, MANY)
-        self.db_struct[database].insert({'Person_Table': (SONS,person_t_str)})
+        self.db_struct[database].insert({'Person_Table':
+                                         (SONS,person_t_str)},echo=False)
 
 if __name__ == '__main__':
     # SETUP A NEW DATABASE
-    #caseload = Database(CL_DB)
-    #caseload.connect(first_time=True, strings=STRUCTURE)
+    caseload = Database(CL_DB)
+    caseload.connect(first_time=True, strings=STRUCTURE)
 
     # TEST EXISTING DATABASE WITH the database_manager
     test_visit1 = ((123, '1/2/2020', 1, 999),
                    ('main', 'None', 'city', 'n2n1n1','rental'),
                    (3, 'None','diapers','no','None'),
                    ((999,'spouse'),(888,'spouse')),
-                   (2,'arabic','halal','rental'),
+                   (2,'arabic','halal','rental','EI'),
                    (1.1,2.2,0),
-                   ((999,'mr','smith','1/1/1900', '120','inuit','None','NA'),
-                    (888,'ms', 'smith','1/1/1970',50,'None','None','none'))
+                   ((999,'mr','smith','1/1/1900',
+                     '120','male','inuit','None','NA','1/1/1980'),
+                    (888,'ms', 'smith','1/1/1970',
+                     50,'female','None','None','none','0'))
 
                   )
 
@@ -307,9 +310,10 @@ if __name__ == '__main__':
                    ('avenue', 'None', 'city', 'n2n1n1','rental'),
                    (3, 'None','None','yes','None'),
                    ((777,'None'),),
-                   (1,'french','diabetic','social_housing'),
+                   (1,'french','diabetic','social_housing','OAP'),
                    (1.1,2.2,0),
-                   ((777,'mr','doe','1/1/1900', '120','none','none','none'),)
+                   ((777,'mr','doe','1/1/1900', 
+                     '120','male','none','none','none','1/1/1911'),)
                   )
 
     dbm = caseload_manager({'test': CL_DB})

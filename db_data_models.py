@@ -25,6 +25,15 @@ self_identifies_profile = namedtuple('self_identifies_profile', 'disabled, less_
 visit_tuple_structure = namedtuple('visit_tuple_structure', 'date, main_applicant_id, visit_object')
 a_person = namedtuple('a_person', 'ID, Lname, Fname, DOB, Age, Gender, Ethnicity, SelfIdent')
 
+PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
+             'Chandler': 2,
+             'Kingsdale': 3,
+             'Courtland': 4,
+             'Sunnydale': 5,
+             'Victoria Hills': 6,
+             'Centreville': 7,
+             'Forest Heights': 8
+            }
 
 class Field_Names():
     '''
@@ -85,13 +94,16 @@ class Field_Names():
                 'gender': None,
                 'ethnicity': None,
                 'self_ident': None,
-                'relationship': None
+                'relationship': None,
+                'immigration': None
                  }
 
         targets = ['HH Mem 1- Last Name','HH Mem 1- First Name',
                    'HH Mem 1- Date of Birth', 'HH Mem 1- Age',
                    'HH Mem 1- Gender','HH Mem 1- Ethnicities',
-                   'HH Mem 1- Self-Identifies As','HH Mem 1- Relationship']
+                   'HH Mem 1- Self-Identifies As',
+                   'HH Mem 1- Relationship to Main Client',
+                   'HH Mem 1- Immigration']
 
         reference = self.file_headers.index('HH Mem 1- ID')
         d_t = list(fam_hd.keys())
@@ -111,6 +123,11 @@ class Person():
     A person is a part of a household, they have a profile of personal information
     and a relationship to a main applicants and an implied relationship to other 
     household members
+    
+    param: person_summary is a uple created by the get_family_members() method of
+    the Visit_Line_Object when it attempts to parse the line and extract family
+    details
+    
     '''    
 
     def __init__(self, person_summary):
@@ -122,6 +139,7 @@ class Person():
         self.person_Gender = person_summary[5] # HH Mem X - Gender
         self.person_Ethnicity = person_summary[6] # HH Mem X - Ethno
         self.person_Idenifies_As = person_summary[7] # HH Mem X - Disable etc.
+        self.person_immigration_date = person_summary[9] # immigration date 
         self.person_HH_membership = [] # a list of HH they have been a part of
         self.HH_Identities = defaultdict(list) # a dictionary of HHIDs and the relationship tag they have in that HH
 
@@ -194,14 +212,14 @@ class Person():
         returns a named tuple of with values True or False for the different categories
         'person_ethno_profile', 'visible_minority, first_nations, metis, inuit, NA, undisclosed'
         '''
-        nat_applic = False
+        not_applic = False
         undisco = False
         visi_minor = False
         first_nat = False
         metis = False
         inuit = False
         if 'not_applicable' in self.person_Ethnicity:
-            nat_applic = True
+            not_applic = True
         if 'undisclosed' in self.person_Ethnicity:
             undisco = True
         if 'visible_minority' in self.person_Ethnicity:
@@ -212,7 +230,7 @@ class Person():
             metis = True
         if 'inuit' in self.person_Ethnicity:
             inuit = True
-        bool_ethno_profile = person_ethno_profile(visi_minor, first_nat, metis, inuit, nat_applic, undisco)
+        bool_ethno_profile = person_ethno_profile(visi_minor, first_nat, metis, inuit, not_applic, undisco)
         return bool_ethno_profile
     
     def add_HH_visit(self, HHID):
@@ -315,7 +333,7 @@ class Visit_Line_Object():
     
     it also has a flag to indicate if there are xmas features to extract
     and provides methods to do so if needed
-    :param: visit_line = a line from a csv
+    :param: visit_line = a line from a csv that contains information about a visit
     :param: fnamedict = a dictionary of headernames: index number - it is used
     to reference where data points are on the visit_line
     :param: december_flag = a marker to toggle looking for Christmas related
@@ -325,7 +343,7 @@ class Visit_Line_Object():
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
         self.vline = visit_line
-        self.visit_Date = None
+        self.visit_Date = visit_line[fnamedict['Visit Date']]
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
         self.main_applicant_Lname = None
@@ -336,6 +354,9 @@ class Visit_Line_Object():
         self.main_applicant_Email = None
         self.main_applicant_Ethnicity = None
         self.main_applicant_Self_Identity = None
+        self.languages = None
+        self.immigration_date = None
+        self.delivery = None
         self.household_primary_SOI = None # Client Primary Source of Income
         self.visit_Address = None 
         self.visit_Address_Line2 = None
@@ -343,19 +364,21 @@ class Visit_Line_Object():
         self.visit_Postal_Code = None
         self.lat = None # latitude
         self.lng = None # longitude
+        self.housing_type = None # Housing type string
         self.visit_Household_ID = None  # Household ID - the unique file number used to identify households
         self.visit_household_Size = visit_line[fnamedict['Household Size']] # The Number of people included in the visit
         self.visit_household_Diet = None # Dietary Conditions in a readable form
         self.visit_food_hamper_type = None 
-        self.visit_Referral = None # Referrals Provided
         self.visit_Family_Slice = None
         self.visit_Agency = None # organization that provided services
+        self.first_visit = None
         self.HH_main_applicant_profile = None
         self.HH_family_members_profile = None
-        self.food = None
+        self.visit_Referral = None # Referrals Provided
+        self.quantity = None
+        self.foods_provided = visit_line[fnamedict['Food Provided']]
+        self.items_provided = visit_line[fnamedict['Items Provided']]
         self.xmas_ID = None
-        self.xmas_food_provided = None
-        self.xmas_items_provided = None
         self.xmas_notes = None
         self.xmas_application_site = None
         self.sa_status = None # has SA appointment?
@@ -367,33 +390,48 @@ class Visit_Line_Object():
             self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         if fnamedict.get('Client Ethnicities', False):
             self.main_applicant_Ethnicity = visit_line[fnamedict['Client Ethnicities']]
-        if fnamedict.get('Client Self-Identifies As', False):
-            self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
+        if fnamedict.get('Household Languages', False):
+            self.languages = visit_line[fnamedict['Household Languages']]
+        if fnamedict.get('Client Immigration', False):
+            self.immigration_date = visit_line[fnamedict['Client Immigration']]
+        if fnamedict.get('Delivery', False):
+            self.delivery = visit_line[fnamedict['Delivery']]
+
         if fnamedict.get('Quantity', False):
             self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
-        if fnamedict.get('Visit Date', False):
-            self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
+            self.quantity = visit_line[fnamedict['Quantity']]
+        #if fnamedict.get('Visit Date', False):
+        #    self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         if fnamedict.get('Client First Name', False):
             self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
         if fnamedict.get('Client Last Name', False):
             self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
         if fnamedict.get('Client Date of Birth', False):
             self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+        if fnamedict.get('Client Self-Identifies As', False):
+            self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
+        if fnamedict.get('Client First Food Bank Visit-Date', False):
+            self.first_visit = visit_line[fnamedict['Client First Food Bank Visit-Date']]
         # ADDRESS RELATED SWITCHES
         if fnamedict.get('Address', False): # used by the L2F Services Export
             self.visit_Address = visit_line[fnamedict['Address']] 
         if fnamedict.get('Street', False): # used by the normal L2F Export
             self.visit_Address = visit_line[fnamedict['Street']]
-        if fnamedict.get('Line 2', False):
-            self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
         if fnamedict.get('Latitude', False):
             self.lat = visit_line[fnamedict['Latitude']]
         if fnamedict.get('Longitude', False):
             self.lng = visit_line[fnamedict['Longitude']]
+        if fnamedict.get('Housing Type', False):
+            self.housing_type = visit_line[fnamedict['Housing Type']]
+        if fnamedict.get('Postal Code', False):
+            self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
+        if fnamedict.get('Line 2', False):
+            self.visit_Address_Line2 = visit_line[fnamedict['Line 2']]
         elif not fnamedict.get('Line 2', False): 
             # if the l1 and l2 are comma
             # separated then we can split
-            # it on the comma
+            # it on the comma, for some reason the xmas export 
+            # concatenates the two address lines
             try:
                 split_address = self.visit_Address.split(',')
                 if len(split_address) == 2:
@@ -405,14 +443,13 @@ class Visit_Line_Object():
                     self.visit_Address_Line2 = ''.join(split_address[1:])
             except:
                 pass
+
         if fnamedict.get('Client Gender', False):
             self.main_applicant_Gender = visit_line[fnamedict['Client Gender']] # Main Applicant Gender
-        if visit_line[fnamedict['Client Phone Numbers']]:
+        if fnamedict.get('Client Phone Numbers', False):
             self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
-        if fnamedict.get('Client Primary Income Source',False):
+        if fnamedict.get('Household Primary Income Source',False):
             self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']]
-        if fnamedict.get('Postal Code', False):
-            self.visit_Postal_Code = visit_line[fnamedict['Postal Code']]
         if fnamedict.get('Household ID', False):
             self.visit_Household_ID = str(visit_line[fnamedict['Household ID']])
         if fnamedict.get('Referrals Provided', False):
@@ -423,16 +460,87 @@ class Visit_Line_Object():
             self.visit_Agency = visit_line[fnamedict['Visited Agency']]
         if fnamedict.get('Client Email Addresses', False):
             self.main_applicant_Email = visit_line[fnamedict['Client Email Addresses']]
-        if fnamedict.get('Foods Provided', False):
-            self.food = visit_line[fnamedict['Foods Provided']]
 
-        if december_flag:
+        if december_flag: # enforce items and food lines in export existing
             self.xmas_ID = visit_line[fnamedict['Request ID']]
-            self.xmas_food_provided = visit_line[fnamedict['Foods Provided']]
-            self.xmas_items_provided = visit_line[fnamedict['Items Provided']]
             self.xmas_notes = visit_line[fnamedict['Notes Recorded']]
             self.xmas_application_site = visit_line[fnamedict['Requesting Agency']]
             self.ex_reference = visit_line[fnamedict['External Reference']]
+
+
+    # CASELOAD DATA TABLE RETURN FUNCTIONS
+    def visit_table(self):
+        '''
+        returns data for insertion to the Visit_Table
+        of the caseload database
+        '''
+        provider_code = PROVIDERS.get(self.visit_Agency, 0)
+        return (self.visit_Household_ID, self.visit_Date, 
+                provider_code, self.main_applicant_ID)
+
+    def visit_address_table(self):
+        '''
+        returns data for insertion into the visit_Address_Table
+        '''
+        return (self.visit_Address, self.visit_Address_Line2, self.visit_City,
+                self.visit_Postal_Code, self.housing_type)
+
+    def visit_services(self):
+        '''
+        returns data for insertion into the Visit_Services
+        '''
+        return (self.quantity, self.foods_provided, self.items_provided,
+                self.delivery, self.visit_Referral)
+
+    def household_demo_table(self):
+        return (self.visit_household_Size, self.languages,
+                self.visit_household_Diet, self.housing_type,
+               self.household_primary_SOI)
+
+    def visit_coordinates_table(self):
+        return (self.lat, self.lng, 0)
+
+    def ma_person_table(self):
+        '''
+        returns values for inserting the main applicant into the Person_Table
+        '''
+        return (self.main_applicant_ID, self.main_applicant_Fname,
+                self.main_applicant_Lname, self.main_applicant_DOB,
+                self.main_applicant_Age, self.main_applicant_Gender,
+                self.main_applicant_Ethnicity, self.main_applicant_Self_Identity, self.immigration_date,
+                self.first_visit)
+
+    @staticmethod
+    def return_hvt_and_people(fam_tuples):
+        '''
+        takes the output of the .get_family_members() method
+        and parses it for use in the caseload database
+        returning two collections of tuples
+        (((visit_services),...), ((person table),...))
+
+        '''
+        visit_services = []
+        person_table = []
+        if any(fam_tuples):
+
+            for fam_member in fam_tuples:
+                fm_id = fam_member[0]
+                ln = fam_member[1]
+                fn = fam_member[2] 
+                dob = fam_member[3]
+                age = fam_member[4]
+                gen = fam_member[5]
+                eth = fam_member[6]
+                ide = fam_member[7]
+                rel = fam_member[8]
+                imm = fam_member[9]
+
+                vs_t = (fm_id, rel)
+                pt_t = (fm_id, ln, fn, dob, age, gen, eth, ide, rel, imm)
+                visit_services.append(vs_t)
+                person_table.append(pt_t)
+        
+        return tuple(v for v in visit_services), tuple(p for p in person_table)
 
 
     @staticmethod
@@ -596,11 +704,15 @@ class Visit_Line_Object():
         data into tuples
         '''
         sub_slice_len = header_object.return_family_subslice_len()
+        # create a dictionary of index numbers for each of the data points
         h_d = header_object.return_fam_header_indexes()
+
         family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice,
                                                                 sub_slice_len,
                                                                 h_d)
-        return family_members
+        # ID, Lname, Fname, DOB, Age, Gender, ethnicity,identity, immigration
+        # date
+        return family_members 
 
     def get_add_city_app(self):
         '''
@@ -635,8 +747,8 @@ class Visit_Line_Object():
         it is used in the logic coded in the christmas ops pipeline 
         to determine what to do with the line
         '''
-        if self.food:
-            delivery_test = 'Delivery Christmas Hamper' in self.food and 'Emergency Hampers' in self.food
+        if self.foods_provided:
+            delivery_test = 'Delivery Christmas Hamper' in self.foods_provided and 'Emergency Hampers' in self.foods_provided
             if delivery_test:
                 sms = Visit_Line_Object.get_sms_target(self.ex_reference)
                 if sms:
@@ -653,7 +765,7 @@ class Visit_Line_Object():
             True, food_sponsor, toy_sponsor
             False, None, None
         '''
-        food, toys = self.food, self.xmas_items_provided
+        food, toys = self.foods_provided, self.items_provided
         sponsored, food_provider, toy_provider = False, None, None
         if any([food, toys]):
             for sponsor in food_sponsors:
@@ -682,7 +794,7 @@ class Visit_Line_Object():
         into the gift_table
 
         '''
-        if 'Salvation Army' in self.xmas_items_provided and 'Gifts' in self.xmas_items_provided:
+        if 'Salvation Army' in self.items_provided and 'Gifts' in self.items_provided:
             self.sa_status = True
             self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
             #print(f'### SA: {self.sa_app_num} ###')
@@ -781,6 +893,8 @@ class Export_File_Parser():
     header_names = a Field_Names object
 
     '''   
+    
+    # DICTIONARIES TO STORE OBJECTS
     Person_Table = dict()
     Household_Table = dict()
     Visit_Table = dict()
