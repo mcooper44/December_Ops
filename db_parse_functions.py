@@ -4,7 +4,13 @@ to parse or organize different bits of data contained in the lines
 of a l2f export
 
 '''
-s_diets = ['halal','diabetic','gluten free','no pork','vegetarian','nursing']
+s_diets = ['halal','diabetic','gluten free',
+           'no pork','vegetarian','vegan',
+           'nursing','pregnant',
+           'peanut allergy','dairy allergy',
+           'lactose intollerant', 'wheat allergy'           
+          ]
+
 
 
 def itr_joiner(list_etc):
@@ -107,8 +113,8 @@ def create_list_of_family_members_as_tuples(family_range_frm_visit, len_of_famil
                     # otherwise swap None in because that header was not used
                     f_set.append(None) 
         
-        if any(f_set):
-            list_of_family_member_tuples.append(tuple(f_set)) # add the tuple 
+            if any(f_set):
+                list_of_family_member_tuples.append(tuple(f_set)) # add the tuple 
     
     # ID, Lname, Fname, DOB, Age, Gender, Ethnicity, Identity,relationship,
     # immigration date

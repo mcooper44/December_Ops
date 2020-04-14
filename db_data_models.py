@@ -26,13 +26,13 @@ visit_tuple_structure = namedtuple('visit_tuple_structure', 'date, main_applican
 a_person = namedtuple('a_person', 'ID, Lname, Fname, DOB, Age, Gender, Ethnicity, SelfIdent')
 
 PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
-             'Chandler': 2,
-             'Kingsdale': 3,
-             'Courtland': 4,
-             'Sunnydale': 5,
-             'Victoria Hills': 6,
-             'Centreville': 7,
-             'Forest Heights': 8
+             'Chandler Mowat Community Centre - House of Friendship': 2,
+             'Kingsdale Community Centre - House of Friendship': 3,
+             'Courtland Shelley Community Centre - House of Friendship': 4,
+             'Sunnydale Community Centre - House of Friendship': 5,
+             'Victoria Hills Community Centre': 6,
+             'Centreville Chicopee Community Centre': 7,
+             'Forest Heights Community Centre': 8
             }
 
 class Field_Names():
@@ -139,6 +139,7 @@ class Person():
         self.person_Gender = person_summary[5] # HH Mem X - Gender
         self.person_Ethnicity = person_summary[6] # HH Mem X - Ethno
         self.person_Idenifies_As = person_summary[7] # HH Mem X - Disable etc.
+        self.person_Relationship = person_summary[8]
         self.person_immigration_date = person_summary[9] # immigration date 
         self.person_HH_membership = [] # a list of HH they have been a part of
         self.HH_Identities = defaultdict(list) # a dictionary of HHIDs and the relationship tag they have in that HH
@@ -449,7 +450,7 @@ class Visit_Line_Object():
         if fnamedict.get('Client Phone Numbers', False):
             self.main_applicant_Phone = visit_line[fnamedict['Client Phone Numbers']].split(',') # Main Applicant Phone Numbers
         if fnamedict.get('Household Primary Income Source',False):
-            self.household_primary_SOI = visit_line[fnamedict['Client Primary Income Source']]
+            self.household_primary_SOI = visit_line[fnamedict['Household Primary Income Source']]
         if fnamedict.get('Household ID', False):
             self.visit_Household_ID = str(visit_line[fnamedict['Household ID']])
         if fnamedict.get('Referrals Provided', False):
@@ -473,8 +474,12 @@ class Visit_Line_Object():
         '''
         returns data for insertion to the Visit_Table
         of the caseload database
+        it depends on the PROVIDERS dictionary defined at the
+        head of the file.  If the provider is not present, 
+        it will pass on the value that has been extracted from
+        the file.
         '''
-        provider_code = PROVIDERS.get(self.visit_Agency, 0)
+        provider_code = PROVIDERS.get(self.visit_Agency, self.visit_Agency)
         return (self.visit_Household_ID, self.visit_Date, 
                 provider_code, self.main_applicant_ID)
 
@@ -504,11 +509,11 @@ class Visit_Line_Object():
         '''
         returns values for inserting the main applicant into the Person_Table
         '''
-        return (self.main_applicant_ID, self.main_applicant_Fname,
-                self.main_applicant_Lname, self.main_applicant_DOB,
+        return (self.main_applicant_ID, self.main_applicant_Lname,
+                self.main_applicant_Fname, self.main_applicant_DOB,
                 self.main_applicant_Age, self.main_applicant_Gender,
-                self.main_applicant_Ethnicity, self.main_applicant_Self_Identity, self.immigration_date,
-                self.first_visit)
+                self.main_applicant_Ethnicity, self.main_applicant_Self_Identity, 
+                self.immigration_date,  self.first_visit)
 
     @staticmethod
     def return_hvt_and_people(fam_tuples):
@@ -533,10 +538,10 @@ class Visit_Line_Object():
                 eth = fam_member[6]
                 ide = fam_member[7]
                 rel = fam_member[8]
-                imm = fam_member[9]
+                imm = fam_member[9] #imm date
 
                 vs_t = (fm_id, rel)
-                pt_t = (fm_id, ln, fn, dob, age, gen, eth, ide, rel, imm)
+                pt_t = (fm_id, ln, fn, dob, age, gen, eth, ide, imm, '')
                 visit_services.append(vs_t)
                 person_table.append(pt_t)
         
@@ -691,7 +696,8 @@ class Visit_Line_Object():
                 self.main_applicant_Age,
                 self.main_applicant_Gender,
                 self.main_applicant_Ethnicity,
-                self.main_applicant_Self_Identity)
+                self.main_applicant_Self_Identity,
+                self.immigration_date)
 
     def get_family_members(self, header_object):
         '''
@@ -710,8 +716,8 @@ class Visit_Line_Object():
         family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice,
                                                                 sub_slice_len,
                                                                 h_d)
-        # ID, Lname, Fname, DOB, Age, Gender, ethnicity,identity, immigration
-        # date
+        # 0 ID, 1 Lname, 2 Fname, 3 DOB, 4 Age, 5 Gender, 6 ethnicity, 7 identity,
+        # 8 relationship, 9 immigration date
         return family_members 
 
     def get_add_city_app(self):
@@ -983,27 +989,6 @@ class Export_File_Parser():
         else:
             print('The file {} has not been opened yet.'.format(self.path))
 
-    def set_summary_of_visits(self):
-        '''
-        creates a statiscal summary of the visits in the file
-        # of Hampers by month
-        # of HH by month
-        # of HH for duration
-        # of people served by month
-        # of people served for duration
-        and stores it in the self.summary_profile_object
-        '''
-        pass
-    
-    def get_summary_of_visits(self):
-        '''
-        returns the summary_of_visits data structure
-        '''
-        if self.summary_profile_object:
-            return self.summary_profile_object
-        else:
-            print('there is no summary.  Use the set_summary_of_visits method to generate one.')
-            return None
 
 
 if __name__ == "__main__":

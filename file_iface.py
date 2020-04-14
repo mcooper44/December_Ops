@@ -13,7 +13,8 @@ class Menu:
               'e_routes': 'Input ending route to print  ',
               'sms_hampers': 'Input Starting Route Number: ',
               'sms_army': 'Gift Appointment Block  ',
-              'sponsor': 'Enter a date to print entries '
+              'sponsor': 'Enter a date to print entries ',
+              'create': 'Enter name of file to create'
              }
 
 
@@ -23,6 +24,8 @@ class Menu:
 
     def get_file_list(self):
         fls = Path(self.base_path)
+        # create a dictionary with number keys for the 
+        # files in the dir
         fls_d = {str(x[0]) : x[1] for x in enumerate(fls.iterdir())}
         self.path_dict = fls_d
 

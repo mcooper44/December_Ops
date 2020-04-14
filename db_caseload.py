@@ -109,10 +109,7 @@ class Database():
         Household_Demo_Table, Visit_Coordinate_Table
         
         '''
-        print('visit')
-        print(visit)
         self.cur.execute(*visit)
-        print('visit executed')
 
         pk = self.cur.lastrowid
         
@@ -254,8 +251,6 @@ class caseload_manager:
              in the hh
         
         '''
-        #for x in tples:
-        #    print(x)
         vt, vat, vs, hvt, hdt, vct, pt = tples
 
         VISIT = (f"INSERT INTO Visit_Table VALUES(NULL, ?, ?, ?,?)",vt)
@@ -278,8 +273,6 @@ class caseload_manager:
         SONS = []
         person_t_str = "(?,?,?,?,?,?,?,?,?,?)"
         for son in pt:
-            print('person')
-            print(son)
             SONS.append(son)
 
         MANY = (ADDRESS, VISIT_SERVICES,*HH_VT, HH_DEMO, VISIT_COORD)
@@ -291,7 +284,7 @@ if __name__ == '__main__':
     # SETUP A NEW DATABASE
     caseload = Database(CL_DB)
     caseload.connect(first_time=True, strings=STRUCTURE)
-
+    '''
     # TEST EXISTING DATABASE WITH the database_manager
     test_visit1 = ((123, '1/2/2020', 1, 999),
                    ('main', 'None', 'city', 'n2n1n1','rental'),
@@ -322,5 +315,5 @@ if __name__ == '__main__':
     dbm.insert_visit('test', test_visit2)
 
     dbm.close_all()
-
+    '''
 
