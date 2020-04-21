@@ -4,19 +4,23 @@ from file_iface import Menu
 from db_data_models import Field_Names
 from db_data_models import Visit_Line_Object
 from db_data_models import Export_File_Parser
+from db_data_models import PROVIDERS
 
 from db_caseload import caseload_manager
 from db_caseload import Database
 from db_caseload import STRUCTURE
 
 
-# PATH OF THE DATABASE TO BE USED
+# BASE PATH NAMES
 CL_DB = 'databases/caseload.db'
 BP_S = 'sources/'
 BP_D = 'databases/'
-
+BP_O = 'products/'
 
 def create_database():
+    '''
+    to create a database for storing caseload data from exports files
+    '''
     new_name = input('please enter name of caseload database you want to create ')
     
     if '.db' not in new_name:
@@ -27,9 +31,26 @@ def create_database():
         caseload = Database(f'{BP_D}{new_name}') 
         caseload.connect(first_time=True, strings=STRUCTURE)
         print(f'database {new_name} has been created')
+        provider_tpl = [(PROVIDERS[k], k) for k in PROVIDERS]
+        provider_payld = {'Service_Provider_Table': (provider_tpl,'?,?)')}
+        caseload.insert(provider_payld)
+        print(f'{len(provider_tpl)} inserted into Service_Provider_Table')
     except Exception as failed_to_create:
         print('ERROR!')
         print(f'Could not create {new_name} due to error\n{failed_to_create}\n')
+        return None
+
+def open_database(chosen_source):
+    '''
+    for opening caseload databases for the purpose of running reports
+    '''
+    try:
+        caseload_q = Database(chosen_source)
+        caseload_q.connect()
+        return caseload_q
+    except Exception as failed_con:
+        print('ERROR!')
+        print(f'No connection to {chosen_source} due to error:\n{failed_con}')
 
 def choose_source(base_dir):
     
@@ -98,10 +119,10 @@ def ingest_data(d_file, in_file):
     dbm.close_all()
 
 def start_menu():
-    return input('1. Create database\n2.  Ingest data\n3. Exit\n')
+    return input('1. Create Database\n2. Ingest Data\n3. Run Report\n4. Exit\n')
 
 
-def main_menu(base_p=BP_S):
+def main_menu():
 
     yes_loop = True
     while yes_loop:
@@ -113,7 +134,15 @@ def main_menu(base_p=BP_S):
             in_file = choose_source(BP_S)
             print('ingesting data... nom nom nom\n')
             ingest_data(d_base, in_file)
-
+        elif str(m1) == '3': # RUN REPORTS
+            print('CHOOSE DATABASE SOURCE FILE')
+            ops_db_source = choose_source(BP_D)
+            qdb = open_database(ops_db_source)
+            if not qdb:
+                print('no database connection...exiting.')
+                sys.exit(0)
+            print('we made it!')
+            pass
         else: # EXIT OR INVALID INPUT
             print('exiting...')
             yes_loop = False
