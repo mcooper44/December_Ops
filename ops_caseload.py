@@ -32,7 +32,7 @@ def create_database():
         caseload.connect(first_time=True, strings=STRUCTURE)
         print(f'database {new_name} has been created')
         provider_tpl = [(PROVIDERS[k], k) for k in PROVIDERS]
-        provider_payld = {'Service_Provider_Table': (provider_tpl,'?,?)')}
+        provider_payld = {'Service_Provider_Table': (provider_tpl,'(?,?)')}
         caseload.insert(provider_payld)
         print(f'{len(provider_tpl)} inserted into Service_Provider_Table')
     except Exception as failed_to_create:
