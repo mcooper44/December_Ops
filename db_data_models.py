@@ -530,8 +530,8 @@ class Visit_Line_Object():
 
             for fam_member in fam_tuples:
                 fm_id = fam_member[0]
-                ln = fam_member[1]
-                fn = fam_member[2] 
+                ln = fam_member[2] # ln and fn can swap?
+                fn = fam_member[1] # double check!
                 dob = fam_member[3]
                 age = fam_member[4]
                 gen = fam_member[5]
@@ -546,7 +546,6 @@ class Visit_Line_Object():
                 person_table.append(pt_t)
         
         return tuple(v for v in visit_services), tuple(p for p in person_table)
-
 
     @staticmethod
     def get_special_string(notes_string, char_string= '##'):
