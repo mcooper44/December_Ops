@@ -36,7 +36,7 @@ submenu () {
               QUERY2="SELECT * FROM Visit_Table GROUP BY hh_id HAVING COUNT(distinct visit_date) >= $threshold ORDER BY date(visit_date);"
 			  OUTNAME2=threshold-$threshold-export-$(date +%Y-%m-%d)-$(date +%H-%M-%S).csv
               sqlite3 $BASE "$HEADERS" "$SEPARATOR" "$OUTFORMAT" ".output $OUTNAME2" "$QUERY2" ".exit" 
-              echo "exported $OUTNAME"
+              echo "exported $OUTNAME2"
               ;;
 		  "By date range" )
               echo "you chose By date range for $BASE"
@@ -45,7 +45,7 @@ submenu () {
 			  OUTNAME3=range-$start_d-$end_d-export-$(date +%Y-%m-%d)-$(date +%H-%M-%S).csv
               QUERY3="SELECT * FROM Visit_Table GROUP BY hh_id HAVING date(visit_date) BETWEEN date('$start_d') AND date('$end_d') ORDER BY date(visit_date);"
               sqlite3 $BASE "$HEADERS" "$SEPARATOR" "$OUTFORMAT" ".output $OUTNAME3" "$QUERY3" ".exit"
-              echo "exported $OUTNAME"
+              echo "exported $OUTNAME3"
 			  ;;
           "Sub menu quit")
               return
