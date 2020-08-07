@@ -1,3 +1,4 @@
+#!/usr/bin/python3.6
 import sys
 from file_iface import Menu
 
