@@ -49,6 +49,11 @@ db_src, _, outputs = conf.get_folders()
 _, session = conf.get_meta()
 db_dictionary = conf.get_bases() # {rdb: file, sa: file}
 
+if not all((target, db_src, session)):
+    raise Exception('NO CONFIG FILE LOADED')
+    sys.exit(1)
+
+
 # LOGGING
 ops_logger = logging.getLogger('ops')
 ops_logger.setLevel(logging.INFO)
@@ -159,7 +164,7 @@ class Service_Database:
         else:
             self.cur.execute(string)
             rows = self.cur.fetchall()
-        
+            if echo: print(rows) 
         if echo and not rows: print('WARNING: NO DATABASE RESULT')
 
         return rows
@@ -358,7 +363,17 @@ class Service_Database_Manager:
             ls2 = f'SELECT file_id, food_sponsor, gift_sponsor, sorting_date\
                     FROM sponsor WHERE sorting_date >= {crit}'
             return self.db_struct[database].lookup_string(ls2, None)
+    
+    def return_geo_points(self, add_tuple, database='address'):
+        '''
+        param database is the Address database
+        param add tuple is a ('123 Main Street', 'City') combo
+        '''
 
+        street, city = add_tuple
+        ls = f'SELECT lat, lng FROM address WHERE source_street = "{street}" AND\
+        source_city = "{city}"'
+        return self.db_struct[database].lookup_string(ls, None)
 
 
 def package_applicant(main, sa, rn, rl):
@@ -374,20 +389,28 @@ def package_applicant(main, sa, rn, rl):
 
     '''
     # use a named tuple to alias all the fields
+    #file, firstn, lastn familysize, phone, email,
+    #address line 1, address line 2, city, postal code, diet, hood, sms_number
     ma = namedtuple('add_h', 'f, fn, ln, fs, ph, em,\
                        a1, a2, ct, po, di, ne, sms')
+
+
     # summary a la. VLO.get_HH_summary()
     visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, \
                            size, phone, email, address, address2, city, \
                            postal, diet, sa_app_num, sms_target')
+    lat = None
+    lng = None
+
     if main:
         a = ma(*main)
         if not sa: sa = None
         summary = visit_sum(a.f, a.fn, a.ln, a.fs, a.ph, a.em, a.a1, a.a2, a.ct,
                         a.po, a.di, sa, a.sms)
 
-        package = (a.f, None, a.fs, None, None, summary, a.ne, a.po, rn,
+        package = (a.f, None, a.fs, lat, lng, summary, a.ne, a.po, rn,
                    rl,True, True)
+        
         rt_sum_package = (a.f, a.fs, a.di, rl, a.a1, a.ne)
         return package, rt_sum_package
 
@@ -415,9 +438,20 @@ def get_hh_from_database(database, r_start=1, r_end=900):
         main_applicant = rdbm.get_main_applicant('rdb', fid)[0]
         # get gift appointment number (gan) gift app time (gat)
         # or False, False
+        
+        # get geo points from address database
+        # main_applicant is a tuple from the database call
+        # position 6 and 8 are address line 1 string
+        # and City string
+        l1_city = (main_applicant[6], main_applicant[8])
+        gp = rdbm.return_geo_points(l1_city, 'address')
+        
         gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid)
 
-        hh_package, rt_sp  = package_applicant(main_applicant, gan, rn, rl)
+        hh_package, rt_sp = package_applicant(main_applicant, gan, rn, rl)
+        #(file_id, hh_id, family_size, lat, lng, summary, hood, postal, rn, rl,
+        # food, null_g)
+        
         dhc.add_household(*hh_package)
         dhc.setup_rt_summary(rn)
 

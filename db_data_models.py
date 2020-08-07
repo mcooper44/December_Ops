@@ -713,8 +713,7 @@ class Visit_Line_Object():
         h_d = header_object.return_fam_header_indexes()
 
         family_members = parse_functions.create_list_of_family_members_as_tuples(self.visit_Family_Slice,
-                                                                sub_slice_len,
-                                                                h_d)
+                                                                sub_slice_len, h_d)
         # 0 ID, 1 Lname, 2 Fname, 3 DOB, 4 Age, 5 Gender, 6 ethnicity, 7 identity,
         # 8 relationship, 9 immigration date
         return family_members 

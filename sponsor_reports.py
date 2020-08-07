@@ -91,6 +91,8 @@ class Report_File(object):
                             None,
                             None,
                             None,
+                            None,
+                            None,
                             None))
         adults.append(applicant)
         
@@ -103,7 +105,8 @@ class Report_File(object):
         if family:
             for ft in family:
                 if any(ft):
-                # fid, fname, lname, dob, age, gender, ethno, sia, hh, idents
+                # 0fid, 1fname, 2lname, 3dob, 4age, 5gender, 6ethno, 7sia, 
+                # 8relationship, 9immigration date
                     family_member = (ft[0],ft[2],ft[1], None, ft[3], ft[4], None,
                                  None, None, None)
                     po = Person(family_member)
