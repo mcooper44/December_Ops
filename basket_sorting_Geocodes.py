@@ -410,8 +410,10 @@ def prep_geolocation(lat, lng, give_null=False):
     '''
 
     if not give_null:
+        #print(f'returning: {lat}, {lng}')
         return Geolocation(float(lat), float(lng))
     elif give_null:
+        #print('returning null')
         return (None, None)
 
 
@@ -452,6 +454,7 @@ class Delivery_Household():
         self.food_sponsor = False
         self.gift_sponsor = False
         self.sa_time = False
+    
 
     def return_sponsor_package(self):
         '''
@@ -613,6 +616,7 @@ class Delivery_Household_Collection():
         when they are not to be setup for that service
         param: null_g trips the no geotuples flag in the Delivery_Household
         '''
+        #print(f'in_add_household lat = {lat} long = {lng}')
         self.hh_dict[file_id] = Delivery_Household(file_id, 
                                                    hh_id, 
                                                    family_size, 
@@ -782,7 +786,7 @@ class Delivery_Household_Collection():
 
     def __iter__(self):
         '''
-        An iterator that yields Delivery_Households() containted in the
+        An iterator that yields Delivery_Households() contained in the
         .hh_dict attribute
         '''
         
