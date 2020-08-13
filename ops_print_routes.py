@@ -327,6 +327,15 @@ class Service_Database_Manager:
     def return_route_num(self, database, file_id):
         ls = 'SELECT route_number FROM routes WHERE file_id=?'
         return self.db_struct[database].lookup_string(ls, (file_id,))
+    
+    def return_gifts_not_food(self, database):
+        '''
+        returns file_id of households who did not register for food
+        and only exist in the gift table
+        '''
+        ls = f'''SELECT file_id FROM gift_table WHERE file_id NOT IN (SELECT
+            file_id FROM routes)'''
+        return self.db_struct[database].lookup_string(ls, None)
 
     def return_file_ids(self, database):
         '''
