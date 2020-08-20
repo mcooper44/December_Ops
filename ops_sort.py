@@ -177,10 +177,10 @@ def sort_types(line_object, simple_address, address_database, kw,\
     # t/f, (Reitzel/Doon), (sertoma/sa) 
     sponsored, food_sponsor, gift_sponsor = line_object.is_sponsored_hamper()
     type_flags = (is_xmas, food_sponsor, gift_sponsor, sa_app)
-
+    # is this line legit?
     if not any((sponsored, food_sponsor, gift_sponsor, is_xmas, with_sa)):
-        return (False, type_flags)
-
+        return (False, type_flags) # no?  
+    # otherwise...
     try:
         crds = address_dbase.get_coordinates(simple_address, city)   
         lt, lg = crds.lat, crds.lng
@@ -193,6 +193,7 @@ def sort_types(line_object, simple_address, address_database, kw,\
                 # and later a route summary (n_hood)
             hh_added = False
             if not food_sponsor and is_xmas: # if not sponsored by doon or reitzel
+                # INSERT LOGIC ON DROPPING PICKUPS INTO THE PICKUP TABLE HERE           
                 delivery_households.add_household(applicant, None, 
                                                   family_size,
                                                   lt, lg, summary, 
@@ -532,6 +533,7 @@ export_file.open_file()
 
 # delivery and sponsor households go into this object
 delivery_households = Delivery_Household_Collection()
+pickup_households = Delivery_Household_Collection()
 
 k_w = Neighbourhoods(r'City of Waterloo and Kitchener Planning district Geometry.json')
 k_w.extract_shapes() # get shapes ready to test points

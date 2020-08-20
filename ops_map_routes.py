@@ -120,7 +120,7 @@ def make_map_MarkerCluster(locations, labels, sloc=DEF_LOC):
     '''
     hh_map = folium.Map(location=sloc, zoom_start=12)
     hh_map.add_child(MarkerCluster(locations=locations, popups=labels))
-    hh_map.save('2019_Christmas_Caseload.html')
+    hh_map.save(DEF_MAP_NAME)
 
 def make_map_custom_MarkerCluster(m, fname=DEF_MAP_NAME):
     '''
