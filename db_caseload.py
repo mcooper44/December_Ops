@@ -1,4 +1,7 @@
 import sqlite3
+from collections import Counter
+from collections import defaultdict
+from datetime import datetime
 
 # SCHEMA USED TO CREATE THE DATABASE
 STRUCTURE = ('CREATE TABLE Visit_Table (Visit_Number_Key INTEGER ' \
@@ -33,6 +36,150 @@ STRUCTURE = ('CREATE TABLE Visit_Table (Visit_Number_Key INTEGER ' \
 
 # PATH OF THE DATABASE TO BE USED
 CL_DB = 'databases/caseload.db'
+
+class Case_Visit:
+    '''
+    models the visit
+    labelled by Visit_Number_Key
+    '''
+    def __init__(self, VNK, hh_id, visit_date, service_provider_code,
+                 primary_applicant):
+        self.VNK = VNK
+        self.hh_id = hh_id
+        self.v_d = datetime.strptime(visit_date, '%Y-%m-%d')
+        self.spc = service_provider_code
+        self.p_a = primary_applicant
+        self.family = None
+        self.location = None
+
+    def add_family(self, family):
+        # includes primary applicant
+        self.family = family
+
+    def add_location(self, location):
+        self.location = location
+
+class Case:
+    '''
+    models visits that a household has over time
+    and provides methods to extract household level
+    stats.  
+    it is labeled by hh_id
+    '''
+    def __init__(self):
+        self.visits = {}
+
+    def add_visit(self, vnk, v):
+        self.visits[vnk] = Case_Visit(*v)
+    
+    def insert_family(self, vnk, family):
+        self.visits[vnk].add_family(family)
+
+    def insert_location(self, vnk, location):
+        self.visits[vnk].add_location(location)
+
+    def get_monthly_visits(self, month=None):
+        if not month:
+            return Counter([v.v_d.month for v in self.visits.values()])
+
+    def perform_Case_audit(self):
+        pass
+
+class Case_Collection:
+    '''
+    holds a range of Case()'s which model a household it's composition and
+    their visits across a specific time frame
+    provides methods to aggregate Case level stats
+    '''
+    def __init__(self):
+        self.hh_struct = {}
+
+    def add(self, v, vnk, hhid):
+        self.hh_struct[hhid] = Case()
+        self.hh_struct[hhid].add_visit(vnk, v)
+    
+    def update_family(self, hhid, vnk, family):
+        self.hh_struct[hhid].insert_family(vnk, family)
+
+    def update_location(self, hhid, vnk, location):
+        self.hh_struct[hhid].insert_location(vnk, location)
+    
+    def perform_Case_Collection_audit(self):
+        pass
+
+class Caseload_View:
+    '''
+    a range of visits between a start_date and end_date
+    manages the database and the model of households created by making calls to
+    it
+    '''
+    def __init__(self, start_date, end_date, caseload_db):
+        self.path = caseload_db
+        self.start = start_date # 'YYYY-MM-DD'
+        self.end = end_date
+        self.db_handler = None
+        self.hh_range = None
+        self.case_collection = Case_Collection()
+        self.report_struct = None
+
+        if caseload_db:
+            self.db_handler = Database(self.path)
+            self.db_handler.connect()
+            sql_rangeofhh = f'''SELECT * FROM Visit_Table WHERE
+            date(visit_date) 
+            BETWEEN date("{self.start}") AND date("{self.end}")'''
+            try:
+                self.hh_range = self.db_handler.lookup_string(sql_rangeofhh, tple=None)
+                for v in self.hh_range: 
+                    vnk, hhid, vd, pc, pa = v 
+                    # set case
+                    self.case_collection.add(v, vnk, hhid)
+                    sql_hh_vt = f'''SELECT Household_Visit_Table.Visit_Number_Key, 
+                                           Household_Visit_Table.person_fid, 
+                                           Household_Visit_Table.relationship,
+                                           Person_Table.bday,
+                                           Person_Table.gender
+                                    FROM 
+                                        Household_Visit_Table 
+                                    INNER JOIN 
+                                        Person_Table 
+                                    ON Household_Visit_Table.Person_fid =
+                                        Person_Table.Person_fid
+                                    WHERE
+                                    Household_Visit_Table.Visit_Number_key =
+                                    {vnk} 
+                                    UNION
+                                    SELECT "{vnk}" as Visit_Number_Key,
+                                        person_fid,
+                                        "Main_Applicant" as relationship,
+                                        bday,
+                                        gender
+                                    FROM
+                                        Person_Table
+                                    WHERE
+                                        person_fid={pa}'''
+                    family = self.db_handler.lookup_string(sql_hh_vt,
+                                                           tple=None)
+                    # set family
+                    self.case_collection.update_family(hhid, vnk, family)
+                    sql_location = f'''SELECT lat, long FROM
+                    Visit_Coordinates_Table WHERE Visit_Number_Key = {vnk}'''
+                    location = self.db_handler.lookup_string(sql_location,
+                                                             tple=None)
+                    # set location
+                    self.case_collection.update_location(hhid, vnk, location)
+
+            except Exception as db_call_fail:
+                raise db_call_fail
+        
+    def close_db(self):
+        self.db_handler.close()
+
+    def create_report_struct(self):
+        start_y = datetime.strptime(self.start, '%Y-%m-%d')
+        end_y =   datetime.strptime(self.end, '%Y-%m-%d')
+        uniq_years = list(range(start_y, end_y + 1))
+
 
 class Database():
     '''
@@ -171,7 +318,7 @@ class Database():
             self.cur.execute(string)
             rows = self.cur.fetchall()
         
-        if not rows: print('WARNING: NO DATABASE RESULT')
+        if not rows: print(f'WARNING: NO DATABASE RESULT\nfrom {string}')
 
         return rows
 
