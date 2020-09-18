@@ -193,12 +193,18 @@ class Route_Database():
             # SPONSOR TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS sponsor (file_id INT
                              NOT NULL UNIQUE, food_sponsor TEXT, gift_sponsor
-                             TEXT, sorting_date timestamp )''')
+                             TEXT, voucher_sponsor TEXT, turkey_sponsor TEXT,
+                             sorting_date timestamp )''')
             self.conn.commit()
             # GIFT TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS gift_table (file_id
                              INT NOT NULL UNIQUE, app_num INT, message_sent INT)''')
 
+            self.conn.commit()
+            # PICK UP TABLE
+            self.cur.execute('''CREATE TABLE IF NOT EXISTS pickup_table
+                             (file_id INT NOT NULL UNIQUE, pu_zone TEXT, pu_num
+                             INT, message_sent INT)''')
             self.conn.commit()
 
     def add_route(self, file_id, rn, rl):
@@ -217,11 +223,13 @@ class Route_Database():
         self.conn.commit()  
 
     def add_sponsor(self, file_id, food_sponsor, gift_sponsor,\
-                    new=(False,False)):
+                    voucher_sponsor, turkey_sponsor,\
+                    new=(False,False,False,False)):
         '''
         logs a main applicant file id in the database with their assigned sponsors
 
-        takes a file id, food provider and gift provider wraps them in a tuple
+        takes a file id, food provider and gift provider, voucher provider
+        and turkey provider and wraps them in a tuple
         and inserts them into the table
 
         if there are new service providers this method will update the value
@@ -229,23 +237,19 @@ class Route_Database():
         '''
         
         dt = datetime.date.today()
-        db_tple = (file_id, food_sponsor, gift_sponsor, dt)
-        new_food, new_gift = new
+        db_tple = (file_id, food_sponsor, gift_sponsor, voucher_sponsor,
+                   turkey_sponsor, dt)
+        new_food, new_gift, new_voucher, new_turkey = new
         if not any(new): # service providers
-            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?, ?)",\
+            self.cur.execute("INSERT OR IGNORE INTO sponsor VALUES (?, ?, ?, ?, ?, ?)",\
                              db_tple)
             self.conn.commit()
-        elif all(new):
-            self.cur.execute("UPDATE sponsor SET food_sponsor=?,gift_sponsor=?\
-                             WHERE file_id=?", db_tple)
-            self.conn.commit()
-        elif new_food and not new_gift:
-            self.cur.execute("UPDATE sponsor SET food_sponsor=? WHERE\
-                             file_id=?", (food_sponsor, file_id,))
-            self.conn.commit()
-        elif new_gift and not new_food:
-            self.cur.execute("UPDATE sponsor SET gift_sponsor=? WHERE\
-                             file_id=?", (gift_sponsor, file_id,))
+        elif any(new):
+            new_tple = (food_sponsor, gift_sponsor, voucher_sponsor,
+                        turkey_sponsor, file_id)
+            self.cur.execute("""UPDATE sponsor SET food_sponsor=?, gift_sponsor=?,
+                             voucher_sponsor=?, turkey_sponsor=? WHERE
+                             file_id=?""", new_tple)
             self.conn.commit()
     
     def add_sa_appointment(self, file_id, app_num):
@@ -267,6 +271,16 @@ class Route_Database():
             return (False, None)
         except Exception as sqlerror:
             return (True, sqlerror)
+
+    def add_pu_appointment(self, file_id, pu_zone, pu_num):
+        try:
+            db_tple_1 = (file_id, pu_zone, pu_num, 0)
+            self.cur.execute('INSERT INTO pickup_table VALUES (?, ?, ?, ?)',db_tple_1)
+            self.conn.commit()
+            return (False, None)
+        except Exception as sqlerror:
+            return (True, sqlerror)
+
 
     def add_family(self, family_tple):
         '''
@@ -451,18 +465,50 @@ class Delivery_Household():
                                # created by the visit line object .get_HH_summary()
         self.family_members = None # family members in tuples
         self.sa_app_num = False
-        self.food_sponsor = False
+        self.food_sponsor = False # delivery or pickup
         self.gift_sponsor = False
+        self.voucher_sponsor = False # delivery or pickup
+        self.turkey_sponsor = False # delivery or pickup
         self.sa_time = False
+        self.hof_pu_zone = False
+        self.hof_pu_num = False
+        self.hof_pu_time = False
+        self.item_req = False # dictionary 
+        self.food_req = False # dictionary
     
+    def who_am_i(self):
+        return f'''I am {self.main_app_ID} I have asked for food from  
+    {self.food_sponsor} for a voucher from {self.voucher_sponsor} 
+    I have asked for a turkey from {self.turkey_sponsor} a gift from {self.gift_sponsor} '''
 
     def return_sponsor_package(self):
         '''
         returns a 3 tuples of app num, food sponsor, gift sponsor
         default values are False
         '''
-        return (self.sa_app_num, self.food_sponsor, self.gift_sponsor)
+        return (self.sa_app_num, self.food_sponsor, self.gift_sponsor,
+                self.voucher_sponsor, self.turkey_sponsor)
    
+    def set_hof_pickup(self, pu_zone, pu_num):
+        '''
+        called by the Delivery_Household_Collection() to set the zone and pu
+        number attributes - the zone designates what area the pickup will
+        happen and the pickup number corresponds to one of the assigned time
+        blocks.
+        '''
+
+        self.hof_pu_zone = pu_zone
+        self.hof_pu_num = pu_num
+    
+    def set_hof_pu_time(self, pu_time):
+        '''
+        set the .hof_pu_time attribute to the pick up time for printing pickup cards
+        '''
+        self.hof_pu_time = pu_time
+
+    def get_zone_and_num(self):
+        return self.hof_pu_zone, self.hof_pu_num
+    
     def get_sa_day_time(self):
         return self.sa_app_num, self.sa_time
 
@@ -481,11 +527,15 @@ class Delivery_Household():
         '''
         self.sa_time = sa_time
 
-    def set_sponsors(self, food, gift):
+    def set_sponsors(self, food, gift, voucher, turkey):
         if food:
             self.food_sponsor = food
         if gift:
             self.gift_sponsor = gift
+        if voucher:
+            self.voucher_sponsor = voucher
+        if turkey:
+            self.turkey_sponsor = turkey
 
     def return_hh(self):
         '''
@@ -775,14 +825,23 @@ class Delivery_Household_Collection():
         '''
         self.hh_dict[fid].set_sa_time(sa_time)
 
-    def add_sponsors(self, fid, food=False, gift=False):
+    def add_sponsors(self, fid, food=False, gift=False, voucher=False, turkey=False):
         '''
         for hh with main app fid, add food and or
         gift sponsors to the .food_sponsor or .gift_sponsor
         attributes
         '''
         
-        self.hh_dict[fid].set_sponsors(food, gift)
+        self.hh_dict[fid].set_sponsors(food, gift, voucher, turkey)
+    
+    def add_hof_pu(self, fid, pu_zone, pu_num):
+        '''
+        for hh who have opted to pickup their materials and who have been
+        assigned to a zone.  sets the .hof_pu_zone and .hof_pu_time attributes
+        of the Delivery_Household()
+
+        '''
+        self.hh_dict[fid].set_hof_pickup(pu_zone, pu_num)
 
     def __iter__(self):
         '''

@@ -15,7 +15,7 @@ It allows access to the following objects
 
 import db_parse_functions as parse_functions
 import csv
-
+import sys
 from collections import Counter, defaultdict, namedtuple
 import phonenumbers as pn
 
@@ -32,8 +32,34 @@ PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
              'Sunnydale Community Centre - House of Friendship': 5,
              'Victoria Hills Community Centre': 6,
              'Centreville Chicopee Community Centre': 7,
-             'Forest Heights Community Centre': 8
-            }
+             'Forest Heights Community Centre': 8}
+
+AGENTS_HOF = ['House of Friendship']
+SERVICE_AGENTS_HOF = "House of Friendship Delivery,HoF Zone 1,HoF Zone 2,HoF Zone \
+3,HoF Zone 4,HoF Zone 5,HoF Zone 6,HoF Zone 7,HoF Zone 8,HoF Zone 9".split(',')
+PICKUP_AGENTS_HOF = SERVICE_AGENTS_HOF[1:]
+SERVICE_AGENTS_SVDP = "Blessed Sacrament Church,Our Lady of Lourdes,\
+St. Agnes Catholic Church,St. Aloyious,St. Anne's Catholic Church,\
+St. Anthony Daniel Catholic Church,St. Francis of Assisi Church,\
+St. John's Church,St. Joseph's Church,St. Louis SSVP,St. Mark's Catholic\
+ Church,St. Mary's Catholic Church,St. Michael's Catholic Church,\
+St. Teresa's Church".split(',')
+SERVICE_AGENTS_CAM = "Salvation Army - Cambridge,Cambridge \
+Firefighters,Cambridge Self-Help Food Bank".split(',')
+SERVICE_AGENTS_GIFTS = 'KW Salvation Army,SPONSOR - SERTOMA,SPONSOR - REITZEL'.split(',')
+SERVICE_AGENTS_RURAL = "Wilmot Family Resource Centre,Woolwich Community\
+Services".split(',')
+SERVICE_AGENTS_SPONSOR = 'SPONSOR - DOON,SPONSOR - REITZEL'.split(',')
+SERVICE_AGENTS_KWSA = 'KW Salvation Army'
+
+SERVICE_LIST = (SERVICE_AGENTS_HOF,
+                SERVICE_AGENTS_SVDP,
+                SERVICE_AGENTS_CAM,
+                SERVICE_AGENTS_GIFTS,
+                SERVICE_AGENTS_RURAL,
+                SERVICE_AGENTS_SPONSOR)
+
+TURKEY_PROVIDERS = SERVICE_AGENTS_HOF + SERVICE_AGENTS_SPONSOR
 
 class Field_Names():
     '''
@@ -117,6 +143,98 @@ class Field_Names():
                 dx += 1
         
         return fam_hd
+
+class Service_Request():
+    '''
+    models the service request fields that separate each request with a comma
+    and bracket the |service provider with bars|
+
+    This localizes the logic for parsing services and providers in the 
+    request and simplifies things when providers increase in number
+    '''
+    def __init__(self, service_str):
+        self.original = service_str
+        self.services = service_str.split(',')
+        self.num_bookings = len(self.services)
+        self.providers = []
+        self.requests = []
+        self.service_lookup = defaultdict(set) # keyed provider: request
+        self.service_dict = {} # keyed request: provider
+        self.blank = True
+
+        if any(self.services):
+            for service in self.services:
+                # remove the last | and then split on the remaining one 
+                request, provider = service[:-1].split('|') 
+                self.requests.append(request)
+                self.providers.append(provider)
+                self.service_dict[request] = provider
+                self.service_lookup[provider].add(request)
+                self.blank = False
+        #print(f'SERVICE REQUEST: {self.service_dict} {self.service_lookup}')
+
+    def lookup_request_provider(self, request):
+        '''
+        uses the service_dict attribute to find the service provider
+        for a specific request
+        '''
+        return self.service_dict.get(request, False)
+
+    def confirm_agents(self, agents, get_service=False):
+        '''
+        confirms if the hh has made a request from one of the various
+        clusters of service providers
+        param agents is a iterable container of service provider strings
+        it should ideally only be used to test against one pool of 
+        service providers at a time
+        if param: get_service=True
+        it will return a tuple of providers as a set and services as a list
+        '''
+        providers = False
+        service = None
+       
+        providers = set(agents).intersection(set(self.service_lookup.keys()))
+        if get_service:
+            service_list = []
+            for service in providers:
+                service_list += list(self.service_lookup[service])
+            return providers, service
+
+        else:
+            return providers
+    
+    def confirm_services(self, service_list):
+        '''
+        iterates through service_list
+        and if the service is in the self.requests attribute
+        return True
+        otherwise default to False
+        '''
+        for service in service_list:
+            if service in self.requests:
+                return True
+        return False
+
+
+    def lookup(self, lookup):
+        '''
+        Takes param lookup which is a Service provider name
+        as a str and returns the set of service requested
+        or False
+        '''
+        return self.service_lookup.get(lookup, False)
+    
+    def return_lookup(self):
+        '''
+        Returns the structure of {Provider: Service}
+        '''
+        return self.service_lookup
+    
+    def __str__(self):
+        '''
+        returns the orignal string if needed
+        '''
+        return self.orignal
 
 class Person():
     '''
@@ -344,7 +462,7 @@ class Visit_Line_Object():
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
         self.vline = visit_line
-        self.visit_Date = visit_line[fnamedict['Visit Date']]
+        self.visit_Date = None 
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
         self.main_applicant_Lname = None
@@ -377,16 +495,31 @@ class Visit_Line_Object():
         self.HH_family_members_profile = None
         self.visit_Referral = None # Referrals Provided
         self.quantity = None
-        self.foods_provided = visit_line[fnamedict['Food Provided']]
-        self.items_provided = visit_line[fnamedict['Items Provided']]
+        self.foods_provided = None # Normal is food prov. Xmas is foods prov. fml
+        self.items_provided = Service_Request(visit_line[fnamedict['Items Provided']])
         self.xmas_ID = None
         self.xmas_notes = None
         self.xmas_application_site = None
+        self.ex_reference = None # holds the sms number if recorded
+        # set by methods
         self.sa_status = None # has SA appointment?
-        self.sa_app_num = None # SA appointment number
+        self.sa_app_num = None # SA appointment number - coded between ##x##
         self.sms_target = None # the phone number to send sms messages to
-        self.ex_reference = None
+        self.hof_zone = None # Zone label 
+        self.hof_pu_num = None # Zone pickup number - coded between $$x$$
+        self.item_req = {'Voucher': False, 'Gifts': False}
+        self.food_req = {'Delivery Christmas Hamper': False, 
+                         'Turkey': False, 'Pickup Christmas Hamper': False}
+        self.delivery_h = False # Designates a delivery hamper
+        self.f_sponsor = None # a list
+        self.g_sponsor = None # a list
+        if fnamedict.get('Visit Date', False):
+            self.visit_Date = visit_line[fnamedict['Visit Date']]
 
+        if fnamedict.get('Food Provided', False):
+            self.foods_provided = Service_Request(visit_line[fnamedict['Food Provided']])
+        elif fnamedict.get('Foods Provided', False):
+            self.foods_provided = Service_Request(visit_line[fnamedict['Foods Provided']])
         if fnamedict.get('Dietary Considerations', False):
             self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         if fnamedict.get('Client Ethnicities', False):
@@ -639,11 +772,11 @@ class Visit_Line_Object():
         (applicant, fname, lname, fam size, phone, email, address1, address2,
         city, diet, sa_app, sms_target)
 
-        it is input as a paramter the an instatiation of a Delivery_Household
-        class in the basket_sorting_G.. file
-
-
+        it is input as a paramter for the instatiation of a Delivery_Household
+        class in the basket_sorting_G.. file.  It can be used to populate the
+        fields for a delivery card
         '''
+
         visit_sum = namedtuple('visit_sum', 'applicant, fname, lname, size, phone, email,\
                                address, address2, city, postal, diet, sa_app_num, sms_target')
         return visit_sum(self.main_applicant_ID,
@@ -743,46 +876,113 @@ class Visit_Line_Object():
         '''
         return self.visit_food_hamper_type # True or False
     
-    def is_christmas_hamper(self):
+    def is_christmas_hamper(self, pu_list=PICKUP_AGENTS_HOF, 
+                            service_list=SERVICE_AGENTS_HOF):
         '''
-        performs a check to see if this is a Christmas Export
-        return True if so, or False
-
+        Christmas_Hamper denotes a service offered by J Cramer's 
+        home team rather than a 3rd party or sponsor. 
+        This method performs a check to see if this is a Christmas Hamper
+        by calling on methods of the Service_Agent object held 
+        at the self.foods_provided attribute
+        returns True or False
+        if True, it will attempt to set the sms_target attribute
+        and flip the toggles that identify this as either a delivery
+        or a pickup hamper
         it is used in the logic coded in the christmas ops pipeline 
         to determine what to do with the line
         '''
-        if self.foods_provided:
-            delivery_test = 'Delivery Christmas Hamper' in self.foods_provided and 'Emergency Hampers' in self.foods_provided
-            if delivery_test:
-                sms = Visit_Line_Object.get_sms_target(self.ex_reference)
-                if sms:
-                    self.sms_target = sms
+        is_hof = False 
+        provider = [] 
+        food = False
+        item = False
+        if not self.foods_provided.blank:
+            hof_food = set(service_list).intersection(set(self.foods_provided.providers))
+            #print(f'hof_food: {hof_food}')
+            if hof_food:
+                food = True
+                is_hof = True 
+                provider += list(hof_food)
+        if not self.items_provided.blank:
+            hof_items = set(service_list).intersection(set(self.items_provided.providers))
+            #print(f'hof_items: {hof_items}')
+            if hof_items:
+                item = True
+                is_hof = True
+                provider += list(hof_items)
+        #print(f'is_hof: {is_hof}')
+        if is_hof:
+            # set sms number if present
+            sms = Visit_Line_Object.get_sms_target(self.ex_reference)
+            if sms:
+                self.sms_target = sms
+            # determine service type Delivery or Pickup
+            pu_intersect = set(provider).intersection(set(pu_list))
+            if pu_intersect:
+                
+                self.hof_zone = list(pu_intersect)[0] # will be HoF Zone 1 etc. 
+                self.hof_pu_num = Visit_Line_Object.get_special_string(self.xmas_notes, '$$')
+                #print(f'zoned! {self.hof_zone}, {self.hof_pu_num}')
 
-            return delivery_test
+            if 'House of Friendship Delivery' in provider: 
+                self.delivery_h = True
+            if food:
+                for p in provider:
+                    foods = self.foods_provided.lookup(p)
+                    for f in foods:
+                        if f: 
+                            self.food_req[f] = p
+            if item:
+                for p in provider:
+                    items = self.items_provided.lookup(p)
+                    for i in items:
+                        if i: 
+                            self.item_req[i] = p 
+        #print(f'*ln929 is_hof= db_data {self.hof_zone} {self.item_req} {self.food_req}')
+        return is_hof
 
-
-    def is_sponsored_hamper(self, food_sponsors=('DOON', 'REITZEL'), 
-                            toy_sponsors=('Sertoma','Salvation Army')):
+    def is_sponsored_hamper(self, food_sponsors=SERVICE_AGENTS_SPONSOR, 
+                            toy_sponsors=SERVICE_AGENTS_GIFTS):
         '''
         performs a check to see if this a Sponsored Hamper
+        by calling Service_Request methods held at the .foods_provided
+        and .items_provided attributes
+
         returns a tuple:
             True, food_sponsor, toy_sponsor
             False, None, None
         '''
-        food, toys = self.foods_provided, self.items_provided
-        sponsored, food_provider, toy_provider = False, None, None
-        if any([food, toys]):
-            for sponsor in food_sponsors:
-                if sponsor in food:
-                    sponsored = True
-                    food_provider = sponsor
-            for g_sponsor in toy_sponsors:
-                if g_sponsor in toys:
-                    sponsored = True
-                    toy_provider = g_sponsor
-        return (sponsored, food_provider, toy_provider)
+        food_sponsor = set(self.foods_provided.providers).\
+                intersection(set(food_sponsors))
+        gift_sponsor = set(self.items_provided.providers).\
+                intersection(set(toy_sponsors))
+        #print(f'ln954 food sponsor: {food_sponsor} gift sponsor: {gift_sponsor}')
+        if food_sponsor or gift_sponsor:
+            fs = None
+            gs = None
+            if any(food_sponsor):
+                fs = list(food_sponsor)
+                self.f_sponsor = fs
+                for s in fs:
+                    foods = self.foods_provided.lookup(s)
+                    for f in foods:
+                        if f:
+                            self.food_req[f] = s
+            if any(gift_sponsor):
+                gs = list(gift_sponsor)
+                self.g_sponsor = gs
+                for s in gs:
+                    gifts = self.items_provided.lookup(s)
+                    for g in gifts:
+                        if g:
+                            self.item_req[g] = s
+            #print('')
+            #print(f'*ln965* is sponsored {self.hof_zone} {self.item_req} {self.food_req}')
+            #print('')
+            return (True, fs, gs)
+        else:
+            return (False, None, None)
 
-    def is_army(self):
+    def is_army(self, army_label='KW Salvation Army'):
         '''
         looks to see if there has been a Salvation Army appointment
         booked, attempts to collect a sms_number and
@@ -798,18 +998,31 @@ class Visit_Line_Object():
         into the gift_table
 
         '''
-        if 'Salvation Army' in self.items_provided and 'Gifts' in self.items_provided:
+        if army_label in self.items_provided.providers:
             self.sa_status = True
             self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
-            #print(f'### SA: {self.sa_app_num} ###')
+            print(f'### SA: {self.sa_app_num} self.sa_status = {self.sa_status} ###')
             if all((self.sa_status, self.sa_app_num)):
 
                 sms = Visit_Line_Object.get_sms_target(self.ex_reference)
                 if sms:
                     self.sms_target = sms
-
+        #print(f'*ln995* is_army {self.sa_status} {self.sms_target} {self.sa_app_num}')
         return (self.sa_status, self.sms_target, self.sa_app_num)
 
+    def get_services_dictionary(self):
+        '''
+        returns a dictionary of the attributs set by the three 
+        methods
+        is_army
+        is_chrismtas_hamper
+        is_sponsored_hamper
+
+        '''
+        return {'hof_zone': self.hof_zone, 'hof_pu_num': self.hof_pu_num,
+             'item_req': self.item_req, 'food_req':self.food_req,
+             'delivery_h': self.delivery_h, 'f_sponsor': self.f_sponsor,
+             'g_sponsor': self.g_sponsor}
 
     def has_family(self):
         '''
