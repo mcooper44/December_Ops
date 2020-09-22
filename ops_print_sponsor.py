@@ -66,7 +66,17 @@ ops_logger.info('Running new session {}'.format(datetime.now()))
 ops_logger.info('Printing Sponsor Reports')
 
 def get_hh_from_sponsor_table(database,criteria=None):
-    
+    '''
+    extracts household information from the database if households in the
+    database are registered in the sponsor table.
+    takes this information and uses it to instantiate household objects that
+    are a convenient data structure to use to then insert information into a
+    report or other products
+    param: criteria should be a date formatted in standard SQL date format
+    YYYY-MM-DD
+    this paramet is used by the .return_sponsor method to extract households
+    that were regisered after a certain date
+    '''
     rdbm = Service_Database_Manager.get_service_db()
     rdbm.initialize_connections()
 
@@ -75,7 +85,7 @@ def get_hh_from_sponsor_table(database,criteria=None):
     sponsor_families = rdbm.return_sponsor_hh('rdb',crit=criteria)
     # tuples of (fid, food sponsor, gift_sponsor)
     for sfam in sponsor_families:
-        fid, f_sponsor, g_sponsor, sort_date = sfam
+        fid, f_sponsor, g_sponsor, voucher_sponsor, turkey_sponsor, sort_date = sfam
         main_applicant = None
         try:
             main_applicant = rdbm.get_main_applicant('rdb', fid)[0]
@@ -83,11 +93,12 @@ def get_hh_from_sponsor_table(database,criteria=None):
             print(f'{fid} is not in the applicants table!')
             ops_logger.info(f'ERROR: {fid} is not in applicants! ERROR!')
         gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid)
-        
+        zone, zn_num = rdbm.return_pu_package('rdb', fid)        
         hh_package, _ = package_applicant(main_applicant, gan, None, None)
         dhc.add_household(*hh_package)
-        dhc.add_sponsors(fid, f_sponsor, g_sponsor)
-    
+        dhc.add_sponsors(fid, f_sponsor, g_sponsor, voucher_sponsor,
+                         turkey_sponsor)
+        dhc.add_hof_pu(fid, zone, zn_num)
         fam = rdbm.get_family_members('rdb', fid)
         if fam:
             dhc.add_hh_family(fid, fam)
@@ -97,7 +108,7 @@ def get_hh_from_sponsor_table(database,criteria=None):
     
     return dhc, rdbm
 
-def write_sponsor_reports(delivery_households, r_dbs):
+def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA'):
     '''
     iterates through delivery_households which is a
     Delivery_Household_Collection
@@ -108,16 +119,23 @@ def write_sponsor_reports(delivery_households, r_dbs):
     the database is needed to pull out day time strings for the 
     empty appointment slots so blank entry templates will be inserted
     in sequence when the sa report is printed.
-
+    
+    param: i_key is the attribute to sort the households by
+           the 3 options currently written in are the default for Salvation
+           Army, or, the pickup zones, or by postal code which helps some
+           sponsors organize their delivery routes.
+    param: pf is an indicator string in the file name to let me know what
+    sorting method has been chosen.  This whole peice needs to be rewritten so
+    that it's modular, but I don't have time for that at the moment.  So, like
+    a lot of stuff in this big bowl of spaghetti, it's a hack to get something I
+    need to work 
     '''
     dbs = r_dbs
     b_now = f'{datetime.now()}'[:16] # slice to the time but not to the ms
     b_head = f'{outputs}{session}'
 
-    s_report = {'Salvation Army': Report_File(f'{b_head}_Salvation Army_{b_now}.xlsx'),
-                'DOON': Report_File(f'{b_head}_DOON_{b_now}.xlsx'),
-                'Sertoma': Report_File(f'{b_head}_Sertoma_{b_now}.xlsx'),
-                'REITZEL': Report_File(f'{b_head}_REITZEL_{b_now}.xlsx')}
+    s_report = {} # container for Report File objects keyed off the sponsor
+                  # name in the database
 
     running_sa_count = 0 # used to keep track of the current sa appointment
                          # this and the offset that the current sa app
@@ -131,29 +149,38 @@ def write_sponsor_reports(delivery_households, r_dbs):
                            sms_target')
     null_app = visit_sum(*null_a)
 
-    for house in delivery_households.army_iter():
+    for house in delivery_households.key_iter(i_key): # SA or PU Zones (or future stuff?)
         rt = house.return_route()
         fid, rn, rl, nhood =  rt
         summ = house.return_summary() # the HH info (name, address etc.)
         fam = house.family_members    
-        
-        sap, fs, gs = house.return_sponsor_package()
+        # get SA App, food sponsor, gift sponsor, voucher sponsor, turkey
+        # sponsor 
+        sap, fs, gs, vs, ts = house.return_sponsor_package()
         saa, sat = house.get_sa_day_time() # application # application time
-        spg = [fs, gs]
-        
-        groups = [x for x in spg if len(x) > 2]
+        zn, zn_num, zn_time = house.get_zone_package() # zone, number, time
+        spg = [fs, gs, vs, ts] # sponsor group
+        services_p = (ts, fs, vs)  # turkey, food, voucher
+        groups = [x for x in set(spg) if len(x) > 2]
 
-        ops_logger.debug(f'operating on {fid} SAP = {sap}, fs = {fs} gs = {gs} saa = {saa} sat = {sat}')
+        ops_logger.info(f'operating on {fid} SAP = {sap}, fs = {fs} gs = {gs} saa = {saa} sat = {sat} zn = {zn} zn_num= {zn_num}')
         
         for g in groups: 
-            
-            age_cut = {'Salvation Army': 16, 
-                   'DOON': 18,
-                   'Sertoma': 13,
-                   'REITZEL': 19}
+
+            if g not in s_report.keys():
+                file_name_str = f'{b_head}_{g}_{b_now}_{pf}.xlsx'
+                s_report[g] = Report_File(file_name_str)
+            # certain groups have a max age for consideration of gifts
+            # this will allocate children / adults based off that limit
+            age_cut = {'KW Salvation Army': 16, 
+                   'SPONSOR - DOON': 18,
+                   'SPONSOR - SERTOMA': 13,
+                   'SPONSOR - REITZEL': 19}
             aco = age_cut.get(g, 18)
-            if not g == 'Salvation Army':
-                s_report[g].add_household(summ, fam, age_cutoff=aco) # sponsor report
+            if not g == 'KW Salvation Army':
+                s_report[g].add_household(summ, fam, age_cutoff=aco, \
+                                          service_pack = services_p, \
+                                          app_pack =(zn_num, zn_time))  # sponsor report
             else: 
                 # this logic is for determining if there is a need to 
                 # print a blank entry for the SA to keep the spacing 
@@ -195,6 +222,8 @@ def write_sponsor_reports(delivery_households, r_dbs):
 
 
 sponsor_date = None
+iteration_key = 'sa_app_num'
+post_fix = 'SA'
 menu = Menu()
 
 input_all = input('do you want to print all? Enter y or n  ')
@@ -203,6 +232,18 @@ if input_all == 'y':
 elif input_all == 'n':
     print('enter a date YYYY-MM-DD')
     sponsor_date = menu.prompt_input('sponsor')
+    print('Which Service Stream do you want to print?')
+    input_who = input('1. Salvation Army\n2. Pickup Zones\n3. Postal Codes\n')
+    if input_who == '2':
+        iteration_key = 'hof_pu_num'
+        post_fix = 'ZN'
+    if input_who == '3':
+        iteration_key = 'postal'
+        post_fix = 'PC'
+    elif input_who != '1':
+        print(f'using default value {iteration_key}')
+
+
 else:
     print('invalid input!')
     sys.exit(1)
@@ -210,4 +251,4 @@ else:
 
 route_database = Route_Database(f'{db_src}{session}rdb.db')
 dh, dbs = get_hh_from_sponsor_table(route_database, criteria=sponsor_date)
-write_sponsor_reports(dh,dbs)
+write_sponsor_reports(dh, dbs, i_key=iteration_key, pf=post_fix)

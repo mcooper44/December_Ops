@@ -366,13 +366,39 @@ class Service_Database_Manager:
         wrapped in quotes
         '''
         if not crit:
-            ls = '''SELECT file_id, food_sponsor, gift_sponsor, sorting_date FROM sponsor'''
+            ls = '''SELECT file_id, food_sponsor, gift_sponsor,
+            voucher_sponsor, turkey_sponsor, sorting_date FROM sponsor'''
             return self.db_struct[database].lookup_string(ls, None)
         elif crit:
-            ls2 = f'SELECT file_id, food_sponsor, gift_sponsor, sorting_date\
-                    FROM sponsor WHERE sorting_date >= {crit}'
+            ls2 = f'''SELECT file_id, food_sponsor, gift_sponsor,
+            voucher_sponsor, turkey_sponsor, sorting_date                    
+                    FROM sponsor WHERE date(sorting_date) >= date({crit})'''
             return self.db_struct[database].lookup_string(ls2, None)
-    
+   
+    def return_pickup_table(self, database):
+        '''
+        returns the values from the pickup table in the route database
+        this table holds the pickup zone and pickup number for the household
+        representing a household headed by file_id
+        '''
+        ls = '''SELECT file_id, pu_zone, pu_num, message_sent FROM pickup_table'''
+        return self.db_struct[database].lookup_string(ls, None)
+
+    def return_pu_package(self, database, fid):
+        '''
+        returns pu_zone and number frome the pickup table where fid has an
+        entry
+        '''
+        ls = f'SELECT pu_zone, pu_num FROM pickup_table WHERE file_id = {fid}'
+        try:
+            
+            retrn = self.db_struct[database].lookup_string(ls, None)
+            zn, zn_num  = retrn[0]
+            return zn, zn_num
+        except:
+            return False, False
+
+
     def return_geo_points(self, add_tuple, database='address'):
         '''
         param database is the Address database

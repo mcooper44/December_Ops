@@ -67,7 +67,8 @@ class Report_File(object):
             self.bold = self.workbook.add_format({'bold': True})
 
 
-    def add_household(self, summary, family, age_cutoff = 18, app_pack=False): 
+    def add_household(self, summary, family, age_cutoff = 18, app_pack=False,
+                      service_pack=None,line_two=True): 
         '''
         Adds a formatted summary to the xlsx file for the household
         that lists address, dietary issues, and family member details
@@ -98,9 +99,16 @@ class Report_File(object):
         
         if app_pack:
             nm, tm = app_pack
-            self.worksheet1.write(f'E{self.l_n[1]}', nm)
-            self.worksheet1.write(f'F{self.l_n[1]}', tm)
-
+            self.worksheet1.write(f'F{self.l_n[1]}', nm)
+            self.worksheet1.write(f'G{self.l_n[1]}', tm)
+        if service_pack:
+            tur, ham, vou = service_pack
+            self.worksheet1.write(f'F{self.l_n[2]}', 'Turkey:')
+            self.worksheet1.write(f'G{self.l_n[2]}', tur)
+            self.worksheet1.write(f'F{self.l_n[3]}', 'Hamper:')
+            self.worksheet1.write(f'G{self.l_n[3]}', ham)
+            self.worksheet1.write(f'F{self.l_n[4]}', 'Voucher:')
+            self.worksheet1.write(f'G{self.l_n[4]}', vou)
 
         if family:
             for ft in family:
@@ -122,7 +130,8 @@ class Report_File(object):
         self.worksheet1.write('A{}'.format(self.l_n[2]), 
                          'Family Size: {}'.format(summary.size))
         self.worksheet1.write('C{}'.format(self.l_n[1]), summary.address)
-        self.worksheet1.write('C{}'.format(self.l_n[2]), summary.address2)
+        if line_two:
+            self.worksheet1.write('C{}'.format(self.l_n[2]), summary.address2)
         self.worksheet1.write('C{}'.format(self.l_n[3]), '{}, {}'.format(summary.city,
                                                                    summary.postal))
         self.worksheet1.write('A{}'.format(self.l_n[4]),

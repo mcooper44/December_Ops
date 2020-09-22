@@ -508,7 +508,10 @@ class Delivery_Household():
 
     def get_zone_and_num(self):
         return self.hof_pu_zone, self.hof_pu_num
-    
+   
+    def get_zone_package(self):
+        return self.hof_pu_zone, self.hof_pu_num, self.hof_pu_time
+
     def get_sa_day_time(self):
         return self.sa_app_num, self.sa_time
 
@@ -518,7 +521,7 @@ class Delivery_Household():
         and sets gift sponsor to 'Salvation Army'
         '''
         self.sa_app_num = sa_app_num
-        self.gift_sponsor = 'Salvation Army'
+        self.gift_sponsor = 'KW Salvation Army'
 
     def set_sa_time(self, sa_time):
         '''
@@ -888,9 +891,28 @@ class Delivery_Household_Collection():
             yield self.hh_dict[hh]
 
     def army_iter(self):
+        '''
+        this is used by ops_print_sponsor in the write_sponsor_reports()
+        function to sort the delivery households by the sequential salvation
+        army appointment number so that they are added to the report in order
+        of their appointment number, and where necessary, print blank
+        application spaces for numbers that have not been assigned. 
+        '''
         for hh in (sorted(self.hh_dict.values(),
                           key=attrgetter('sa_app_num'))):
             yield hh
+    
+    def key_iter(self, kv='hof_pu_num'):
+        '''
+        used by the ops_print_sponsor script in the write_sponsor_reports()
+        function to sort the delivery househlds by the sequential appointment
+        number used by salvation army and in the pickup zones (and who knows
+        what in the future?)
+        '''
+        for hh in (sorted(self.hh_dict.values(),
+                          key=attrgetter(kv))):
+            yield hh
+
 
     def __str__(self):
         return f'{self.hh_dict.keys()}'

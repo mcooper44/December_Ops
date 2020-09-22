@@ -31,6 +31,8 @@ parse_and_sort_file(export_file, address_dbase, k_w, delivery_households)
 sort_routes(route_database, delivery_households, routes)
 log_routes_to_database(route_database, delivery_households)
 
+there is a option to sort households into the database, or to do that
+and and to also sort delivery routes
 
 '''
 import sqlite3

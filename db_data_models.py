@@ -1001,7 +1001,6 @@ class Visit_Line_Object():
         if army_label in self.items_provided.providers:
             self.sa_status = True
             self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
-            print(f'### SA: {self.sa_app_num} self.sa_status = {self.sa_status} ###')
             if all((self.sa_status, self.sa_app_num)):
 
                 sms = Visit_Line_Object.get_sms_target(self.ex_reference)

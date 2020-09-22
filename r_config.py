@@ -35,6 +35,10 @@ class configuration:
         self.sa_times = None
         self.sa_multipliers = None
         self.sa_day_mult = None
+        self.zn_times = None
+        self.zn_multipliers = None
+        self.zn_day_mult = None
+
 
         if self.config:
             try:
@@ -56,6 +60,11 @@ class configuration:
                     self.sa_times = yfile['times']
                     self.sa_multipliers = yfile['multipliers']
                     self.sa_day_mult = yfile['day_mult']
+                    self.zn_day = yfile['z_day']
+                    self.zn_times = yfile['z_times']
+                    self.zn_multipliers = yfile['z_multipliers']
+                    self.zn_day_mult = yfile['z_day_mult']
+
                     if echo: print(f'loaded {self.whoami} {self.session}')
             except:
                 print('failed to open config file')
@@ -120,3 +129,11 @@ class configuration:
         '''
         return (self.sa_day, self.sa_times, 
                 self.sa_multipliers, self.sa_day_mult)
+
+    def get_zone_app_package(self):
+        '''
+        returns a 4 tuple of the four lists that are needed to print out
+        the pickup zone app sheets and provision the pickup database
+        '''
+        return (self.zn_day, self.zn_times, self.zn_multipliers,
+                 self.zn_day_mult)
