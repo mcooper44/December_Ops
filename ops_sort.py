@@ -150,6 +150,7 @@ def registration_check(line):
     # SA - set sms and app num if SA and return 3 tuple for unpacking
     # must use is_army() method to set SA related attributes
     # like appointment number
+    #T/F     cell number, Application #
     with_sa, sms_target, sa_app_num = line_object.is_army() 
     
     # extract summary from the visit line 
@@ -288,7 +289,7 @@ def sort_types(line_object, simple_address, address_database, kw,\
                 hh_added = True
                 if all((with_sa, sa_app)):
                     # add sa app number
-                    delivery_households.add_sa_app_number(applicant, sa_app)
+                    delivery_households.add_sa_app_number(applicant, sa_app, gifts_p)
 
             # AND FINALLY...
             return (True, type_flags)
@@ -494,7 +495,8 @@ def sponsors_to_db(applicant, household, route_database):
 
         # ADD SALVATION GIFT APP to database
         if sa_app_num:
-            sql_error = route_database.add_sa_appointment(applicant, sa_app_num)
+            sql_error = route_database.add_sa_appointment(applicant,
+                                                          sa_app_num, g_sponsor)
             if not sql_error:
                 family_to_db(household, route_database)
             else:

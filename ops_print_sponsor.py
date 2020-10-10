@@ -81,7 +81,7 @@ def get_hh_from_sponsor_table(database,criteria=None):
     rdbm.initialize_connections()
 
     dhc = Delivery_Household_Collection()
-
+    # get list of sonsor families and services from the database
     sponsor_families = rdbm.return_sponsor_hh('rdb',crit=criteria)
     # tuples of (fid, food sponsor, gift_sponsor)
     for sfam in sponsor_families:
@@ -92,9 +92,12 @@ def get_hh_from_sponsor_table(database,criteria=None):
         except IndexError: # a real edge case from mucking about in the tables!
             print(f'{fid} is not in the applicants table!')
             ops_logger.info(f'ERROR: {fid} is not in applicants! ERROR!')
-        gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid)
-        zone, zn_num = rdbm.return_pu_package('rdb', fid)        
+        # extract key datapoints from the different tables
+        gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid, g_sponsor)
+        zone, zn_num = rdbm.return_pu_package('rdb', fid)
+        # rewrap up all that data
         hh_package, _ = package_applicant(main_applicant, gan, None, None)
+        # add it to a delivery hh collection
         dhc.add_household(*hh_package)
         dhc.add_sponsors(fid, f_sponsor, g_sponsor, voucher_sponsor,
                          turkey_sponsor)
@@ -137,10 +140,14 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
     s_report = {} # container for Report File objects keyed off the sponsor
                   # name in the database
 
-    running_sa_count = 0 # used to keep track of the current sa appointment
-                         # this and the offset that the current sa app
-                         # are used to keep track of how many blank app
-                         # templates to write into the final report
+    # used to keep track of the current sa appointment
+    # this and the offset that the current sa app
+    # are used to keep track of how many blank app
+    # templates to write into the final report
+    running_sa_count = {'KW Salvation Army': 0,
+                        'Salvation Army - Cambridge': 0}
+
+    
     null_a = ('' for x in range(13))
     null_fam = ((None, None, None, None, None, None, None, None, None, None),)
 
@@ -177,7 +184,7 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                    'SPONSOR - SERTOMA': 13,
                    'SPONSOR - REITZEL': 19}
             aco = age_cut.get(g, 18)
-            if not g == 'KW Salvation Army':
+            if not g in ['KW Salvation Army', 'Salvation Army - Cambridge']:
                 s_report[g].add_household(summ, fam, age_cutoff=aco, \
                                           service_pack = services_p, \
                                           app_pack =(zn_num, zn_time))  # sponsor report
@@ -185,27 +192,28 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                 # this logic is for determining if there is a need to 
                 # print a blank entry for the SA to keep the spacing 
                 # and order of appointments
-                if running_sa_count == 0:
+                if running_sa_count[g] == 0:
                     ops_logger.debug(f'running count = 0')
-                    ops_logger.debug(f'saa = {saa} sap = {sap}')
-                    running_sa_count = sap 
+                    ops_logger.debug(f'saa = {saa} sap = {sap} provider = {g}')
+                    running_sa_count[g] = sap 
                     s_report[g].add_household(summ, fam, age_cutoff=16,
                                               app_pack=(saa, sat))
 
                 else:
-                    dif_count = sap - running_sa_count
+                    dif_count = sap - running_sa_count[g]
                     ops_logger.debug(f'dif_count= {dif_count}')
-                    ops_logger.debug(f'saa = {saa} sap = {sap}')
+                    ops_logger.debug(f'saa = {saa} sap = {sap} provider = {g}')
                     if dif_count == 1:
                         s_report[g].add_household(summ, fam, age_cutoff=16,
                                               app_pack=(saa, sat))
-                        running_sa_count += 1
+                        running_sa_count[g] += 1
                     else:
-                        app_num = running_sa_count
+                        app_num = running_sa_count[g]
                         for x in range(1, dif_count):
                             blank_num = app_num + x
                             blank_time =  dbs.return_sa_app_time('sa',
-                                                                 blank_num)
+                                                                 blank_num,
+                                                                 g)
                             s_report[g].add_household(null_app,
                                                     null_fam, 
                                                     age_cutoff=16,
@@ -214,7 +222,7 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                         
                         s_report[g].add_household(summ, fam, age_cutoff=16,
                                               app_pack=(saa, sat))
-                        running_sa_count = sap
+                        running_sa_count[g] = sap
 
     for x in s_report.keys():
         s_report[x].close_worksheet()

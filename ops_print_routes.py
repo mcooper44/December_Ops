@@ -42,6 +42,9 @@ from delivery_binder import Office_Sheet
 
 from sponsor_reports import Report_File
 
+SERVICE_TABLE_KEYS = {'KW Salvation Army': 'Appointments',
+                        'Salvation Army - Cambridge': 'CSA'}
+
 # INITIALIZE CONFIGURATION FILE
 conf = configuration.return_r_config()
 target = conf.get_target() # source file
@@ -85,7 +88,7 @@ add_log.info('Running new session {}'.format(datetime.now()))
 class Service_Database:
     '''
     this is a  model of the route database
-
+    and a database in general....
     '''
     
     
@@ -242,7 +245,7 @@ class Service_Database_Manager:
         ls = f'SELECT app_num FROM gift_table WHERE file_id={file_id}'
         return self.db_struct[database].lookup_string(ls)
     
-    def return_sa_info_pack(self, rdb, app_db, fid):
+    def return_sa_info_pack(self, rdb, app_db, fid, provider):
         '''
         for a given file id, what is the appointment number and time string
         for the hh salvation army appointment?
@@ -250,24 +253,26 @@ class Service_Database_Manager:
         return a 2 tuple with app num, app time
         or (None, False)
         '''
+        table_select = SERVICE_TABLE_KEYS.get(provider, 'Key Error')
         
         try:
-            ls1 = f'SELECT app_num FROM gift_table WHERE file_id={fid}'
+            ls1 = f'SELECT app_num FROM gift_table WHERE file_id={fid} and provider={provider}'
             num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
-            ls2 = f'SELECT day,time FROM Appointments WHERE ID={num}'
+            ls2 = f'SELECT day,time FROM {table_select} WHERE ID={num}'
             a_day, a_time = self.db_struct[app_db].lookup_string(ls2, None)[0]
             time_str = f'{a_day} {a_time}'
             return (num, time_str)
         except:
             return (False, False)
 
-    def return_sa_app_time(self, app_db, num):
+    def return_sa_app_time(self, app_db, num, provider):
         '''
         gets a string representing the Day and Time of a given
         salvation army appointment number (num)
 
         '''
-        ls = f'SELECT day, time FROM Appointments WHERE ID={num}'
+        table_select = SERVICE_TABLE_KEYS.get(provider, 'None')
+        ls = f'SELECT day, time FROM {table_select} WHERE ID={num}'
         a_day, a_time = self.db_struct[app_db].lookup_string(ls, None)[0]
         return f'{a_day} {a_time}'
 

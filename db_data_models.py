@@ -46,7 +46,7 @@ St. John's Church,St. Joseph's Church,St. Louis SSVP,St. Mark's Catholic\
 St. Teresa's Church".split(',')
 SERVICE_AGENTS_CAM = "Salvation Army - Cambridge,Cambridge \
 Firefighters,Cambridge Self-Help Food Bank".split(',')
-SERVICE_AGENTS_GIFTS = 'KW Salvation Army,SPONSOR - SERTOMA,SPONSOR - REITZEL'.split(',')
+SERVICE_AGENTS_GIFTS = 'KW Salvation Army,SPONSOR - SERTOMA,SPONSOR - REITZEL,Salvation Army - Cambridge'.split(',')
 SERVICE_AGENTS_RURAL = "Wilmot Family Resource Centre,Woolwich Community\
 Services".split(',')
 SERVICE_AGENTS_SPONSOR = 'SPONSOR - DOON,SPONSOR - REITZEL'.split(',')
@@ -165,12 +165,15 @@ class Service_Request():
         if any(self.services):
             for service in self.services:
                 # remove the last | and then split on the remaining one 
-                request, provider = service[:-1].split('|') 
-                self.requests.append(request)
-                self.providers.append(provider)
-                self.service_dict[request] = provider
-                self.service_lookup[provider].add(request)
-                self.blank = False
+                try:
+                    request, provider = service[:-1].split('|') 
+                    self.requests.append(request)
+                    self.providers.append(provider)
+                    self.service_dict[request] = provider
+                    self.service_lookup[provider].add(request)
+                    self.blank = False
+                except:
+                    return None
         #print(f'SERVICE REQUEST: {self.service_dict} {self.service_lookup}')
 
     def lookup_request_provider(self, request):
@@ -461,7 +464,7 @@ class Visit_Line_Object():
     '''    
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
-        self.vline = visit_line
+        #self.vline = visit_line
         self.visit_Date = None 
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
@@ -855,7 +858,7 @@ class Visit_Line_Object():
         '''
         returns tuple of (address, city, main_applicant)
         '''
-        #print('{} {} {}'.format(self.visit_Address, self.visit_City, self.main_applicant_ID))
+        
         return (self.visit_Address, self.visit_City, self.main_applicant_ID)
 
     def get_household_type(self, relationship_collection):
@@ -897,19 +900,19 @@ class Visit_Line_Object():
         item = False
         if not self.foods_provided.blank:
             hof_food = set(service_list).intersection(set(self.foods_provided.providers))
-            #print(f'hof_food: {hof_food}')
+
             if hof_food:
                 food = True
                 is_hof = True 
                 provider += list(hof_food)
         if not self.items_provided.blank:
             hof_items = set(service_list).intersection(set(self.items_provided.providers))
-            #print(f'hof_items: {hof_items}')
+
             if hof_items:
                 item = True
                 is_hof = True
                 provider += list(hof_items)
-        #print(f'is_hof: {is_hof}')
+
         if is_hof:
             # set sms number if present
             sms = Visit_Line_Object.get_sms_target(self.ex_reference)
@@ -921,7 +924,7 @@ class Visit_Line_Object():
                 
                 self.hof_zone = list(pu_intersect)[0] # will be HoF Zone 1 etc. 
                 self.hof_pu_num = Visit_Line_Object.get_special_string(self.xmas_notes, '$$')
-                #print(f'zoned! {self.hof_zone}, {self.hof_pu_num}')
+
 
             if 'House of Friendship Delivery' in provider: 
                 self.delivery_h = True
@@ -937,7 +940,7 @@ class Visit_Line_Object():
                     for i in items:
                         if i: 
                             self.item_req[i] = p 
-        #print(f'*ln929 is_hof= db_data {self.hof_zone} {self.item_req} {self.food_req}')
+
         return is_hof
 
     def is_sponsored_hamper(self, food_sponsors=SERVICE_AGENTS_SPONSOR, 
@@ -955,7 +958,7 @@ class Visit_Line_Object():
                 intersection(set(food_sponsors))
         gift_sponsor = set(self.items_provided.providers).\
                 intersection(set(toy_sponsors))
-        #print(f'ln954 food sponsor: {food_sponsor} gift sponsor: {gift_sponsor}')
+
         if food_sponsor or gift_sponsor:
             fs = None
             gs = None
@@ -975,14 +978,11 @@ class Visit_Line_Object():
                     for g in gifts:
                         if g:
                             self.item_req[g] = s
-            #print('')
-            #print(f'*ln965* is sponsored {self.hof_zone} {self.item_req} {self.food_req}')
-            #print('')
             return (True, fs, gs)
         else:
             return (False, None, None)
 
-    def is_army(self, army_label='KW Salvation Army'):
+    def is_army(self, army_label={'KW Salvation Army': '##','Salvation Army - Cambridge': '##'}):
         '''
         looks to see if there has been a Salvation Army appointment
         booked, attempts to collect a sms_number and
@@ -993,20 +993,28 @@ class Visit_Line_Object():
         The three tuples should be able to pass an all() test at the point
         of use for it go forward into the sms pipleline
         
+        param: army_label is a dictionary keyed to service provider and
+        holding the string value that encodes appointment numbers for that gift
+        provider
+
         the values created by this method are used by the Route_Database 
         class add_sa_appointment method to insert the app_num
         into the gift_table
 
         '''
-        if army_label in self.items_provided.providers:
-            self.sa_status = True
-            self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
-            if all((self.sa_status, self.sa_app_num)):
-
-                sms = Visit_Line_Object.get_sms_target(self.ex_reference)
-                if sms:
-                    self.sms_target = sms
-        #print(f'*ln995* is_army {self.sa_status} {self.sms_target} {self.sa_app_num}')
+        
+        for label in army_label.keys():
+            if label in self.items_provided.providers:
+                
+                # modify key status registers
+                self.sa_status = True
+                self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
+                print(f'label: {label} app_num: {self.sa_app_num}')
+                if all((self.sa_status, self.sa_app_num)):
+                    # update SMS number variable if present
+                    sms = Visit_Line_Object.get_sms_target(self.ex_reference)
+                    if sms:
+                        self.sms_target = sms
         return (self.sa_status, self.sms_target, self.sa_app_num)
 
     def get_services_dictionary(self):
