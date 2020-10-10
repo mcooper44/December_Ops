@@ -22,13 +22,17 @@ Visit = namedtuple('Visit', 'slot_number, day, time')
 # CONFIGURATION FILE AND GLOBAL VARIABLES
 conf_file = configuration.return_r_config() # use class method to instantiate
 _, sesh = conf_file.get_meta() # 'year_prod/testing_'
-# SALVATION ARMY
+# KW SALVATION ARMY
 file_output = f'products/SA_{sesh}gift_app_times.xlsx'
 dy, tms, mlt, dmlt = conf_file.get_sa_app_package()
 sa_db = conf_file.get_bases()['sa']
 # PICKUP ZONES
 zone_output = f'products/ZN_{sesh}pickup_app_times.xlsx'
 z_dy, z_tms, z_mlt, z_dmlt = conf_file.get_zone_app_package()
+# CAMBRIDGE SALVATION ARMY
+csa_output = f'products/CSA_{sesh}gift_app_times.xlsx'
+csa_dy, csa_tms, csa_mlt, csa_dmlt = conf_file.get_csa_app_package()
+
 
 def create_time(day=dy, times=tms, multipliers=mlt, day_multp=dmlt):
     '''
@@ -90,10 +94,16 @@ def create_database(time_list, dbase_name=sa_db, table='Appointments'):
     a SQL database with the appointment number as the primary key and the 
     date and time as values
     '''
+    # kw salvation army
     INIT_STRING = """CREATE TABLE IF NOT EXISTS Appointments (ID INTEGER PRIMARY KEY, day TEXT, time TEXT)"""
-    INSERT_STRING = f"INSERT INTO {table} (ID, day, time) VALUES (?,?,?)"
-    #FETCH_STRING = "SELECT (day, time) FROM Appointments WHERE ID=?"
+    # cambridge salvation army
+    INIT_CSA = '''CREATE TABLE IF NOT EXISTS CSA (ID INTEGER PRIMARY KEY, day TEXT, time TEXT)'''
+    # pickup zones
     INIT_ZONES = '''CREATE TABLE IF NOT EXISTS Zones (ID INTEGER PRIMARY KEY, day TEXT, time TEXT)'''
+    # operation strings
+    INSERT_STRING = f"INSERT INTO {table} (ID, day, time) VALUES (?,?,?)"
+    FETCH_STRING = "SELECT (day, time) FROM Appointments WHERE ID=?"
+    # connect to db
     con = sqlite3.connect(dbase_name)
     cursor = con.cursor()
     # create Appointments
@@ -101,6 +111,9 @@ def create_database(time_list, dbase_name=sa_db, table='Appointments'):
     con.commit()
     # create Zone_Time
     cursor.execute(INIT_ZONES)
+    con.commit()
+    # create Cambridge SA table
+    cursor.execute(INIT_CSA)
     con.commit()
 
     for ntuple in time_list:
@@ -111,11 +124,11 @@ def create_database(time_list, dbase_name=sa_db, table='Appointments'):
     
     con.close()
 
-def write_gift_sheet(gift_times, provider='SA',zone_max=None):
+def write_gift_sheet(gift_times, provider='SA', zone_max=None):
     '''
-    This will output a series of appointment sheets that we can fill in with gift appointments     
+    This will output a series of appointment sheets that we can fill in 
+    with gift appointments     
     '''
-
 
     spot_counter = 0 # how many times have we printed a line to a page
 
@@ -139,7 +152,8 @@ def write_gift_sheet(gift_times, provider='SA',zone_max=None):
 #  http://xlsxwriter.readthedocs.io/example_headers_footers.html
     service_booker = {'ZONES': 'HoF Pickup', 
                       'SA': 'Salvation Army', 
-                      'SA1':'Salvation Army'}.get(provider, 'UNKNOWN!') 
+                      'SA1':'Salvation Army',
+                      'FIRE': 'Cambridge Fire Fighters'}.get(provider, 'UNKNOWN!') 
     header_title_date = f'&L&"Courier New,Bold"               {service_booker} Appointment Sheet              Page: &P of &N'
     worksheet.set_header(header_title_date)
     
@@ -303,11 +317,16 @@ if __name__ == '__main__':
     #write_gift_sheet(a_time)
     #print('Salvation Appointment Sheets Output')
     #create_database(a_time)
-    #print('database created')
+    #print('KW Salvation Army table populated')
+    #csa_time = create_time(day=csa_dy, times=csa_tms, multipliers=csa_mlt, day_multp=csa_dmlt)
+    #write_gift_sheet(csa_time, provider='SA')
+    #print('Cambridge Salvation Army Appointment Sheets Output')
+    #create_database(csa_time, table='CSA') 
+    print('Cambridge SA database table populated')
     z_time = create_time(day=z_dy, times=z_tms, multipliers=z_mlt, day_multp=z_dmlt)
-    write_gift_sheet(z_time, provider='ZONES',zone_max=640)
+    #write_gift_sheet(z_time, provider='ZONES',zone_max=640)
     print('Pickup Zone Sheet Output')
-    #create_database(z_time, table='Zones')
+    create_database(z_time, table='Zones')
     print('database populated')
 
 
