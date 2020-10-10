@@ -24,7 +24,7 @@ about errors with the address
 '''
 
 import csv
-import geocoder
+import googlemaps
 from collections import namedtuple, defaultdict
 import usaddress
 import string
@@ -52,9 +52,11 @@ from address_audit_tools import missing_unit_logger
 
 from file_iface import Menu
 
+
+# LOGGING
+
 # error logging is handled by functions that carry out parsing and geocoding
 # they pass False or None on to the objects using them and are handled by the objects
-
 geocoding_logger = logging.getLogger('geocoder')
 geocoding_logger.setLevel(logging.INFO)
 #geocoding_log_formatter = logging.Formatter('%(asctime)s:%(filename)s:%(funcName)s:%(name)s:%(message)s')
@@ -86,9 +88,62 @@ errors_log_fh = logging.FileHandler(r'Logging/parse_gcode_errors.log')
 errors_log_fh.setFormatter(errors_log_format)
 errors_log.addHandler(errors_log_fh)
 
+class GoogleResult:
+    '''
+    Takes the json returned by the google maps geocoding api and exposes
+    key parts of the data structure as attributes and preserves and makes
+    accessible the different datastructures by name as attributes
+    '''    
+    def __init__(self, result):
+        self.errors = ['ZERO_RESULTS','OVER_DAILY_LIMIT','OVER_QUERY_LIMIT',
+                       'REQUEST_DENIED','INVALID_REQUEST','UNKNOWN_ERROR']
+        self.result = result
+        self.status = None
+        # json structres in the response
+        self.address_components = None
+        self.formatted_address = None
+        self.geometry = None
+        self.place_id = None
+        # extracted data points
+        self.street_number = None # 123
+        self.street = None # Main St
+        self.city = None # PlaceVille
+        self.postal = None
+        self.neighbourhood = None 
+        self.lat = None
+        self.lng = None
+
+        if not self.result:
+            if self.result in self.errors:
+                self.status = self.result
+            else:
+                self.status = self.errors[0]
+        else:
+            self.status = 'OK'
+        
+        if self.status == 'OK':
+            # set key variables and seed the containers for the 5 data
+            # structures
+            # ADRESS_COMPONENTS
+            self.address_components = self.result['address_components']
+            self.street_number = self.address_components[0]['long_name']
+            self.street = self.address_components[1]['long_name']
+            self.city = self.address_components[3]['long_name']
+            self.postal = self.address_components[7]['long_name']
+            self.neighbourhood = self.address_components[2]['long_name']
+            # FORMATTED_ADDRESS
+            self.formatted_address = self.result['formatted_address']
+            # GEOMETRY
+            self.geometry = self.result['geometry']
+            self.lat = self.geometry['location']['lat']
+            self.lng = self.geometry['location']['lng']
+            # PLACE_ID
+            self.place_id = self.result['place_id']
+            # TYPES
+            self.types = self.result['types']
 
 
-## Address Parsing
+## Address Parsing ##
 
 def street_number_parser(number_string):
     '''
@@ -218,7 +273,7 @@ def full_address_parser(address, file_id):
         return usaparsed_street_address(False, addr, 'Blank Field Error')
         # we can just skip blank lines
 
-def returnGeocoderResult(address, myapikey, second_chance=True):
+def returnGeocoderResult(address):
     """
     this function takes an address and passes it to googles geocoding
     api with the help of the Geocoder Library.
@@ -228,35 +283,20 @@ def returnGeocoderResult(address, myapikey, second_chance=True):
     or (None, None) if there is an error with the api (sometimes it just does
     not work)
     """
-    try_again = second_chance
     try:
         sleep(1)
-        result = geocoder.google(address, key=myapikey)
-        meta_log.info(f'{result.status}')
-        meta_log.info(f'{result.lat}, {result.lng}')
-        if result is not None:
-            if result.status == 'OK':
-                geocoding_logger.info('##500## {} is {}'.format(address, result.status))
-                return (True, result)
-            elif result.status == 'OVER_QUERY_LIMIT':
-                geocoding_logger.error('##402## {} yeilded {}'.format(address,result.status))
-                return (False, None)
-            else:
-                geocoding_logger.error('##403## Result is not OK or OVER with {} at {}'.format(result.status, address))
-                return (None, None)
+        response = gmaps.geocode(address) 
+        result = GoogleResult(response[0])
+        if result.status == 'OK':
+            return (True, result)
         else:
-            geocoding_logger.error('##401## Result is None with status {} on {}'.format(result.status, address))
-            if try_again:
-                meta_log.info('got None from google api, trying again for {}'.format(address))
-                sleep(10) # wait and try again once more after waiting
-                returnGeocoderResult(address, myapikey, second_chance=False)
-            else:
-                return (None, None) # tried to see if a second attempt would work, but it didn't
+            return (None, None) 
     except KeyboardInterrupt:
         raise
     except Exception as boo:
         geocoding_logger.critical('##400## Try Block in returnGeocoderResult raised Exception {} from {}'.format(boo, address))
         return False
+
 
 class AddressParser():
     '''
@@ -349,20 +389,20 @@ class Coordinates():
             return self.coordinates[address]
         else:
             if self.can_proceed:
-                response, result = returnGeocoderResult(address, self.api_key)
+                response, result = returnGeocoderResult(address)
                 #print(response, result)
                 self.calls += 1
-                if response == False: # returnGeocoderResult returns False when limit reached
+                if response == False: # returnGeocoderResult returns False when errors reached
                     self.can_proceed = False
                     return response
                 if response == None:
                     return None
                 if response == True and result != None: # Either True or False
                     
-                    lat, lng = result.lat, result.lng
-                    g_address_str = result.address
+                    lat, lng = result.lat, result.lng 
+                    g_address_str = result.formatted_address
                     city = result.city
-                    house_number = result.housenumber
+                    house_number = result.street_number
                     street = result.street
                     response_tple = address_tpl(g_address_str,
                             house_number,
@@ -1259,6 +1299,8 @@ if __name__ == '__main__':
     #api key
     myapikey = config.get_g_creds()
 
+    # INSTANTIATE GOOGLE MAPS CLIENT
+    gmaps = googlemaps.Client(key=myapikey)
     
     # MENU INPUT
     menu = Menu(base_path='sources/' )

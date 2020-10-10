@@ -202,7 +202,7 @@ def boundary_checker(city):
     cities to serve.  If it is, it returns True
     Otherwise it returns False
     '''
-    in_bounds = ['kitchener', 'waterloo']
+    in_bounds = ['kitchener', 'waterloo','cambridge']
     if city:
         lcity = city.lower()
         if lcity in in_bounds:
