@@ -198,7 +198,7 @@ class Route_Database():
             self.conn.commit()
             # GIFT TABLE
             self.cur.execute('''CREATE TABLE IF NOT EXISTS gift_table (file_id
-                             INT NOT NULL UNIQUE, app_num INT, message_sent INT)''')
+                             INT NOT NULL UNIQUE, app_num INT, provider TEXT, message_sent INT)''')
 
             self.conn.commit()
             # PICK UP TABLE
@@ -252,7 +252,7 @@ class Route_Database():
                              file_id=?""", new_tple)
             self.conn.commit()
     
-    def add_sa_appointment(self, file_id, app_num):
+    def add_sa_appointment(self, file_id, app_num, provider):
         '''
         logs a salvation army gift appointment number to the database
         takes the file_id, app_num and wraps them in a tuple
@@ -264,8 +264,8 @@ class Route_Database():
         of (False, None) for no error and no error retrn
         '''
         try:
-            db_tple = (file_id, app_num, 0)
-            self.cur.execute("INSERT INTO gift_table VALUES (?, ?, ?)",
+            db_tple = (file_id, app_num, provider, 0)
+            self.cur.execute("INSERT INTO gift_table VALUES (?, ?, ?, ?)",
                          db_tple)
             self.conn.commit()
             return (False, None)
@@ -515,13 +515,13 @@ class Delivery_Household():
     def get_sa_day_time(self):
         return self.sa_app_num, self.sa_time
 
-    def set_sa_status(self, sa_app_num):
+    def set_sa_status(self, sa_app_num, provider):
         '''
         adds an appointment number to the sa_app_num attribute
         and sets gift sponsor to 'Salvation Army'
         '''
         self.sa_app_num = sa_app_num
-        self.gift_sponsor = 'KW Salvation Army'
+        self.gift_sponsor = provider
 
     def set_sa_time(self, sa_time):
         '''
@@ -813,13 +813,13 @@ class Delivery_Household_Collection():
         return self.hh_dict[fid].return_sponsor_package()
 
 
-    def add_sa_app_number(self, fid, app_num):
+    def add_sa_app_number(self, fid, app_num, provider):
         '''
         for hh with main app  fid, add app_num to 
         the sa_app_num attribute and set
         self.gift_sponsor = 'Salvation Army'
         '''
-        self.hh_dict[fid].set_sa_status(app_num)
+        self.hh_dict[fid].set_sa_status(app_num, provider)
     
     def add_sa_app_time(self, fid, sa_time):
         '''
