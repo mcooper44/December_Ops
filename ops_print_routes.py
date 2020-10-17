@@ -253,17 +253,28 @@ class Service_Database_Manager:
         return a 2 tuple with app num, app time
         or (None, False)
         '''
-        table_select = SERVICE_TABLE_KEYS.get(provider, 'Key Error')
-        
-        try:
-            ls1 = f'SELECT app_num FROM gift_table WHERE file_id={fid} and provider={provider}'
-            num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
-            ls2 = f'SELECT day,time FROM {table_select} WHERE ID={num}'
-            a_day, a_time = self.db_struct[app_db].lookup_string(ls2, None)[0]
-            time_str = f'{a_day} {a_time}'
+        table_select = SERVICE_TABLE_KEYS.get(provider, None)
+        num = False
+        time_str = False
+        if table_select:
+            try:
+                ls1 = f'''SELECT app_num FROM gift_table WHERE file_id={fid} and
+                provider="{provider}"'''
+                num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
+                print(f'found SA app num {num}')
+            except Exception as e1:
+                print(f'{fid} caused {e1}')
+            try:
+                ls2 = f'SELECT day,time FROM {table_select} WHERE ID={num}'
+                a_day, a_time = self.db_struct[app_db].lookup_string(ls2, None)[0]
+                time_str = f'{a_day} at {a_time}'
+            except Exception as e2:
+                print(f'{fid} caused {e2}')
             return (num, time_str)
-        except:
-            return (False, False)
+        else:
+            #print(f'{fid} failed at table select')
+            #y = input('pausing in print routes')
+            return False, False
 
     def return_sa_app_time(self, app_db, num, provider):
         '''
@@ -377,9 +388,9 @@ class Service_Database_Manager:
         elif crit:
             ls2 = f'''SELECT file_id, food_sponsor, gift_sponsor,
             voucher_sponsor, turkey_sponsor, sorting_date                    
-                    FROM sponsor WHERE date(sorting_date) >= date({crit})'''
+                    FROM sponsor WHERE date(sorting_date) >= date("{crit}")'''
             return self.db_struct[database].lookup_string(ls2, None)
-   
+    
     def return_pickup_table(self, database):
         '''
         returns the values from the pickup table in the route database
@@ -400,9 +411,22 @@ class Service_Database_Manager:
             retrn = self.db_struct[database].lookup_string(ls, None)
             zn, zn_num  = retrn[0]
             return zn, zn_num
+        except Exception as e:
+            print(f'return_pu_package for {fid} failed with {e}')
+            return False, False
+    
+    def return_pu_time(self, database, app_number):
+        '''
+        returns the time from the applications database for the corresponding
+        app_number
+        '''
+        ls = f'SELECT day, time from Zones WHERE ID={app_number}'
+        try:
+            retrn = self.db_struct[database].lookup_string(ls, None)
+            day, time = retrn[0]
+            return day, time
         except:
             return False, False
-
 
     def return_geo_points(self, add_tuple, database='address'):
         '''
@@ -628,7 +652,7 @@ def main():
 
         print('...Route Printing Process Complete...')
     else:
-        print(f'invalid input {conf_all}')
+        print(f'invalid input {conf_all}') 
         raise ValueError('input either y or n')
 
 if __name__ == '__main__':

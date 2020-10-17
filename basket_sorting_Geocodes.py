@@ -158,6 +158,7 @@ class Route_Database():
     3. 'routes' = file id for a main applicant and their route, route letter 
     4. 'sponsor' = file id for main applicant, food_sponsor, gift_sponsor
     5. 'gift_table' = file_id for main applicant, sa_app_num
+    6. 'pickup_table'
     It is the central database that will recieve routes, reproduce them
     and return route specific information when needed by other classes
     and methods
@@ -380,7 +381,23 @@ class Route_Database():
             return last_rn[0]
         else:
             return 0
-   
+    
+    def return_count_spon_at_date(self, date_string):
+        '''
+        returns the count of hh registered in the sponsor table
+        '''
+        ls = f'''SELECT COUNT(DISTINCT file_id) FROM sponsor WHERE
+        date(sorting_date) = date("{date_string}")'''
+        ls2 = f'SELECT DISTINCT sorting_date from sponsor'
+        self.cur.execute(ls)
+        num_reg = self.cur.fetchone()[0]
+        if num_reg:
+            return True, num_reg
+        else:
+            self.cur.execute(ls2)
+            actual_dates = self.cur.fetchall()
+            return False, actual_dates
+    
     def __iter__(self):
         '''
         returns a 2 tuple combining data from two database tables for each 
@@ -473,17 +490,22 @@ class Delivery_Household():
         self.hof_pu_zone = False
         self.hof_pu_num = False
         self.hof_pu_time = False
+        self.hof_pu_date = False
         self.item_req = False # dictionary 
         self.food_req = False # dictionary
     
     def who_am_i(self):
-        return f'''I am {self.main_app_ID} I have asked for food from  
-    {self.food_sponsor} for a voucher from {self.voucher_sponsor} 
-    I have asked for a turkey from {self.turkey_sponsor} a gift from {self.gift_sponsor} '''
+        return f'''
+I am {self.main_app_ID} I have asked for food from {self.food_sponsor} for a voucher from {self.voucher_sponsor}  
+I have asked for a turkey from {self.turkey_sponsor} a gift from {self.gift_sponsor}. 
+My gift appointment is {self.sa_app_num} at {self.sa_time}. My food pickup is {self.hof_pu_zone}
+with number {self.hof_pu_num} at {self.hof_pu_time} on {self.hof_pu_date}.
+'''
 
     def return_sponsor_package(self):
         '''
-        returns a 3 tuples of app num, food sponsor, gift sponsor
+        returns a 5 tuple of app num, food sponsor, gift sponsor
+        voucher_sponsor, turkey_sponsor
         default values are False
         '''
         return (self.sa_app_num, self.food_sponsor, self.gift_sponsor,
@@ -505,12 +527,20 @@ class Delivery_Household():
         set the .hof_pu_time attribute to the pick up time for printing pickup cards
         '''
         self.hof_pu_time = pu_time
+    
+    def set_hof_pu_date(self, date):
+        self.hof_pu_date = date
 
     def get_zone_and_num(self):
         return self.hof_pu_zone, self.hof_pu_num
    
     def get_zone_package(self):
+        #print('zone package')
+        #print(f'{self.hof_pu_zone} {self.hof_pu_num} {self.hof_pu_time}')
         return self.hof_pu_zone, self.hof_pu_num, self.hof_pu_time
+    
+    def get_zone_date(self):
+        return self.hof_pu_date
 
     def get_sa_day_time(self):
         return self.sa_app_num, self.sa_time
@@ -531,6 +561,9 @@ class Delivery_Household():
         self.sa_time = sa_time
 
     def set_sponsors(self, food, gift, voucher, turkey):
+        #print('adding sponsors')
+        #print(f'food: {food} gift: {gift} vouch: {voucher} turk: {turkey}')
+        #y = input('pausing in set sponsors: 564')
         if food:
             self.food_sponsor = food
         if gift:
@@ -655,6 +688,8 @@ class Delivery_Household_Collection():
                                   # in the card stack
         self.delivery_targets = [] # list of HH that are registered
                                    # for delivery
+    def who_is(self, fid):
+        return self.hh_dict[fid].who_am_i()
 
     def add_household(self, file_id, hh_id, family_size, lat, lng, summary,
                       hood, postal=None, rn=None,
@@ -840,11 +875,15 @@ class Delivery_Household_Collection():
     def add_hof_pu(self, fid, pu_zone, pu_num):
         '''
         for hh who have opted to pickup their materials and who have been
-        assigned to a zone.  sets the .hof_pu_zone and .hof_pu_time attributes
+        assigned to a zone.  sets the .hof_pu_zone and .hof_pu_number attributes
         of the Delivery_Household()
 
         '''
         self.hh_dict[fid].set_hof_pickup(pu_zone, pu_num)
+
+    def add_hof_pu_date_time(self, fid, pu_zone_date, pu_zone_time):
+        self.hh_dict[fid].set_hof_pu_date(pu_zone_date)
+        self.hh_dict[fid].set_hof_pu_time(pu_zone_time)
 
     def __iter__(self):
         '''

@@ -93,22 +93,39 @@ def get_hh_from_sponsor_table(database,criteria=None):
             print(f'{fid} is not in the applicants table!')
             ops_logger.info(f'ERROR: {fid} is not in applicants! ERROR!')
         # extract key datapoints from the different tables
+        # GIFT APPOINTMENT INFO
+        # appointment number, 'date and time string'
         gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid, g_sponsor)
+        # FOOD PICKUP APPOINTMENT INFO
         zone, zn_num = rdbm.return_pu_package('rdb', fid)
+        zone_date, zone_time = rdbm.return_pu_time('sa', zn_num)
+        
         # rewrap up all that data
+        # derive a route card summary
+        # at this point we won't have a rn, rl and this is not important to
+        # convey to the applicant
         hh_package, _ = package_applicant(main_applicant, gan, None, None)
+        #print(hh_package)
         # add it to a delivery hh collection
         dhc.add_household(*hh_package)
+        # add 
         dhc.add_sponsors(fid, f_sponsor, g_sponsor, voucher_sponsor,
                          turkey_sponsor)
         dhc.add_hof_pu(fid, zone, zn_num)
+        dhc.add_hof_pu_date_time(fid, zone_date, zone_time)
         fam = rdbm.get_family_members('rdb', fid)
         if fam:
             dhc.add_hh_family(fid, fam)
         if all((gan, gat)):
-            dhc.add_sa_app_number(fid, gan)
+            dhc.add_sa_app_number(fid, gan, g_sponsor)
             dhc.add_sa_app_time(fid, gat)
-    
+        #else:
+        #    print('there is no gan and gat')
+        #    print(f'gan: {gan} gat: {gat}')
+        #    q = input('pausing....')
+
+        #print(dhc.who_is(fid))
+        #bbb = input('pausing in print_sponsor')
     return dhc, rdbm
 
 def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA'):
@@ -228,35 +245,35 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
         s_report[x].close_worksheet()
     dbs.close_all()
 
+if __name__ == '__main__':
+    sponsor_date = None
+    iteration_key = 'sa_app_num'
+    post_fix = 'SA'
+    menu = Menu()
 
-sponsor_date = None
-iteration_key = 'sa_app_num'
-post_fix = 'SA'
-menu = Menu()
-
-input_all = input('do you want to print all? Enter y or n  ')
-if input_all == 'y':
-    print('printing all of them!')
-elif input_all == 'n':
-    print('enter a date YYYY-MM-DD')
-    sponsor_date = menu.prompt_input('sponsor')
-    print('Which Service Stream do you want to print?')
-    input_who = input('1. Salvation Army\n2. Pickup Zones\n3. Postal Codes\n')
-    if input_who == '2':
-        iteration_key = 'hof_pu_num'
-        post_fix = 'ZN'
-    if input_who == '3':
-        iteration_key = 'postal'
-        post_fix = 'PC'
-    elif input_who != '1':
-        print(f'using default value {iteration_key}')
-
-
-else:
-    print('invalid input!')
-    sys.exit(1)
+    input_all = input('do you want to print all? Enter y or n  ')
+    if input_all == 'y':
+        print('printing all of them!')
+    elif input_all == 'n':
+        print('enter a date YYYY-MM-DD')
+        sponsor_date = menu.prompt_input('sponsor')
+        print('Which Service Stream do you want to print?')
+        input_who = input('1. Salvation Army\n2. Pickup Zones\n3. Postal Codes\n')
+        if input_who == '2':
+            iteration_key = 'hof_pu_num'
+            post_fix = 'ZN'
+        if input_who == '3':
+            iteration_key = 'postal'
+            post_fix = 'PC'
+        elif input_who != '1':
+            print(f'using default value {iteration_key}')
 
 
-route_database = Route_Database(f'{db_src}{session}rdb.db')
-dh, dbs = get_hh_from_sponsor_table(route_database, criteria=sponsor_date)
-write_sponsor_reports(dh, dbs, i_key=iteration_key, pf=post_fix)
+    else:
+        print('invalid input!')
+        sys.exit(1)
+
+
+    route_database = Route_Database(f'{db_src}{session}rdb.db')
+    dh, dbs = get_hh_from_sponsor_table(route_database, criteria=sponsor_date)
+    write_sponsor_reports(dh, dbs, i_key=iteration_key, pf=post_fix)

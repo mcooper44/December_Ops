@@ -1009,7 +1009,6 @@ class Visit_Line_Object():
                 # modify key status registers
                 self.sa_status = True
                 self.sa_app_num = Visit_Line_Object.get_special_string(self.xmas_notes)
-                print(f'label: {label} app_num: {self.sa_app_num}')
                 if all((self.sa_status, self.sa_app_num)):
                     # update SMS number variable if present
                     sms = Visit_Line_Object.get_sms_target(self.ex_reference)
