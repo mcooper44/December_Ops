@@ -26,12 +26,14 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import os
 
+BARCODE_SOURCE = 'bar_codes/'
+
 A_SELECT = {'KW Salvation Army': 'KW Salvation Army',
              'Salvation Army - Cambridge' : 'Cambridge Salvation Army',
              'SPONSOR - SERTOMA': 'KW Sertoma Club',
              'SPONSOR - REITZEL': 'Possibilities International',
              'SPONSOR - DOON' : 'Doon Pioneer Park Christmas Miracle',
-             'House of Friendship Delivery': 'House Of Friendship', # NB Of
+             'House of Friendship Delivery': 'House Of Friendship',
              'HoF Zone 1' : 'House of Friendship at the Legion',
              'HoF Zone 2' : 'House of Friendship at St. Marks',
              'HoF Zone 3' : 'House of Friendship at Blessed Sacrament',
@@ -45,29 +47,30 @@ A_SELECT = {'KW Salvation Army': 'KW Salvation Army',
              'Cambridge Firefighters' : 'Cambridge Firefighters'
            }
 
+DELIVERY_CONTACT = {'House Of Friendship' : ' If you provided us with an email and/or cell phone number we will attempt to email or text you 24-48 hours before to update you.'}
+
 GIFT_LOOKUP = {'KW Salvation Army' : '''KW Salvation Army, located at 75 Tillsley\
  Drive, Kitchener.  Please bring a piece of identification for yourself and your\
 children''',
                'Salvation Army - Cambridge': '12 Shade Street, Cambridge.',
-               'Cambridge Firefighters': 'at the Preston Auditorium' 
-              }
-FOOD_LOOKUP = {
-    'HoF Zone 1': '524 Belmont Avenue West, Kitchener', # Legion
-    'HoF Zone 2': '55 Driftwood Drive, Kitchener.', # St. Marks
-    'Hof Zone 3': '305 Laurentian Drive, Kitchener', # Blessed Sacrament
-    'HoF Zone 4': '29 Midland Drive, Kitchener.', # St. Anthony Daniel
-    'HoF Zone 5': '49 Blueridge Avenue, Kitchener.', # St. Francis
-    'HoF Zone 6': '173 Lourdes Street, Waterloo.', # Our Lady of Lourdes
-    'HoF Zone 7': '800 King Street East, Kitchener.', # First Mennonite
-    'HoF Zone 8': '395 King Street North, Waterloo', # WPA
-    'HoF Zone 9': '72 Wilson Avenue, Kitchener', # Kingsdale Community Centre 
-    'Cambridge Firefighters': 'the Preston Auditorium.  1458 Hamilton Street, Cambridge'
-}
+               'Cambridge Firefighters': 'at the Preston Auditorium'}
+
+FOOD_LOOKUP = {'HoF Zone 1': '524 Belmont Avenue West, Kitchener',
+    'HoF Zone 2': '55 Driftwood Drive, Kitchener.',
+    'HoF Zone 3': '305 Laurentian Drive, Kitchener',
+    'HoF Zone 4': '29 Midland Drive, Kitchener.',
+    'HoF Zone 5': '49 Blueridge Avenue, Kitchener.',
+    'HoF Zone 6': '173 Lourdes Street, Waterloo.',
+    'HoF Zone 7': '800 King Street East, Kitchener.',
+    'HoF Zone 8': '395 King Street North, Waterloo',
+    'HoF Zone 9': '72 Wilson Avenue, Kitchener',
+    'Cambridge Firefighters': 'the Preston Auditorium.  1458 Hamilton Street, Cambridge',
+    'Cambridge Self-Help Food Bank': '50 Ainsley Street, Cambridge'}
 
 # food must be picked up
-F_PICKUPS = ['House of Friendship','Cambridge Fire Fighters','Cambridge Self-Help Food Bank']
+F_PICKUPS = ['House of Friendship','Cambridge Firefighters','Cambridge Self-Help Food Bank']
 # food items are delivered
-F_DELIVER = ['House Of Friendship', # capital O in 'of' denotes delivery
+F_DELIVER = ['House Of Friendship',
              'Possibilities International', 
              'Doon Pioneer Park Christmas Miracle']
 # you need to pickup your gifts, but they will tell you when and where
@@ -86,6 +89,16 @@ def filter_set(a_set):
 
 
 class Letter_Text:
+    '''
+    this melted my brain
+
+    this object takes a service pack dict, pulls out the data points extracted
+    from the database and based off the facts about the household determines
+    who the service providers are, the services and stacks a letter that will
+    outline what they have signed up for and insert a barcode image that
+    represents the file ID of the applicant
+    '''
+    
     def __init__(self, service_pack):
         self.file_id = service_pack['file_id']
         self.name = service_pack['name']
@@ -98,6 +111,7 @@ class Letter_Text:
         self.phone = service_pack['phone']
         self.food_pu_loc = service_pack['food_pu_loc']
         self.food_pu_date = service_pack['food_pu_date']
+        self.zone_pu_num = service_pack['hof_pu_num']
         self.food_del_date = service_pack['food_del_date']
         self.del_f_prov = A_SELECT.get(service_pack['del_f_prov'], '')
         self.gift_pu_loc = service_pack['gift_pu_loc']
@@ -112,6 +126,7 @@ class Letter_Text:
         self.gift_sponsor = A_SELECT.get(service_pack['gift_sponsor'])
         self.turkey_sponsor = A_SELECT.get(service_pack['turkey_sponsor'])
         self.voucher_sponsor = A_SELECT.get(service_pack['voucher_sponsor'])
+        self.code = service_pack['barcode']
         self.header = f'''
 christmas_logo.png
 time.ctime()
@@ -128,7 +143,8 @@ You will be able to pick up your {self.food_service} from\
  mask at all times when you are picking up. 
 '''
         self.food_delivery =f'''
-{self.del_f_prov} will deliver your {self.food_service} to you on {self.food_del_date}.  If you provided us with an email and/or cell phone number we will attempt to email or text you 24-48 hours before to update you.'''
+{self.del_f_prov} will deliver your {self.food_service} to you on \
+{self.food_del_date}. {DELIVERY_CONTACT.get(self.del_f_prov, '')} '''
         self.gift_pickup_w_app = f'''
 Your appointment to pick up gifts for the eligible children\
  in your household will be appointment number {self.gift_pu_date}.\
@@ -152,9 +168,10 @@ Your food and gifts for your eligible children will be delivered by\
 The gifts for the eligible children in your household will be provided by {self.gift_sponsor}.  They will contact you by phone or email to make arrangments for you to come and pick them up soon. 
 '''
         self.cambridge_ff = f'''
-Your food and gifts for your eligible children will be available for pickup\
-from the Cambridge Firefighters at\
- {GIFT_LOOKUP.get(self.gift_pu_loc)}. You have appointment number {self.food_pu_date}
+You food and gifts for your eligible children will be available for pickup\
+from the Cambridge Firefighters on {self.food_pu_date} at\
+ the Preston Auditorium located at 1458 Hamilton St. Cambridge . You have appointment number {self.zone_pu_num}. \
+Please Note: it is very important that you bring this letter with you, and arrive in a vehicle. 
 '''
         self.reitzel = f'''
 Your food and gifts for your eligible children will be delivered to you by\
@@ -171,9 +188,9 @@ We can also be reached at 519-742-5860 or info@christmashampers.ca
 Regards,
 
 The Christmas Bureau
-
+{self.code}
 '''
-# barcodes/{self.file_id}.png
+
     def get(self):
         '''
         returns the formatted text of the letter to be parsed by the
@@ -209,18 +226,25 @@ The Christmas Bureau
         if self.gift_pu_date:
             gift_app = True
         
-        print(f'all in: {all_in}')
-        print(f'food: {food}')
-        print(f'gifts: {gifts}')
-        print(f'delivery: {delivery}')
-        print(f'gift_app: {gift_app}')
+        #print(f'all in: {all_in}')
+        #print(f'food: {food}')
+        #print(f'gifts: {gifts}')
+        #print(f'delivery: {delivery}')
+        #print(f'gift_app: {gift_app}')
 
         #####################
         # DETERMINE STRINGS #
         #####################
         
+        # SPECIAL CASES
+        if 'Firefighters' in self.service_prov:
+            full_text = f'''
+{self.header}
+{self.cambridge_ff}
+{self.footer}
+                    '''
         # FOOD ONLY
-        if not gifts:
+        elif not gifts:
             # delivery
             if delivery and food:
                 full_text = f'''
@@ -257,16 +281,14 @@ The Christmas Bureau
 {self.footer}
                 '''
                
-                else: # gifts and food pu with same provider
-                    full_text = f'''
-{self.header}
-{self.cambridge_ff}
-{self.footer}
-                    '''
+                #else: # gifts and food pu with same provider
+                #    full_text = f''' '''
+
             # gifts with no app, and food pickup with app
             elif (not gift_app and gifts) and not delivery:
                 full_text = f'''
 {self.header}
+{self.food_pickup_string_w_app}
 {self.sertoma}
 {self.footer}
                 '''
@@ -315,7 +337,8 @@ class Confirmation_Letter:
         self.styles.add(ParagraphStyle(name='Justify', alignment=TA_JUSTIFY))
  
     def add_image(self, img):
-        im = Image(img, 2*inch, 2*inch)
+        #im = Image(img, 2*inch, 2*inch)
+        im = Image(img)
         self.page.append(im)
  
     def add_space(self):
@@ -342,7 +365,7 @@ class Confirmation_Letter:
         the formatted text that is parsed by the logic in this
         method and added to the page
         """
-        print(f'file: {file_id} letter_text: {letter_text}')
+        #print(f'file: {file_id} letter_text: {letter_text}')
         text = letter_text.get().splitlines()
         for line in text:
             if ".png" in line:

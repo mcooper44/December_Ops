@@ -261,7 +261,6 @@ class Service_Database_Manager:
                 ls1 = f'''SELECT app_num FROM gift_table WHERE file_id={fid} and
                 provider="{provider}"'''
                 num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
-                print(f'found SA app num {num}')
             except Exception as e1:
                 print(f'{fid} caused {e1}')
             try:
@@ -269,7 +268,7 @@ class Service_Database_Manager:
                 a_day, a_time = self.db_struct[app_db].lookup_string(ls2, None)[0]
                 time_str = f'{a_day} at {a_time}'
             except Exception as e2:
-                print(f'{fid} caused {e2}')
+                print(f'ops_print_routes: {fid} caused {e2}')
             return (num, time_str)
         else:
             #print(f'{fid} failed at table select')

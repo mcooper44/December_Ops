@@ -36,7 +36,8 @@ PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
 
 AGENTS_HOF = ['House of Friendship']
 SERVICE_AGENTS_HOF = "House of Friendship Delivery,HoF Zone 1,HoF Zone 2,HoF Zone \
-3,HoF Zone 4,HoF Zone 5,HoF Zone 6,HoF Zone 7,HoF Zone 8,HoF Zone 9".split(',')
+3,HoF Zone 4,HoF Zone 5,HoF Zone 6,HoF Zone 7,HoF Zone 8,HoF Zone 9,Cambridge \
+Firefighters,Cambridge Self-Help Food Bank".split(',')
 PICKUP_AGENTS_HOF = SERVICE_AGENTS_HOF[1:]
 SERVICE_AGENTS_SVDP = "Blessed Sacrament Church,Our Lady of Lourdes,\
 St. Agnes Catholic Church,St. Aloyious,St. Anne's Catholic Church,\
