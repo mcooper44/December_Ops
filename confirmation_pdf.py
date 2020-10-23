@@ -158,20 +158,25 @@ Your appointment to pick up food as well as the gifts for the eligible children\
  in your household will be appointment number {self.gift_pu_date}. You will\
  pick up your gifts from {self.gift_pu_loc} located at \
 {GIFT_LOOKUP.get(self.gift_sponsor)}.  You must bring this letter with\
- you to pick up your gifts.  You must also wear a mask at all times while picking up your gifts.
+ you to pick up your gifts.  You must also wear a mask at all times while\
+ picking up your gifts.
 '''
         self.gift_and_food_del = f'''
 Your food and gifts for your eligible children will be delivered by\
 {self.service_prov}.  They will deliver to you on {self.food_del_date}.
 '''
         self.gift_pickup_no_app = f'''
-The gifts for the eligible children in your household will be provided by {self.gift_sponsor}.  They will contact you by phone or email to make arrangments for you to come and pick them up soon. 
+The gifts for the eligible children in your household will be provided by\
+ {self.gift_sponsor}.  They will contact you by phone or email to make arrangments\
+ for you to come and pick them up soon. 
 '''
         self.cambridge_ff = f'''
 You food and gifts for your eligible children will be available for pickup\
-from the Cambridge Firefighters on {self.food_pu_date} at\
- the Preston Auditorium located at 1458 Hamilton St. Cambridge . You have appointment number {self.zone_pu_num}. \
-Please Note: it is very important that you bring this letter with you, and arrive in a vehicle. 
+ from the Cambridge Firefighters on {self.food_pu_date} at\
+ the Preston Auditorium located at 1458 Hamilton St. Cambridge . You have\
+ appointment number {self.zone_pu_num}. \
+Please Note: it is very important that you bring this letter with you,\
+ and arrive in a vehicle. 
 '''
         self.reitzel = f'''
 Your food and gifts for your eligible children will be delivered to you by\
@@ -179,11 +184,13 @@ Your food and gifts for your eligible children will be delivered to you by\
  you by phone to confirm your delivery information.
         '''
         self.sertoma = f'''
-The gifts for your eligible children will be available from KW Sertoma Club. They will contact you shortly about how and when you can pickup your gifts.
+The gifts for your eligible children will be available from KW Sertoma Club.\
+ They will contact you shortly about how and when you can pickup your gifts.
 '''
         self.footer = f'''
-If you have any questions please check out our frequently asked questions (FAQ) on our website www.christmashampers.ca. 
-We can also be reached at 519-742-5860 or info@christmashampers.ca
+If you have any questions please check out our frequently asked questions\
+ (FAQ) on our website www.christmashampers.ca. We can also be reached at\
+ 519-742-5860 or info@christmashampers.ca
 
 Regards,
 
