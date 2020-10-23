@@ -23,18 +23,46 @@ Visit = namedtuple('Visit', 'slot_number, day, time')
 conf_file = configuration.return_r_config() # use class method to instantiate
 _, sesh = conf_file.get_meta() # 'year_prod/testing_'
 # KW SALVATION ARMY
-file_output = f'products/SA_{sesh}gift_app_times.xlsx'
+FILE_OUTPUT = f'products/SA_{sesh}gift_app_times.xlsx'
 dy, tms, mlt, dmlt = conf_file.get_sa_app_package()
 sa_db = conf_file.get_bases()['sa']
-# PICKUP ZONES
-zone_output = f'products/ZN_{sesh}pickup_app_times.xlsx'
-z_dy, z_tms, z_mlt, z_dmlt = conf_file.get_zone_app_package()
+
 # CAMBRIDGE SALVATION ARMY
 csa_output = f'products/CSA_{sesh}gift_app_times.xlsx'
 csa_dy, csa_tms, csa_mlt, csa_dmlt = conf_file.get_csa_app_package()
 
+# PICKUP ZONES
+zone_output = f'products/ZN_{sesh}pickup_app_times.xlsx'
+#z_dy, z_tms, z_mlt, z_dmlt = conf_file.get_zone_app_package()
+c_dy = ['Dec 9', 'Dec 10', 'Dec 11', 
+        'Dec 12', 'Dec 14', 'Dec 15', 
+        'Dec 16', 'Dec 17', 
+        'Dec 18']
 
-def create_time(day=dy, times=tms, multipliers=mlt, day_multp=dmlt):
+c_tms = ['10:00','10:10','10:20','10:30','10:40',
+         '10:50','11:00','11:10','11:20','11:30','11:40',
+         '11:50', '12:30', '12:40', '12:50', '1:00', '1:10',
+         '1:20',  '1:30', '1:40','1:50','2:00','2:10','2:20',
+         '2:30', '2:40', '2:50', '3:00', '3:10', '3:20']
+
+c_mlt = [(12, 30), # Legion 
+         (15, 30), # St. Marks
+         (10, 30), # Blessed
+         (10, 30), # St. Anthony
+         (10, 30), # St. Francis
+         (10, 30), # Our Lady
+         (10, 30), # First Mennonite
+         (10, 30), # WPA
+         (10, 30) # Kingsdale
+        ]
+
+c_dmlt = [360, 450, 300, 300, 300, 300, 300, 300, 300] 
+
+
+
+
+
+def create_time(day=dy, times=tms, multipliers=mlt, day_multp=dmlt,ap=1):
     '''
     This function returns a list of strings to insert into the booking sheet
     '''
@@ -80,7 +108,7 @@ def create_time(day=dy, times=tms, multipliers=mlt, day_multp=dmlt):
             day_counter -=1
             day_index += 1
 
-    app_number = 1
+    app_number = ap
     for day_time in zip(day_strings, time_strings):
         vt = Visit(str(app_number), day_time[0], day_time[1])
         times_list.append(vt)
@@ -124,11 +152,15 @@ def create_database(time_list, dbase_name=sa_db, table='Appointments'):
     
     con.close()
 
-def write_gift_sheet(gift_times, provider='SA', zone_max=None):
+def write_gift_sheet(gift_times, provider='SA', zone_max=None,\
+                     zone_ident=None, fname=None):
     '''
     This will output a series of appointment sheets that we can fill in 
     with gift appointments     
     '''
+    file_output = FILE_OUTPUT
+    if fname:
+        file_output = fname
 
     spot_counter = 0 # how many times have we printed a line to a page
 
@@ -247,6 +279,11 @@ def write_gift_sheet(gift_times, provider='SA', zone_max=None):
         worksheet.write('B' + str(l_n[2]), slot.day) # write day i.e Dec 4 
         worksheet.write('C' + str(l_n[2]), slot.time) # write time 9am
         if zone_max:
+            # if writing zones as a batch
+            # with uniform characteristics
+            # this will insert the string and increment
+            # the Zone number when tipping over the end
+            # of the day it is writing and moving into the next zone
             zone_string = f'Zone {zone_number}'
             worksheet.write(f'D{l_n[2]}', zone_string)
             if zone_counter % zone_max == 0:
@@ -254,6 +291,11 @@ def write_gift_sheet(gift_times, provider='SA', zone_max=None):
                 zone_number += 1
             else:
                 zone_counter += 1
+        if zone_ident:
+            # otherwise if doing custom zones
+            # send the number down and it will be written
+            zone_string = f'Zone {zone_ident}'
+            worksheet.write(f'D{l_n[2]}', zone_string)
 
         worksheet.set_row(row_count, 68)
         row_count += 1
@@ -310,6 +352,24 @@ def write_gift_sheet(gift_times, provider='SA', zone_max=None):
     
     workbook.close()
 
+
+
+
+def create_custom_time(d, t, mul, dm, app):
+    '''
+    wraps around create_time
+    takes a day, time list
+    creates a time multiplier list
+    takes a day multiplier
+    and app number to start counting at
+    and returns a time list
+    '''
+    print(mul)
+    m, n = mul
+    mult_list = [m] * n
+    return create_time(d, t, mult_list, dm, app)
+
+
 # WRITING FUNCTION CALLS
 if __name__ == '__main__':
     
@@ -322,11 +382,24 @@ if __name__ == '__main__':
     #write_gift_sheet(csa_time, provider='SA')
     #print('Cambridge Salvation Army Appointment Sheets Output')
     #create_database(csa_time, table='CSA') 
-    print('Cambridge SA database table populated')
-    z_time = create_time(day=z_dy, times=z_tms, multipliers=z_mlt, day_multp=z_dmlt)
+    #print('Cambridge SA database table populated')
+    #z_time = create_time(day=z_dy, times=z_tms, multipliers=z_mlt, day_multp=z_dmlt)
     #write_gift_sheet(z_time, provider='ZONES',zone_max=640)
-    print('Pickup Zone Sheet Output')
-    create_database(z_time, table='Zones')
-    print('database populated')
+    #print('Pickup Zone Sheet Output')
+    #create_database(z_time, table='Zones')
+    #print('database populated')
 
-
+    ###################################################################
+    # This loop prints out separate files for the different zones but #
+    # still numbers them sequentially and labels them                 #
+    ###################################################################
+    
+    time_master = 1 # the appointment number to start counting at
+    for d in range(len(c_dy)):
+        print(c_dy[d])
+        zone = d + 1
+        file_n = f'products/{c_dy[d]}_Zone_{zone}_{sesh}_app_times.xlsx'
+        day_list = create_custom_time([c_dy[d]], c_tms, c_mlt[d],\
+                                      [c_dmlt[d]],time_master)
+        write_gift_sheet(day_list, provider='ZONES',zone_ident=zone,fname=file_n)
+        time_master += c_dmlt[d]
