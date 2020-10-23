@@ -56,15 +56,21 @@ class configuration:
                     self.rdb = yfile['rdb_nm']
                     self.sa_db = yfile['sadb_nm']
                     self.add_db = yfile['add_db_nm']
+                    # KW Salvation Army
                     self.sa_day = yfile['day']
                     self.sa_times = yfile['times']
                     self.sa_multipliers = yfile['multipliers']
                     self.sa_day_mult = yfile['day_mult']
+                    # zones
                     self.zn_day = yfile['z_day']
                     self.zn_times = yfile['z_times']
                     self.zn_multipliers = yfile['z_multipliers']
                     self.zn_day_mult = yfile['z_day_mult']
-
+                    # Cambridge SA
+                    self.csa_day = yfile['csa_day']
+                    self.csa_times = yfile['csa_times']
+                    self.csa_multipliers = yfile['csa_multipliers']
+                    self.csa_day_mult = yfile['csa_day_mult']
                     if echo: print(f'loaded {self.whoami} {self.session}')
             except:
                 print('failed to open config file')
@@ -137,3 +143,13 @@ class configuration:
         '''
         return (self.zn_day, self.zn_times, self.zn_multipliers,
                  self.zn_day_mult)
+    
+    def get_csa_app_package(self):
+        '''
+        returns a 4 tuple of the four lists that are needed to print out
+        the pickup information for the cambridge salvation army and provision
+        the CSA table 
+        '''
+        return (self.csa_day, self.csa_times, self.csa_multipliers,
+                self.csa_day_mult)
+
