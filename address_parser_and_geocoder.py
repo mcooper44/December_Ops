@@ -129,7 +129,7 @@ class GoogleResult:
             self.street_number = self.address_components[0]['long_name']
             self.street = self.address_components[1]['long_name']
             self.city = self.address_components[3]['long_name']
-            self.postal = self.address_components[7]['long_name']
+            self.postal = self.address_components[6]['long_name']
             self.neighbourhood = self.address_components[2]['long_name']
             # FORMATTED_ADDRESS
             self.formatted_address = self.result['formatted_address']
@@ -276,7 +276,7 @@ def full_address_parser(address, file_id):
 def returnGeocoderResult(address):
     """
     this function takes an address and passes it to googles geocoding
-    api with the help of the Geocoder Library.
+    api with the help of the googles library
     it returns a 2 tuple of (True, geocoder object wrapped around the json response) OR
     (False, None) if we are at the free query limit or some major exception 
     happens in the try block
