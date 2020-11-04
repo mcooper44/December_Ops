@@ -52,6 +52,11 @@ c_dy = ['Cambridge Firefighters',
         'Dec 12', 'Dec 14', 'Dec 15', 
         'Dec 16', 'Dec 17', 
         'Dec 18']
+cam_dy = ['Monday Dec 7', 'Tuesday Dec 8', 'Wednesday Dec 9', 
+          'Thursday Dec 10', 'Friday Dec 11']
+
+cshfb_dy = ['Monday Dec 14', 'Tuesday Dec 15', 'Wednesday Dec 16', 
+            'Thursday Dec 17']
 
 # TIME LABELS
 c_tms = ['10:00','10:10','10:20','10:30','10:40',
@@ -59,6 +64,18 @@ c_tms = ['10:00','10:10','10:20','10:30','10:40',
          '11:50', '12:30', '12:40', '12:50', '1:00', '1:10',
          '1:20',  '1:30', '1:40','1:50','2:00','2:10','2:20',
          '2:30', '2:40', '2:50', '3:00', '3:10', '3:20']
+
+cam_tms = ['9:00', '9:10', '9:20', '9:30', '9:40', '9:50', 
+             '10:00', '10:10', '10:20', '10:30', '10:40', '10:50',
+             '11:00', '11:10', '11:20', '11:30', '11:40', '11:50',
+             '12:40', '12:50',
+             '1:00', '1:10', '1:20', '1:30', '1:40', '1:50',
+             '2:00', '2:10', '2:20', '2:30', '2:40', '2:50',
+             '3:00', '3:10', '3:20', '3:30', '3:40', '3:50']
+
+cshfb_tms = ['9:00', '9:10', '9:20', '9:30', '9:40', '9:50', 
+             '10:00', '10:10', '10:20', '10:30', '10:40', '10:50',
+             '11:00', '11:10', '11:20']
 
 # HOW MANY PEOPLE PER TIME SLOT, HOW MANY TIME SLOTS PER DAY
 c_mlt = [(15, 30), # Cambridge Firefighters
@@ -73,9 +90,22 @@ c_mlt = [(15, 30), # Cambridge Firefighters
          (10, 30) # Kingsdale
         ]
 
+cam_mlt = [(8, 38),
+            (8, 38),
+            (8, 38),
+            (8, 38),
+            (8, 38)
+        ]
+
+cshfb_mlt = [(7,15),
+              (7,15),
+              (7,15),
+              (7,15)]
+
 # HOW MANY SERVICE EVENTS PER SESSION
 c_dmlt = [450, 360, 450, 300, 300, 300, 300, 300, 300, 300] 
-
+cam_dmlt = [304, 304, 304, 304, 304]
+cshfb_dmlt = [105, 105, 105, 105]
 
 def create_time(day=dy, times=tms, multipliers=mlt, day_multp=dmlt,ap=1):
     '''
@@ -386,7 +416,7 @@ def create_custom_time(d, t, mul, dm, app):
 
 # WRITING FUNCTION CALLS
 if __name__ == '__main__':
-    
+    '''
     a_time = create_time()
     write_gift_sheet(a_time)
     print('Salvation Appointment Sheets Output')
@@ -397,19 +427,15 @@ if __name__ == '__main__':
     print('Cambridge Salvation Army Appointment Sheets Output')
     create_database(csa_time, table='CSA') 
     print('Cambridge SA database table populated')
-    #z_time = create_time(day=z_dy, times=z_tms, multipliers=z_mlt, day_multp=z_dmlt)
-    #write_gift_sheet(z_time, provider='ZONES',zone_max=640)
-    #print('Pickup Zone Sheet Output')
-    #create_database(z_time, table='Zones')
-    #print('database populated')
+    '''
 
     ###################################################################
     # This loop prints out separate files for the different zones but #
     # still numbers them sequentially and labels them                 #
     ###################################################################
     
-    time_master = 1 # the appointment number to start counting at
-
+    #time_master = 1 # the appointment number to start counting at
+    '''
     for d in range(len(c_dy)):
         print(c_dy[d])
         zone = d + 1
@@ -419,3 +445,27 @@ if __name__ == '__main__':
         write_gift_sheet(day_list, provider='ZONES',zone_ident=zone,fname=file_n)
         time_master += c_dmlt[d] # increment by number of visits in the day
         create_database(day_list, table='Zones')
+    '''
+
+    time_master = 3361
+    for d in range(len(cam_dy)):
+        print(cam_dy[d])
+        zone = d + 1
+        file_n = f'products/p2020_c{cam_dy[d]}_CZN_{zone}_{sesh}.xlsx'
+        day_list = create_custom_time([cam_dy[d]], cam_tms, cam_mlt[d],\
+                                      [cam_dmlt[d]], time_master)
+        write_gift_sheet(day_list, provider='ZONES', zone_ident=zone,fname=file_n)
+        time_master += cam_dmlt[d]
+        create_database(day_list, table='Zones')
+
+    
+    for d in range(len(cshfb_dy)):
+        print(cshfb_dy[d])
+        zone = d + 1
+        file_n = f'products/p2020_c{cshfb_dy[d]}_CZN_{zone}_{sesh}.xlsx'
+        day_list = create_custom_time([cshfb_dy[d]], cshfb_tms, cshfb_mlt[d],\
+                                      [cshfb_dmlt[d]], time_master)
+        write_gift_sheet(day_list, provider='ZONES', zone_ident=zone,fname=file_n)
+        time_master += cshfb_dmlt[d]
+        create_database(day_list, table='Zones')
+
