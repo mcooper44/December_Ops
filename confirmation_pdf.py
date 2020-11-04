@@ -27,14 +27,14 @@ from reportlab.lib.units import inch
 import os
 
 BARCODE_SOURCE = 'bar_codes/'
-
+# for inserting into letter text the provider name
 A_SELECT = {'KW Salvation Army': 'KW Salvation Army',
              'Salvation Army - Cambridge' : 'Cambridge Salvation Army',
              'SPONSOR - SERTOMA': 'KW Sertoma Club',
-             'SPONSOR - REITZEL': 'Possibilities International',
+             'SPONSOR - REITZEL': 'Keller Williams Realty',
              'SPONSOR - DOON' : 'Doon Pioneer Park Christmas Miracle',
              'House of Friendship Delivery': 'House Of Friendship',
-             'HoF Zone 1' : 'House of Friendship at the Legion',
+             'HoF Zone 1' : 'House of Friendship at the Royal Canadian Legion',
              'HoF Zone 2' : 'House of Friendship at St. Marks',
              'HoF Zone 3' : 'House of Friendship at Blessed Sacrament',
              'HoF Zone 4' : 'House of Friendship at St. Anthony Daniel',
@@ -45,16 +45,24 @@ A_SELECT = {'KW Salvation Army': 'KW Salvation Army',
              'HoF Zone 9' : 'House of Friendship at the Kingsdale Community Centre',
              'Cambridge Self-Help Food Bank': 'Cambridge Self-Help Food Bank',
              'Cambridge Firefighters' : 'Cambridge Firefighters'
+             'Cam Zone 1': 'Cambridge Self-Help Food Bank',
+             'Cam Zone 2': 'Cambridge Self-Help Food Bank',
+             'Cam Zone 3': 'Cambridge Self-Help Food Bank',
+             'Cam Zone 4': 'Cambridge Self-Help Food Bank',
+             'Cambridge Delivery': 'Cambridge Self-Help Food Bank'
            }
 
 DELIVERY_CONTACT = {'House Of Friendship' : ' If you provided us with an email and/or cell phone number we will attempt to email or text you 24-48 hours before to update you.'}
-
-GIFT_LOOKUP = {'KW Salvation Army' : '''KW Salvation Army, located at 75 Tillsley\
- Drive, Kitchener.  Please bring a piece of identification for yourself and your\
-children''',
+# address for gift service providers
+GIFT_LOOKUP = {'KW Salvation Army' : '''KW Salvation Army, located at 75 Tillsley Drive, Kitchener''',
                'Salvation Army - Cambridge': '12 Shade Street, Cambridge.',
-               'Cambridge Firefighters': 'at the Preston Auditorium'}
-
+               'Cambridge Firefighters': 'at the Preston Auditorium 1458 Hamilton Street Cambridge',
+               'Cam Zone 1': 'at the Preston Legion, 334 Westminister Drive North',
+               'Cam Zone 2': 'at Hespeler Presbyterian Church, 79 Queen Street East',
+               'Cam Zone 3': 'at Forward Church, 55 Franklin Blvd',
+               'Cam Zone 4': 'at Your Neighbourhood Credit Union, 385 Hespeler Road'
+              }
+# address for food service providers
 FOOD_LOOKUP = {'HoF Zone 1': '524 Belmont Avenue West, Kitchener',
     'HoF Zone 2': '55 Driftwood Drive, Kitchener.',
     'HoF Zone 3': '305 Laurentian Drive, Kitchener',
@@ -65,7 +73,13 @@ FOOD_LOOKUP = {'HoF Zone 1': '524 Belmont Avenue West, Kitchener',
     'HoF Zone 8': '395 King Street North, Waterloo',
     'HoF Zone 9': '72 Wilson Avenue, Kitchener',
     'Cambridge Firefighters': 'the Preston Auditorium.  1458 Hamilton Street, Cambridge',
-    'Cambridge Self-Help Food Bank': '50 Ainsley Street, Cambridge'}
+    'Cambridge Self-Help Food Bank': '55 Ainsley Street South, Cambridge',
+    'Cambridge Deliveries' : 'Cambridge Self-Help Food Bank',
+    'Cam Zone 1': 'Cambridge Self-Help Food Bank at ',
+    'Cam Zone 2': 'Cambridge Self-Help Food Bank at ',
+    'Cam Zone 3': 'Cambridge Self-Help Food Bank at ',
+    'Cam Zone 4': 'Cambridge Self-Help Food Bank at '
+              }
 
 # food must be picked up
 F_PICKUPS = ['House of Friendship','Cambridge Firefighters','Cambridge Self-Help Food Bank']
@@ -135,6 +149,15 @@ Dear {self.name},
 This letter is cofirmation that you registered with the Christmas Bureau.\
  You have registered to recieve {self.service} from {self.service_prov}.  
 '''
+        # for the Firefighters because they want a custom logo
+        self.header2 = f'''
+cff.png
+time.ctime()
+ 
+Dear {self.name},
+This letter is cofirmation that you registered with the Christmas Bureau.\
+ You have registered to recieve {self.service} from {self.service_prov}.  
+'''
         self.food_pickup_string_w_app = f'''
 You will be able to pick up your {self.food_service} from\
  {A_SELECT.get(self.food_set, 'ERROR')} on\
@@ -162,7 +185,7 @@ Your appointment to pick up food as well as the gifts for the eligible children\
  picking up your gifts.
 '''
         self.gift_and_food_del = f'''
-Your food and gifts for your eligible children will be delivered by\
+Your gift card for food and gifts will be delivered by\
 {self.service_prov}.  They will deliver to you on {self.food_del_date}.
 '''
         self.gift_pickup_no_app = f'''
@@ -171,12 +194,12 @@ The gifts for the eligible children in your household will be provided by\
  for you to come and pick them up soon. 
 '''
         self.cambridge_ff = f'''
-You food and gifts for your eligible children will be available for pickup\
- from the Cambridge Firefighters on {self.food_pu_date} at\
+Your food voucher will be available for pickup\
+ from the Cambridge Firefighters on December 12 between 8am and 12pm at\
  the Preston Auditorium located at 1458 Hamilton St. Cambridge . You have\
  appointment number {self.zone_pu_num}. \
 Please Note: it is very important that you bring this letter with you,\
- and arrive in a vehicle. 
+ wear a mask at all times.  You must arrive in a vehicle to be served.
 '''
         self.reitzel = f'''
 Your food and gifts for your eligible children will be delivered to you by\
@@ -185,7 +208,8 @@ Your food and gifts for your eligible children will be delivered to you by\
         '''
         self.sertoma = f'''
 The gifts for your eligible children will be available from KW Sertoma Club.\
- They will contact you shortly about how and when you can pickup your gifts.
+ They will contact you shortly about how and when you can pickup your gifts \
+or if they will be able to deliver them to you..
 '''
         self.footer = f'''
 If you have any questions please check out our frequently asked questions\
@@ -246,7 +270,7 @@ The Christmas Bureau
         # SPECIAL CASES
         if 'Firefighters' in self.service_prov:
             full_text = f'''
-{self.header}
+{self.header2}
 {self.cambridge_ff}
 {self.footer}
                     '''
@@ -343,9 +367,12 @@ class Confirmation_Letter:
         
         self.styles.add(ParagraphStyle(name='Justify', alignment=TA_JUSTIFY))
  
-    def add_image(self, img):
-        #im = Image(img, 2*inch, 2*inch)
-        im = Image(img)
+    def add_image(self, img, resize=False):
+        im = None
+        if not resize:
+            im = Image(img)
+        else:
+            im = Image(img, 2*inch, 2*inch)
         self.page.append(im)
  
     def add_space(self):
@@ -376,7 +403,10 @@ class Confirmation_Letter:
         text = letter_text.get().splitlines()
         for line in text:
             if ".png" in line:
-                self.add_image(line)
+                if not 'cff.png' in line:
+                    self.add_image(line)
+                else:
+                    self.add_image(line, resize=True)
             elif "ctime()" in line:
                 self.add_text(time.ctime())
             else:
@@ -388,7 +418,7 @@ class Confirmation_Letter:
         '''
         writes the pdf out to file
         '''
-
+        # write twice if there are two providers!
         self.doc.build(self.page)
         #os.system('mv *.pdf products/')
 

@@ -128,8 +128,8 @@ def registration_check(line):
         self.sms_target = None # the phone number to send sms messages to
         self.hof_zone = None # Zone label 
         self.hof_pu_num = None # Zone pickup number - coded between $$x$$
-        self.item_req = {'Voucher': False, 'Gifts': False}
-        self.food_req = {'Delivery Christmas Hamper': False, 'Turkey': False, 'Pickup Christmas Hamper': False}
+        self.item_req = {'Gift Voucher': False, 'Gifts': False}
+        self.food_req = {'Food Voucher': False, 'Turkey Voucher': False, 'Pickup Christmas Hamper': False}
         self.delivery_h = False # Designates a delivery hamper
         self.f_sponsor = None # a list
         self.g_sponsor = None # a list
@@ -214,12 +214,21 @@ def sort_types(line_object, simple_address, address_database, kw,\
     # prvious function?
     ch_sd = line_object.get_services_dictionary()
     # (t/f, [Doon[,...]], [sertoma[,...], 300) 
-    
+    ops_logger.info('this is the service Dictionary') 
     ops_logger.info(ch_sd)
     # providers
-    gifts_p = ch_sd['item_req']['Gifts'] 
-    voucher_p = ch_sd['item_req']['Voucher']
-    turkey_p = ch_sd['food_req']['Turkey']
+    # parse the type of gift being provided
+    gifts_p = None
+    g_actual = ch_sd['item_req']['Gifts'] 
+    g_vou = ch_sd['item_req']['Gift Voucher']  
+    if g_actual:
+        gift_p = g_actual
+    elif g_vou:
+        gift_p = g_vou
+        print(gift_p)
+        xyz = input('pausing')
+    voucher_p = ch_sd['food_req']['Food Voucher']
+    turkey_p = ch_sd['food_req']['Turkey Voucher']
     delivery_fh_p = ch_sd['food_req']['Delivery Christmas Hamper']
     pickup_fh_p = ch_sd['food_req']['Pickup Christmas Hamper']
     food_sponsor = ch_sd['f_sponsor']
@@ -483,7 +492,7 @@ def sponsors_to_db(applicant, household, route_database):
         # find the sponsors in the file
         # now look in the database - do we have a new sponsor?
         # have things changed, or have we not logged this before?
-
+        #ops_logger.info(f'{{f_sponsor}, {g_sponsor}, {v_sponsor}, {t_sponsor}')
         new_providers = parse_sponsor_db_return(f_sponsor, g_sponsor,\
                                          v_sponsor, t_sponsor, route_database, applicant)
         # add MAIN APPLICANT to database

@@ -22,13 +22,17 @@ SERVICE_PACK = namedtuple('SERVICE_PACK', 'sa_app_num, food_sponsor, gift_sponso
 
 DEL_SELECT = {'House of Friendship Delivery': 'December 5',
               'SPONSOR - REITZEL': 'December 18',
-              'SPONSOR - DOON' : 'December 19'}
+              'SPONSOR - DOON' : 'December 19',
+              'Cambridge Delivery': 'in December'}
 
 DEL_PROV = ['House Of Friendship', 'Doon Pioneer Park Christmas Miracle',
             'Possibilities International','House of Friendship Delivery',
-           'SPONSOR - REITZEL', 'SPONSOR - DOON']
+           'SPONSOR - REITZEL', 'SPONSOR - DOON'
+           'Cambridge Delivery',]
 
-ALL_IN_ONE = ['Possibilities International', 'Cambridge Firefighters','SPONSOR - REITZEL']
+ALL_IN_ONE = ['Possibilities International', 
+              'SPONSOR - REITZEL', 
+              'Keller Williams Realty']
 
 # INITIALIZE CONFIGURATION FILE
 conf = configuration.return_r_config()

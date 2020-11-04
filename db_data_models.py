@@ -35,10 +35,11 @@ PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
              'Forest Heights Community Centre': 8}
 
 AGENTS_HOF = ['House of Friendship']
-SERVICE_AGENTS_HOF = "House of Friendship Delivery,HoF Zone 1,HoF Zone 2,HoF Zone \
+SERVICE_AGENTS_HOF = "House of Friendship Delivery,Cambridge Delivery,HoF Zone 1,HoF Zone 2,HoF Zone \
 3,HoF Zone 4,HoF Zone 5,HoF Zone 6,HoF Zone 7,HoF Zone 8,HoF Zone 9,Cambridge \
-Firefighters,Cambridge Self-Help Food Bank".split(',')
-PICKUP_AGENTS_HOF = SERVICE_AGENTS_HOF[1:]
+Firefighters,Cambridge Self-Help Food Bank,Cam Zone 1,Cam Zone 2,Cam Zone 3,Cam \
+Zone 4".split(',')
+PICKUP_AGENTS_HOF = SERVICE_AGENTS_HOF[2:]
 SERVICE_AGENTS_SVDP = "Blessed Sacrament Church,Our Lady of Lourdes,\
 St. Agnes Catholic Church,St. Aloyious,St. Anne's Catholic Church,\
 St. Anthony Daniel Catholic Church,St. Francis of Assisi Church,\
@@ -511,9 +512,10 @@ class Visit_Line_Object():
         self.sms_target = None # the phone number to send sms messages to
         self.hof_zone = None # Zone label 
         self.hof_pu_num = None # Zone pickup number - coded between $$x$$
-        self.item_req = {'Voucher': False, 'Gifts': False}
+        self.item_req = {'Gifts': False,'Gift Voucher':False}
         self.food_req = {'Delivery Christmas Hamper': False, 
-                         'Turkey': False, 'Pickup Christmas Hamper': False}
+                         'Turkey Voucher': False, 'Pickup Christmas Hamper': False,
+                        'Food Voucher': False}
         self.delivery_h = False # Designates a delivery hamper
         self.f_sponsor = None # a list
         self.g_sponsor = None # a list
@@ -926,20 +928,24 @@ class Visit_Line_Object():
                 self.hof_zone = list(pu_intersect)[0] # will be HoF Zone 1 etc. 
                 self.hof_pu_num = Visit_Line_Object.get_special_string(self.xmas_notes, '$$')
 
-
+            # is this for routing only?
             if 'House of Friendship Delivery' in provider: 
                 self.delivery_h = True
             if food:
                 for p in provider:
+                    #print(p)
                     foods = self.foods_provided.lookup(p)
                     for f in foods:
-                        if f: 
+                        if f:
+                            #print(f)
                             self.food_req[f] = p
             if item:
                 for p in provider:
+                    #print(p)
                     items = self.items_provided.lookup(p)
                     for i in items:
                         if i: 
+                            #print(i)
                             self.item_req[i] = p 
 
         return is_hof
@@ -967,9 +973,11 @@ class Visit_Line_Object():
                 fs = list(food_sponsor)
                 self.f_sponsor = fs
                 for s in fs:
+                    print(s)
                     foods = self.foods_provided.lookup(s)
                     for f in foods:
                         if f:
+                            print(f)
                             self.food_req[f] = s
             if any(gift_sponsor):
                 gs = list(gift_sponsor)
