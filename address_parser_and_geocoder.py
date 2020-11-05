@@ -52,6 +52,14 @@ from address_audit_tools import missing_unit_logger
 
 from file_iface import Menu
 
+config = configuration.return_r_config()
+
+t_file = config.get_target() # string of target file location
+add_base = config.get_bases()['address'] 
+    #api key
+myapikey = config.get_g_creds()
+# INSTANTIATE GOOGLE MAPS CLIENT
+gmaps = googlemaps.Client(key=myapikey)
 
 # LOGGING
 
@@ -112,7 +120,6 @@ class GoogleResult:
         self.neighbourhood = None 
         self.lat = None
         self.lng = None
-
         if not self.result:
             if self.result in self.errors:
                 self.status = self.result
@@ -120,17 +127,33 @@ class GoogleResult:
                 self.status = self.errors[0]
         else:
             self.status = 'OK'
-        
         if self.status == 'OK':
             # set key variables and seed the containers for the 5 data
             # structures
             # ADRESS_COMPONENTS
+            # the location of the different pieces shifts around 
+            # or are not present consistently thus we need to iterate
+            # and look for the right 'types' tag which is always a []
             self.address_components = self.result['address_components']
-            self.street_number = self.address_components[0]['long_name']
-            self.street = self.address_components[1]['long_name']
-            self.city = self.address_components[3]['long_name']
-            self.postal = self.address_components[6]['long_name']
-            self.neighbourhood = self.address_components[2]['long_name']
+            
+            print(self.result['formatted_address'])
+
+            for x in self.address_components:
+                if 'street_number' in x['types']:
+                    self.street_number = x['long_name']
+                    print(x['long_name'])
+                if 'route' in x['types']:
+                    self.street = x['long_name']
+                    print(x['long_name'])
+                if 'locality' in x['types']:
+                    self.city = x['long_name']
+                    print(x['long_name'])
+                if 'postal_code' in x['types']:
+                    self.postal = x['long_name']
+                    print(x['long_name'])
+                if 'neighborhood' in x['types']:
+                    self.neighbourhood = x['long_name']
+                    print(f'Neighbourhood {x["long_name"]}')
             # FORMATTED_ADDRESS
             self.formatted_address = self.result['formatted_address']
             # GEOMETRY
@@ -285,15 +308,24 @@ def returnGeocoderResult(address):
     """
     try:
         sleep(1)
+        print(address)
         response = gmaps.geocode(address) 
-        result = GoogleResult(response[0])
+        result = None
+        try:
+            result = GoogleResult(response[0])
+        except Exception as result_fail:
+            print(f'result failed: with \n{result_fail}')
         if result.status == 'OK':
+            print('status OK')
             return (True, result)
         else:
+            print('failed')
+
             return (None, None) 
     except KeyboardInterrupt:
         raise
     except Exception as boo:
+        print(f'it failed: {boo}')
         geocoding_logger.critical('##400## Try Block in returnGeocoderResult raised Exception {} from {}'.format(boo, address))
         return False
 
@@ -1292,15 +1324,8 @@ class line_obj_parser():
 
 if __name__ == '__main__':
     
-    config = configuration.return_r_config()
+    
 
-    t_file = config.get_target() # string of target file location
-    add_base = config.get_bases()['address'] 
-    #api key
-    myapikey = config.get_g_creds()
-
-    # INSTANTIATE GOOGLE MAPS CLIENT
-    gmaps = googlemaps.Client(key=myapikey)
     
     # MENU INPUT
     menu = Menu(base_path='sources/' )
