@@ -199,7 +199,8 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
             age_cut = {'KW Salvation Army': 16, 
                    'SPONSOR - DOON': 18,
                    'SPONSOR - SERTOMA': 13,
-                   'SPONSOR - REITZEL': 19}
+                   'SPONSOR - REITZEL': 20,
+                   'Salvation Army - Cambridge': 18}
             aco = age_cut.get(g, 18)
             if not g in ['KW Salvation Army', 'Salvation Army - Cambridge']:
                 s_report[g].add_household(summ, fam, age_cutoff=aco, \
@@ -213,7 +214,7 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                     ops_logger.debug(f'running count = 0')
                     ops_logger.debug(f'saa = {saa} sap = {sap} provider = {g}')
                     running_sa_count[g] = sap 
-                    s_report[g].add_household(summ, fam, age_cutoff=16,
+                    s_report[g].add_household(summ, fam, age_cutoff=aco,
                                               app_pack=(saa, sat))
 
                 else:
@@ -221,7 +222,7 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                     ops_logger.debug(f'dif_count= {dif_count}')
                     ops_logger.debug(f'saa = {saa} sap = {sap} provider = {g}')
                     if dif_count == 1:
-                        s_report[g].add_household(summ, fam, age_cutoff=16,
+                        s_report[g].add_household(summ, fam, age_cutoff=aco,
                                               app_pack=(saa, sat))
                         running_sa_count[g] += 1
                     else:
@@ -233,11 +234,11 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                                                                  g)
                             s_report[g].add_household(null_app,
                                                     null_fam, 
-                                                    age_cutoff=16,
+                                                    age_cutoff=aco,
                                                     app_pack =  (blank_num,
                                                               blank_time))
                         
-                        s_report[g].add_household(summ, fam, age_cutoff=16,
+                        s_report[g].add_household(summ, fam, age_cutoff=aco,
                                               app_pack=(saa, sat))
                         running_sa_count[g] = sap
 

@@ -214,6 +214,9 @@ def sort_types(line_object, simple_address, address_database, kw,\
     # prvious function?
     ch_sd = line_object.get_services_dictionary()
     # (t/f, [Doon[,...]], [sertoma[,...], 300) 
+    #print(applicant)
+    #print(ch_sd)
+
     ops_logger.info('this is the service Dictionary') 
     ops_logger.info(ch_sd)
     # providers
@@ -221,24 +224,28 @@ def sort_types(line_object, simple_address, address_database, kw,\
     gifts_p = None
     g_actual = ch_sd['item_req']['Gifts'] 
     g_vou = ch_sd['item_req']['Gift Voucher']  
+    #print(f'g_actual: {g_actual}, g_vou: {g_vou}')
+    # gift hackery
     if g_actual:
-        gift_p = g_actual
+        gifts_p = g_actual
     elif g_vou:
-        gift_p = g_vou
-        print(gift_p)
-        xyz = input('pausing')
+        gifts_p = g_vou
+
     voucher_p = ch_sd['food_req']['Food Voucher']
     turkey_p = ch_sd['food_req']['Turkey Voucher']
     delivery_fh_p = ch_sd['food_req']['Delivery Christmas Hamper']
     pickup_fh_p = ch_sd['food_req']['Pickup Christmas Hamper']
-    food_sponsor = ch_sd['f_sponsor']
-    gift_sponsor = ch_sd['g_sponsor']
+    food_sponsor = ch_sd['f_sponsor'] # a list or None
+    gift_sponsor = ch_sd['g_sponsor'] # a list  or None
     hof_zone = ch_sd['hof_zone']
     hof_pu_num = ch_sd['hof_pu_num']
     
     requests = (turkey_p, voucher_p, delivery_fh_p, pickup_fh_p, gifts_p)
     type_flags = (is_xmas, food_sponsor, gift_sponsor, sa_app)
-    
+    #print(requests)
+    #print(type_flags)
+
+    #xyz = input('pausing')
     # is this line legit?
     if not requests:
         return (False, type_flags) # no?  
