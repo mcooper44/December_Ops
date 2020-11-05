@@ -67,7 +67,7 @@ class Report_File(object):
             self.bold = self.workbook.add_format({'bold': True})
 
 
-    def add_household(self, summary, family, age_cutoff = 18, app_pack=False,
+    def add_household(self, summary, family, age_cutoff = 19, app_pack=False,
                       service_pack=None,line_two=True): 
         '''
         Adds a formatted summary to the xlsx file for the household
@@ -124,9 +124,9 @@ class Report_File(object):
                         kids.append(po)
 
         # client info
-        self.worksheet1.write('A{}'.format(self.l_n[1]), 
-                        'CHRISTMAS ID: {}'.format(summary.applicant),
-                        self.bold)
+        self.worksheet1.write('A{}'.format(self.l_n[1]), 'CHRISTMAS ID:',
+                              self.bold)
+        self.worksheet1.write(f'B{self.l_n[1]}', summary.applicant, self.bold)
         self.worksheet1.write('A{}'.format(self.l_n[2]), 
                          'Family Size: {}'.format(summary.size))
         self.worksheet1.write('C{}'.format(self.l_n[1]), summary.address)
