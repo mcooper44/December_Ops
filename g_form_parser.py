@@ -28,6 +28,7 @@ class g_form_response:
         self.items = line[230]
         self.diet = line[231]
         self.car = line[232]
+        self.gift_ask = line[233]
 
         if self.family_size.lower() == "1 Person (I'm applying as a single person)".lower():
             self.primary_app = PERSON(line[21], line[22], line[23], 'Primary')
@@ -103,7 +104,8 @@ class g_summary:
         self.book_name = book_name
         self.workbook = xlsxwriter.Workbook(book_name)
         self.worksheet = None
-        self.l_n = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
+        self.l_n = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,
+                    21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36]
         self.off_set = 47
         self.counter = 1
         if self.workbook:
@@ -111,9 +113,11 @@ class g_summary:
 
     def add_response(self, g):
         self.worksheet.write(f'H{self.l_n[1]}', f'{self.counter}') 
-        self.worksheet.write(f'E{self.l_n[1]}', 'Review Completed by:')
+        self.worksheet.write(f'E{self.l_n[2]}', 'Review Completed by:')
         
-        self.worksheet.write(f'A{self.l_n[1]}', f'Timestamp: {g.stamp}')
+        self.worksheet.write(f'A{self.l_n[1]}', f'Timestamp:')
+        self.worksheet.write(f'B{self.l_n[1]}', f'{g.stamp}')
+        
         self.worksheet.write(f'A{self.l_n[2]}', f'First Name:')
         self.worksheet.write(f'B{self.l_n[2]}', f'{g.primary_app.f_name}')
         
@@ -178,6 +182,10 @@ class g_summary:
         self.worksheet.write(f'D{self.l_n[22]}', 'Birthday')
         self.worksheet.write(f'E{self.l_n[22]}', 'relationship')
         
+        if g.address['city'] == 'Cambridge' and g.gifts['want gifts']:
+            self.worksheet.write(f'A{self.l_n[34]}', 'gift request:')
+            self.worksheet.write(f'B{self.l_n[34]}', f'[{g.gift_ask}]')
+
         f_c = self.l_n[23]
         for p in g.family:
             self.worksheet.write(f'B{f_c}', p.f_name)
