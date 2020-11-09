@@ -125,7 +125,8 @@ def compose_string(service_string):
     be inserted into a sentence
     '''
     punct_lookup = {'turkey': 'a ',
-                    'gift card': 'a '}
+                    'gift card': 'a ',
+                    'box of food items': 'a '}
     services = None
     if len(service_string) == 1:
         services = service_string[0]
@@ -171,7 +172,10 @@ def make_service_provider_strings(food, gift, vouch, turkey):
     #go = input('paused  ')
     # FOOD
     if food: 
-        if food in DEL_PROV:
+        if food == 'SPONSOR - DOON':
+            service_string.append('box of food items')
+            food_service.append('box of food')
+        elif food in DEL_PROV:
             service_string.append('delivery of food')
             food_service.append('delivery of food')
         else:
@@ -180,9 +184,14 @@ def make_service_provider_strings(food, gift, vouch, turkey):
         provider_set.add(food)
     # VOUCHER
     if vouch: 
-        service_string.append('gift card for a local food store')
-        provider_set.add(vouch)
-        food_service.append('gift card')
+        if 'doon' in vouch.lower():
+            service_string.append('box of food items')
+            food_service.append('box of food')
+            provider_set.add(vouch)
+        else:
+            service_string.append('gift card for a local food store')
+            provider_set.add(vouch)
+            food_service.append('gift card')
     # TURKEY
     if turkey:
         service_string.append('turkey')

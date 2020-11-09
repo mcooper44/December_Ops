@@ -29,6 +29,7 @@ import sys
 
 BARCODE_SOURCE = 'bar_codes/'
 # for inserting into letter text the provider name
+# also used to determine what type of service someone is getting
 A_SELECT = {'KW Salvation Army': 'KW Salvation Army',
              'Salvation Army - Cambridge' : 'Cambridge Salvation Army',
              'SPONSOR - SERTOMA': 'KW Sertoma Club',
@@ -120,7 +121,8 @@ def filter_set(a_set):
         return None
 
 def service_punct(service_str):
-    look_up = {'gift': 'a', 'turkey': 'a', 'gifts': ''}
+    look_up = {'gift': 'a', 'turkey': 'a', 
+               'gifts': '', 'box': 'a'}
     return look_up.get(service_str.split(' ')[0], '')
 
 
