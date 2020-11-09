@@ -20,16 +20,16 @@ ALL_CODES = file_set()
 
 SERVICE_PACK = namedtuple('SERVICE_PACK', 'sa_app_num, food_sponsor, gift_sponsor, voucher_sponsor, turkey_sponsor')
 
-DEL_SELECT = {'House of Friendship Delivery': 'December 5',
-              'SPONSOR - REITZEL': 'December 18',
-              'SPONSOR - DOON' : 'December 19',
+DEL_SELECT = {'House of Friendship Delivery': 'on December 5',
+              'SPONSOR - REITZEL': 'on December 18',
+              'SPONSOR - DOON' : 'on December 19',
               'Cambridge Delivery': 'in December'}
 
 DEL_PROV = ['House Of Friendship', 'Doon Pioneer Park Christmas Miracle',
             'Possibilities International','House of Friendship Delivery',
-           'SPONSOR - REITZEL', 'SPONSOR - DOON'
-           'Cambridge Delivery',]
-
+           'SPONSOR - REITZEL', 'SPONSOR - DOON',
+           'Cambridge Delivery', 'Cambridge Self Help Food Bank']
+            
 ALL_IN_ONE = ['Possibilities International', 
               'SPONSOR - REITZEL', 
               'Keller Williams Realty']
@@ -41,7 +41,7 @@ db_src, _, outputs = conf.get_folders()
 _, session = conf.get_meta()
 
 
-def write_label(file_date, label_list):
+def write_label(file_date, label_list, ftype='labels'):
     '''
     since we are printing letters we will need mailing label info
     this function accepts the date run that we are using
@@ -51,7 +51,7 @@ def write_label(file_date, label_list):
     code of the recipient 
     and writes them to a csv file
     '''
-    with open(f'{file_date}_labels.csv', mode='a') as label_file:
+    with open(f'{file_date}_{ftype}.csv', mode='a') as label_file:
         label_writer = csv.writer(label_file, delimiter=',')
         label_writer.writerow(label_list)
 
@@ -91,7 +91,7 @@ def check_dates(database, date_string):
         if check.lower() == 'y':
             lookup_table = {}
             for k, v in enumerate(n_reg):
-                print(f'{k}:  {v}')
+                print(f'{k}:  {v[0]}')
                 lookup_table[k] = v
                 selection = input('which date do you want to use? (pick a number) ')
                 choice = lookup_table.get(selection, 'Invalid')
@@ -200,7 +200,7 @@ def make_service_provider_strings(food, gift, vouch, turkey):
     #    raise Exception('services are blank!')
     provider = ' and '.join([x for x in provider_set if x])
 
-    return services, food_services, provider
+    return services, food_services, provider, len(provider_set)
 
 #SERVICE_PACK = namedtuple('SERVICE_PACK', 'sa_app_num, food_sponsor, gift_sponsor, voucher_sponsor, turkey_sponsor')
 if __name__ == '__main__':
@@ -210,17 +210,24 @@ if __name__ == '__main__':
     route_database = Route_Database(f'{db_src}{session}rdb.db')
     the_date, dhc, dbm = check_dates(route_database, input_date)
     if the_date:
-        pdf_file = Confirmation_Letter(the_date)
+        pdf_file1 = Confirmation_Letter(the_date)
         
         #write mailing label headers
         mlh = ['name', 'address1','address2', 'city', 
                'province', 'postal code']
+        
+        merge_headers = ['fid', 'fname', 'lname', 'email', 
+                         'header', 'line1', 'line2','footer', 
+                         'gift','turkey','voucher']
+        
         write_label(the_date, mlh)
+        write_label(the_date, merge_headers, ftype='merge')
 
         for hh in dhc.key_iter():
             s_d = SERVICE_TEMPLATE
             package = SERVICE_PACK(*hh.return_sponsor_package())
-            
+            family_size = hh.hh_size
+
             #print(f'package: {package}')
 
             # HOF ZONE (HoF Zone 1, INT, time
@@ -236,13 +243,7 @@ if __name__ == '__main__':
             # applicant, fname, lname, size, phone, email,
             # address, address2, city, postal, diet, sa_app_num, sms_target
             h_summary = hh.return_summary()
-            # WRITE INFO TO CSV FILE FOR PRINTING MAILING LABELS LATER
-            l2 = purge_brackets(h_summary.address2)
-            label_info = [f'{h_summary.fname} {h_summary.lname}',
-                          h_summary.address, l2,
-                          h_summary.city, 'Ontario', hh.postal]
 
-            write_label(the_date, label_info)
             # CREATE STRINGS TO DESCRIBE PICKUP TIME AND DATE
             zone_pu_string = None
             gift_pu_string = None
@@ -256,7 +257,7 @@ if __name__ == '__main__':
             # CREATE STRINGS FOR THE HEADER
             # TO DESCRIBE FOOD
             # TO LIST SERVICE PROVIDER
-            service, food_service, service_prov =\
+            service, food_service, service_prov, n_of_p  =\
             make_service_provider_strings(package.food_sponsor,\
                                          package.gift_sponsor,\
                                          package.voucher_sponsor,\
@@ -271,6 +272,14 @@ if __name__ == '__main__':
                 if fp in DEL_PROV:
                     del_key = fp
                     break
+
+            # WRITE INFO TO CSV FILE FOR PRINTING MAILING LABELS LATER
+            l2 = purge_brackets(h_summary.address2)
+            label_info = [f'{h_summary.fname} {h_summary.lname}     ({n_of_p})',
+                          h_summary.address, l2,
+                          h_summary.city, 'Ontario', hh.postal]
+
+            write_label(the_date, label_info)
 
             # GET RID OF '0' RESPONSES FROM DATABASE 
             gift_package = [x for x in [package.gift_sponsor] if len(x) > 2]
@@ -293,6 +302,7 @@ if __name__ == '__main__':
             # STACK THE RICKETY DATASTRUCTURE WITH JUNK
             s_d['barcode'] = barcode
             s_d['file_id'] = h_summary.applicant
+            s_d['family_size'] = family_size
             s_d['name'] = full_name
             s_d['service'] = service # x, y, and z
             s_d['service_prov'] = service_prov # from a, b and c
@@ -317,8 +327,41 @@ if __name__ == '__main__':
             s_d['turkey_sponsor'] = package.turkey_sponsor
             s_d['voucher_sponsor'] = package.voucher_sponsor
             
+
+
+            pdf_file2 = Confirmation_Letter(f'letters/{h_summary.applicant}') 
             service_text = Letter_Text(s_d)
-            pdf_file.parse_text(f'{h_summary.applicant}', service_text)
-        pdf_file.write()
+            
+
+
+            pdf_file1.parse_text(f'{h_summary.applicant}', service_text)
+
+            if h_summary.email:
+                merge_tags1 = [h_summary.applicant, 
+                             h_summary.fname,
+                             h_summary.lname, 
+                             h_summary.email]
+                
+                merge_tags2 = service_text.get_merge_values() 
+                
+                merge_tags3 = [package.gift_sponsor, 
+                             package.turkey_sponsor,
+                             package.voucher_sponsor]
+                
+                all_tags = merge_tags1 + merge_tags2 + merge_tags3
+
+                # write to csv file here
+                write_label(the_date, all_tags, ftype='merge')
+            if n_of_p == 2:
+                pdf_file1.parse_text(f'{h_summary.applicant}', service_text)
+            
+            pdf_file2.parse_text(f'{h_summary.applicant}', service_text)
+            pdf_file2.write()
+       
+
+
+
+
+        pdf_file1.write()
 
 
