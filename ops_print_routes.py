@@ -387,7 +387,7 @@ class Service_Database_Manager:
         elif crit:
             ls2 = f'''SELECT file_id, food_sponsor, gift_sponsor,
             voucher_sponsor, turkey_sponsor, sorting_date                    
-                    FROM sponsor WHERE date(sorting_date) >= date("{crit}")'''
+                    FROM sponsor WHERE date(sorting_date) = date("{crit}")'''
             return self.db_struct[database].lookup_string(ls2, None)
     
     def return_pickup_table(self, database):
