@@ -165,6 +165,7 @@ class GoogleResult:
             # TYPES
             self.types = self.result['types']
 
+            print(f'{self.lat}, {self.lng}')
 
 ## Address Parsing ##
 

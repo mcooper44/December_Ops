@@ -66,6 +66,15 @@ class Report_File(object):
             self.worksheet1.set_column(3, 3, 25) # Col. D
             self.bold = self.workbook.add_format({'bold': True})
 
+            # write headers FOR KIDS
+            self.worksheet2.write('A1', 'Child F. Name')
+            self.worksheet2.write('B1', 'Child L. Name')
+            self.worksheet2.write('C1', 'Age')
+            self.worksheet2.write('D1', 'Gender')
+            self.worksheet2.write('E1', 'Parent ID')
+            self.worksheet2.write('F1', 'Child ID')
+
+
 
     def add_household(self, summary, family, age_cutoff = 19, app_pack=False,
                       service_pack=None,line_two=True): 
@@ -175,7 +184,7 @@ class Report_File(object):
                              '{}'.format(k.person_Gender))
             self.worksheet2.write('E{}'.format(self.clc),
                              '{}'.format(summary.applicant))
-                             
+            self.worksheet2.write(f'F{self.clc}', f'{k.person_ID}') 
 
             self.clc +=1 # increment the line count for the second sheet
             k_c_i += 1 # increment the sub line counter for the main sheet

@@ -200,8 +200,8 @@ def write_sponsor_reports(delivery_households, r_dbs, i_key='sa_app_num', pf='SA
                    'SPONSOR - DOON': 18,
                    'SPONSOR - SERTOMA': 13,
                    'SPONSOR - REITZEL': 20,
-                   'Salvation Army - Cambridge': 18}
-            aco = age_cut.get(g, 18)
+                   'Salvation Army - Cambridge': 17}
+            aco = age_cut.get(g, 17)
             if not g in ['KW Salvation Army', 'Salvation Army - Cambridge']:
                 s_report[g].add_household(summ, fam, age_cutoff=aco, \
                                           service_pack = services_p, \

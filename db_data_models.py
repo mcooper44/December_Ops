@@ -448,6 +448,7 @@ class Household():
 
 class Visit_Line_Object():
     '''
+    this is the VLO
     takes a line from the csv export 
     a visit is made up of people, organized in a household
     a visit happens on a specific date and describes key services
