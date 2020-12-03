@@ -71,7 +71,7 @@ class Delivery_Slips():
         self.worksheet.write('B{}'.format(self.l_n[3]), summary.applicant) # ID number
         self.worksheet.write('C{}'.format(self.l_n[4]), '{},  {}'.format(summary.city, summary.postal)) # city, postal code
         self.worksheet.write('F{}'.format(self.l_n[4]), 'Neighbourhood {}'.format(nhood)) # Neighbourhood
-        self.worksheet.write('A{}'.format(self.l_n[6]), 'SPECIAL DIET: {}'.format(diet))
+        self.worksheet.write('A{}'.format(self.l_n[6]), 'ITEM REQUEST: {}'.format(diet))
         self.worksheet.write('H{}'.format(self.l_n[1]), 'ROUTE:')
         self.worksheet.write('I{}'.format(self.l_n[1]), rn)
         self.worksheet.write('J{}'.format(self.l_n[1]), rl)
