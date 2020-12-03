@@ -20,7 +20,7 @@ ALL_CODES = file_set()
 
 SERVICE_PACK = namedtuple('SERVICE_PACK', 'sa_app_num, food_sponsor, gift_sponsor, voucher_sponsor, turkey_sponsor')
 
-DEL_SELECT = {'House of Friendship Delivery': 'on December 5',
+DEL_SELECT = {'House of Friendship Delivery': 'during the week of December 7-11',
               'SPONSOR - REITZEL': 'on December 18',
               'SPONSOR - DOON' : 'on December 19',
               'Cambridge Delivery': 'in December'}
@@ -34,12 +34,31 @@ ALL_IN_ONE = ['Possibilities International',
               'SPONSOR - REITZEL', 
               'Keller Williams Realty']
 
+
+
+
 # INITIALIZE CONFIGURATION FILE
 conf = configuration.return_r_config()
 target = conf.get_target # source file
 db_src, _, outputs = conf.get_folders()
 _, session = conf.get_meta()
 
+def find_day(app_num, day_max):
+    '''
+    figures out what cycle an appointment is on
+    based on the max # of appointments they are able to handle a day
+    used to look at the sa gift app numbers and determine what appointment day
+    the hh falls on in the cycle of sa appointments
+    '''
+    if app_num <= day_max:
+        return 1
+    else:
+        day = 1
+        while True:
+            if app_num <= (day * day_max):
+                return day
+            else:
+                day += 1
 
 def write_label(file_date, label_list, ftype='labels'):
     '''
@@ -87,22 +106,8 @@ def check_dates(database, date_string):
             print('aborting')
             sys.exit(0)
     else:
-        check = input('there are no results at that date. look at available? Y/N  ')
-        if check.lower() == 'y':
-            lookup_table = {}
-            for k, v in enumerate(n_reg):
-                print(f'{k}:  {v[0]}')
-                lookup_table[k] = v
-                selection = input('which date do you want to use? (pick a number) ')
-                choice = lookup_table.get(selection, 'Invalid')
-                if choice == 'Invalid':
-                    print('Invalid choice')
-                    sys.exit(0)
-                else:
-                    check_dates(database, choice)
-        else:
-            print('exiting...')
-            sys.exit(0)
+        print('invalid')
+        sys.exit(0)
 
 SERVICE_TEMPLATE = {'file_id': None, 
                     'name': None, 
@@ -227,10 +232,15 @@ if __name__ == '__main__':
         
         merge_headers = ['fid', 'fname', 'lname', 'email', 
                          'header', 'line1', 'line2','footer', 
-                         'gift','turkey','voucher']
+                         'gift','turkey','voucher','Tags']
         
+        sms_headers = ['fid', 'fname', 'lname','email','sms', 'header','line1',
+                       'line2', 'footer','gift','turkey', 'voucher',
+                      'gift_num','food_num']
+
         write_label(the_date, mlh)
         write_label(the_date, merge_headers, ftype='merge')
+        write_label(the_date, sms_headers, ftype='sms')
 
         for hh in dhc.key_iter():
             s_d = SERVICE_TEMPLATE
@@ -336,7 +346,26 @@ if __name__ == '__main__':
             s_d['turkey_sponsor'] = package.turkey_sponsor
             s_d['voucher_sponsor'] = package.voucher_sponsor
             
+            # setup Mailchimp tags
+            tag_list = []
 
+            if package.gift_sponsor == "KW Salvation Army":
+                pu_day = find_day(int(sa_num), 180)
+                tag_list.append(f'KWSA {pu_day}')
+            elif package.gift_sponsor == "Salvation Army - Cambridge":
+                pu_day = find_day(int(sa_num),80)
+                tag_list.append(f'CSA {pu_day}')
+
+            if package.food_sponsor and (len(package.food_sponsor) > 1):
+                tag_list.append(package.food_sponsor)
+            else:
+                if package.turkey_sponsor and (len(package.turkey_sponsor) > 1):
+                    tag_list.append(package.turkey_sponsor)
+                elif package.voucher_sponsor and (len(package.voucher_sponsor) > 1):
+                    tag_list.append(package.voucher_sponsor)
+            tag_list.append(the_date) 
+            mc_tags = ",".join(tag_list)
+            # done making the tags
 
             pdf_file2 = Confirmation_Letter(f'letters/{h_summary.applicant}') 
             service_text = Letter_Text(s_d)
@@ -345,22 +374,29 @@ if __name__ == '__main__':
 
             pdf_file1.parse_text(f'{h_summary.applicant}', service_text)
 
-            if h_summary.email:
-                merge_tags1 = [h_summary.applicant, 
+            merge_tags1 = [h_summary.applicant, 
                              h_summary.fname,
                              h_summary.lname, 
                              h_summary.email]
                 
-                merge_tags2 = service_text.get_merge_values() 
+            merge_tags2 = service_text.get_merge_values() 
                 
-                merge_tags3 = [package.gift_sponsor, 
+            merge_tags3 = [package.gift_sponsor, 
                              package.turkey_sponsor,
                              package.voucher_sponsor]
-                
-                all_tags = merge_tags1 + merge_tags2 + merge_tags3
+            merge_tags4 = [hof_num, hof_time]
+            merge_tags5 = [sa_num, sa_time]
 
+            if h_summary.email:
+                all_tags = merge_tags1 + merge_tags2 + merge_tags3 + [mc_tags]
                 # write to csv file here
                 write_label(the_date, all_tags, ftype='merge')
+            
+            if h_summary.sms_target:
+                sms_tags = merge_tags1 + [h_summary.sms_target] +\
+                            merge_tags2 + merge_tags3 + []
+                write_label(the_date, sms_tags, ftype='sms')
+
             if n_of_p == 2:
                 pdf_file1.parse_text(f'{h_summary.applicant}', service_text)
             
