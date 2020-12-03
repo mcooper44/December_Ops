@@ -389,7 +389,12 @@ class Service_Database_Manager:
             voucher_sponsor, turkey_sponsor, sorting_date                    
                     FROM sponsor WHERE date(sorting_date) = date("{crit}")'''
             return self.db_struct[database].lookup_string(ls2, None)
-    
+   
+    def return_sponsors(self, database, fid):
+        ls = f'''SELECT food_sponsor, gift_sponsor, voucher_sponsor, turkey_sponsor 
+        FROM sponsor WHERE file_id = {fid}'''
+        return self.db_struct[database].lookup_string(ls, None)
+
     def return_pickup_table(self, database):
         '''
         returns the values from the pickup table in the route database
@@ -439,7 +444,7 @@ class Service_Database_Manager:
         return self.db_struct[database].lookup_string(ls, None)
 
 
-def package_applicant(main, sa, rn, rl):
+def package_applicant(main, sa, rn, rl, die=None):
     '''
     rebuilds the datastructures that are needed to by the route
     and ops binder printing functions with data from the database
@@ -466,7 +471,14 @@ def package_applicant(main, sa, rn, rl):
     lng = None
 
     if main:
-        a = ma(*main)
+        a = None
+        if not die:
+            a = ma(*main)
+        else:
+            a = ma(main[0], main[1], main[2], main[3], main[4], main[5],\
+                   main[6], main[7], main[8], main[9], die, main[11],\
+                   main[12])
+
         if not sa: sa = None
         summary = visit_sum(a.f, a.fn, a.ln, a.fs, a.ph, a.em, a.a1, a.a2, a.ct,
                         a.po, a.di, sa, a.sms)
@@ -480,7 +492,28 @@ def package_applicant(main, sa, rn, rl):
     else:
         raise ValueError('There is no main applicant for package_applicant!')
 
-def get_hh_from_database(database, r_start=1, r_end=900):
+def reformat_diet(sponsor_tuple, diet_str):
+        '''
+        this is a dirty hack - to over ride diet with services in a really 
+        bad way - but great things come at the 11th hour no?
+        '''
+        t_mod = ''
+        service_pk = []
+
+        if 'halal' in diet_str:
+            t_mod = 'halal '
+        if ('vegan' in diet_str) or ('vegetarian' in diet_str):
+            t_mod = 'Vegetarian '
+        
+        _, _, v, t = sponsor_tuple[0] 
+        if v and len(v) > 1:
+            service_pk.append('voucher')
+        if t and len(t) > 1:
+            service_pk.append(f'{t_mod}turkey')
+
+        return ','.join(service_pk)
+
+def get_hh_from_database(database, r_start=1, r_end=900,gift_prov='KW Salvation Army'):
     '''
     This function gets routes out of the database
     and structures them into a delivery_household_collection
@@ -509,9 +542,15 @@ def get_hh_from_database(database, r_start=1, r_end=900):
         l1_city = (main_applicant[6], main_applicant[8])
         gp = rdbm.return_geo_points(l1_city, 'address')
         
-        gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid)
+        diet = main_applicant[10]
+        
+        gan, gat = rdbm.return_sa_info_pack('rdb', 'sa', fid,gift_prov)
+        sponsors = rdbm.return_sponsors('rdb', fid)
 
-        hh_package, rt_sp = package_applicant(main_applicant, gan, rn, rl)
+        new_diet = reformat_diet(sponsors, diet)
+
+        hh_package, rt_sp = package_applicant(main_applicant, gan, rn, rl,\
+                                              die=new_diet)
         #(file_id, hh_id, family_size, lat, lng, summary, hood, postal, rn, rl,
         # food, null_g)
         
@@ -519,13 +558,14 @@ def get_hh_from_database(database, r_start=1, r_end=900):
         dhc.setup_rt_summary(rn)
 
         dhc.add_to_route_summary(rn, rt_sp)
-        
+        dhc.add_sponsors(fid, *sponsors)
+
         fam = rdbm.get_family_members('rdb', fid)
         if fam:
             dhc.add_hh_family(fid, fam)
 
         if all((gan, gat)):
-            dhc.add_sa_app_number(fid, gan)
+            dhc.add_sa_app_number(fid, gan, gift_prov)
             dhc.add_sa_app_time(fid, gat)
     
     rdbm.close_all()
@@ -551,6 +591,8 @@ def write_delivery_tools(delivery_households, start_rt=1):
         fid, rn, rl, nhood =  rt
         summ = house.return_summary() # the HH info (name, address etc.)
         fam = house.family_members    
+        # T/F voucher, turkey requested
+        vt_request_tuple = house.return_delivery_service_pack()
 
         ops_ref.add_line(rt, summ, fam) # delivery binder
         ops_logger.info(f'Added {fid} in route {rn} to ops reference')

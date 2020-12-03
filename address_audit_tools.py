@@ -39,13 +39,14 @@ def parse_post_types(address):
                   'c': ('ct', 'crt','crest','crescent','cres','cr','court','circle', 'crcl', 'cir', 'cl'),
                   'd': ('drive', 'dr', 'drv'),
                   'f': ('field', 'feild'),
-                  'g': ('green'),
+                  'g': ('green','gate'),
                   'h': ('hwy', 'highway', 'heights'),
                   'l': ('lane', 'ln', 'line'),
                   'p': ('place', 'pl', 'pkway', 'pkwy', 'pk', 'parkway', 'park'),
                   'r': ('road', 'ridge', 'rd'),
                   's': ('street', 'st', 'st n', 'square', 'springs'),
-                  't': ('trail', 'terrace','terr'), 
+                  't': ('trail', 'terrace','terr'),
+                  'v': ('view'),
                   'w': ('way', 'walk')}
     directions = {'n': ('north', 'n', 'nor', 'nth'),
                   's': ('south', 's'),
@@ -202,7 +203,9 @@ def boundary_checker(city):
     cities to serve.  If it is, it returns True
     Otherwise it returns False
     '''
-    in_bounds = ['kitchener', 'waterloo','cambridge','ayr','north dumfries']
+    in_bounds = ['kitchener', 'waterloo','cambridge',
+                 'ayr','north dumfries','woolwich',
+                'wilmot']
     if city:
         lcity = city.lower()
         if lcity in in_bounds:

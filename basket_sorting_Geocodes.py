@@ -52,12 +52,12 @@ BOX_MASK = {'0' : 1,
             '10': 1, 
             '11': 1, 
             '12': 1, 
-            '13':2, 
-            '14':2, 
-            '15':2, 
-            '16':2, 
-            '17':2, 
-            '18':2 }
+            '13':1, 
+            '14':1, 
+            '15':1, 
+            '16':1, 
+            '17':1, 
+            '18':1 }
 
 def haversine(lon1, lat1, lon2, lat2):
     """
@@ -141,7 +141,7 @@ class Route_Summary():
         self.applicant_list.append(fid)
         self.sizes.append(family_size)
         self.street_list.append(street)
-        self.letter_map[fid] = 'Box: {} Family: {} Diet: {}'.format(letter,
+        self.letter_map[fid] = 'Box: {} Family: {} Items: {}'.format(letter,
                                                                family_size,
                                                                diet)
         self.streets.add(street)
@@ -510,7 +510,22 @@ with number {self.hof_pu_num} at {self.hof_pu_time} on {self.hof_pu_date}.
         '''
         return (self.sa_app_num, self.food_sponsor, self.gift_sponsor,
                 self.voucher_sponsor, self.turkey_sponsor)
-   
+    
+    def return_delivery_service_pack(self):
+        '''
+        For situations where a non standard product is being delivered to the
+        household - the voucher - turkey sponsor now needs to be passed over to 
+        the delivery slip
+        '''
+        
+        v = False
+        t = False
+        if self.voucher_sponsor and len(self.voucher_sponsor) > 1:
+            v = True
+        if self.turkey_sponsor and len(self.turkey_sponsor) > 1:
+            t = True
+        return v, t
+
     def set_hof_pickup(self, pu_zone, pu_num):
         '''
         called by the Delivery_Household_Collection() to set the zone and pu
@@ -655,6 +670,7 @@ with number {self.hof_pu_num} at {self.hof_pu_time} on {self.hof_pu_date}.
         Route_Summary() classes .add_household_summary() method 
 
         '''
+
 
         return (self.main_app_ID, 
                 self.hh_size, 
@@ -948,8 +964,7 @@ class Delivery_Household_Collection():
         number used by salvation army and in the pickup zones (and who knows
         what in the future?)
         '''
-        for hh in (sorted(self.hh_dict.values(),
-                          key=attrgetter(kv))):
+        for hh in (sorted(self.hh_dict.values(), key=attrgetter(kv))):
             yield hh
 
 
