@@ -245,7 +245,7 @@ class Service_Database_Manager:
         ls = f'SELECT app_num FROM gift_table WHERE file_id={file_id}'
         return self.db_struct[database].lookup_string(ls)
     
-    def return_sa_info_pack(self, rdb, app_db, fid, provider):
+    def return_sa_info_pack(self, rdb, app_db, fid, provider, echo=False):
         '''
         for a given file id, what is the appointment number and time string
         for the hh salvation army appointment?
@@ -257,18 +257,28 @@ class Service_Database_Manager:
         num = False
         time_str = False
         if table_select:
-            try:
-                ls1 = f'''SELECT app_num FROM gift_table WHERE file_id={fid} and
-                provider="{provider}"'''
-                num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
-            except Exception as e1:
-                print(f'{fid} caused {e1}')
+            if provider:
+                try:
+                    ls1 = f'''SELECT app_num FROM gift_table WHERE file_id={fid} and
+                    provider="{provider}"'''
+                    num = self.db_struct[rdb].lookup_string(ls1, None)[0][0]
+                except Exception as e1:
+                    if echo: print(f'{fid} caused {e1}')
+            
+            else:
+                try:
+                    ls1a = f'''SELECT app_num FROM gift_table WHERE
+                    file_id={fid}'''
+                    num = self.db_struct[rdb].lookup_string(ls1a, None)[0][0]
+                except Exception as e1a:
+                    if echo: print(f'{fid} caused {e1a}')
+            
             try:
                 ls2 = f'SELECT day,time FROM {table_select} WHERE ID={num}'
                 a_day, a_time = self.db_struct[app_db].lookup_string(ls2, None)[0]
                 time_str = f'{a_day} at {a_time}'
             except Exception as e2:
-                print(f'ops_print_routes: {fid} caused {e2}')
+                if echo: print(f'ops_print_routes: {fid} caused {e2}')
             return (num, time_str)
         else:
             #print(f'{fid} failed at table select')
@@ -442,7 +452,30 @@ class Service_Database_Manager:
         ls = f'SELECT lat, lng FROM address WHERE source_street = "{street}" AND\
         source_city = "{city}"'
         return self.db_struct[database].lookup_string(ls, None)
-
+    
+    def return_comp_services(self, database):
+        '''
+        returns the service table joined to key datapoints from applicants and
+        routes
+        '''
+        ls = '''SELECT s.file_id, s.food_sponsor, s.gift_sponsor,
+        s.voucher_sponsor, s.turkey_sponsor, s.sorting_date,
+        a.family_size, a.diet, a.address_1, a.city, a.neighbourhoood, 
+        r.file_id, r.route_number, r.route_letter
+        FROM
+            sponsor as s
+        LEFT JOIN
+            applicants as a
+        ON
+            s.file_id = a.file_id
+        LEFT JOIN
+            routes as r
+        ON
+            s.file_id = r.file_id
+        ORDER BY
+            r.route_number,
+            r.route_letter'''
+        return self.db_struct[database].lookup_string(ls, None)
 
 def package_applicant(main, sa, rn, rl, die=None):
     '''
@@ -500,10 +533,10 @@ def reformat_diet(sponsor_tuple, diet_str):
         t_mod = ''
         service_pk = []
 
-        if 'halal' in diet_str:
-            t_mod = 'halal '
         if ('vegan' in diet_str) or ('vegetarian' in diet_str):
             t_mod = 'Vegetarian '
+        if 'halal' in diet_str:
+            t_mod = 'halal '
         
         _, _, v, t = sponsor_tuple[0] 
         if v and len(v) > 1:
