@@ -60,7 +60,7 @@ class Report_File(object):
             self.worksheet1 = self.workbook.add_worksheet('Sponsor_Report')
             self.worksheet2 = self.workbook.add_worksheet('Child_Report')
             self.worksheet3 = self.workbook.add_worksheet('Main_Applicants')
-            self.worksheet1.set_margins(0.25,0.25,0.15,0.15)
+            self.worksheet1.set_margins(0.25,0.25,0.25,0.25)
             self.worksheet1.set_column(0, 0, 24) # Col. A
             self.worksheet1.set_column(2, 2, 4) # Col. C
             self.worksheet1.set_column(3, 3, 25) # Col. D
