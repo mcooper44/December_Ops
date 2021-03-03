@@ -140,7 +140,9 @@ def registration_check(line):
     # test to see if it is a Christmas Hamper - if so, flip toggles
     # in key parts of the Visit_Line to record relevant data points
     # i.e. pickup zone + app number or delivery registration
+    print(line_object.main_applicant_ID) 
     is_xmas = line_object.is_christmas_hamper() # is christmas hamper
+
     # SPONSOR?
     # T/F, food_sponsor name(s), gift_sponsor name(s)
     # food sponsor includes hamper, turkey, delivery,pickup
@@ -277,7 +279,16 @@ def sort_types(line_object, simple_address, address_database, kw,\
                     from being routed. If it is True, there is a list of delivery targets 
                     in to Delivery_Household_Collection() that the applicant file ID will 
                     be added to
+                    However, since there are multiple service providers that do
+                    delivery - but only one that we are currently routing for -
+                    a check on provider is necessary to ensure that only
+                    routable households are included in the routing table
                     '''
+                deliverables = [voucher_p, turkey_p, food_sponsor]
+                if 'House of Friendship Delivery' not in deliverables:
+                    pu_flag= True
+                    delivery_flag = False
+
                 delivery_households.add_household(applicant, None, 
                                                   family_size,
                                                   lt, lg, summary, 
