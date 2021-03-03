@@ -406,7 +406,7 @@ class Route_Database():
         The 2 tuple contains the result from the 'applicants' table and the
         'routes' table
         '''
-        self.cur.execute("SELECT * FROM routes SORT BY route_number")
+        self.cur.execute("SELECT * FROM routes ORDER BY route_number, route_letter")
         rts = self.cur.fetchall()
         for hh_route in rts:
             fid = hh_route[0]

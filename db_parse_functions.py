@@ -11,8 +11,6 @@ s_diets = ['halal','diabetic','gluten free',
            'lactose intollerant', 'wheat allergy'           
           ]
 
-
-
 def itr_joiner(list_etc):
     '''
     takes the value of a field that could potentially have many different items
