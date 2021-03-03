@@ -243,6 +243,7 @@ if __name__ == '__main__':
         write_label(the_date, sms_headers, ftype='sms')
 
         for hh in dhc.key_iter():
+            #print(hh.who_am_i())
             s_d = SERVICE_TEMPLATE
             package = SERVICE_PACK(*hh.return_sponsor_package())
             family_size = hh.hh_size

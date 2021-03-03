@@ -17,6 +17,8 @@ import db_parse_functions as parse_functions
 import csv
 import sys
 from collections import Counter, defaultdict, namedtuple
+from datetime import datetime
+
 import phonenumbers as pn
 
 
@@ -25,6 +27,12 @@ self_identifies_profile = namedtuple('self_identifies_profile', 'disabled, less_
 visit_tuple_structure = namedtuple('visit_tuple_structure', 'date, main_applicant_id, visit_object')
 a_person = namedtuple('a_person', 'ID, Lname, Fname, DOB, Age, Gender, Ethnicity, SelfIdent')
 
+# date related variables to work with formats in the database
+DATE_FORMAT = '%Y-%m-%d' # this is the format to put into the caseload database
+L2F_CSV_DATE_FORMAT = '%m-%d-%Y' # in the function '/' dividers are swaped to
+                                 # '-' via a .replace() call
+
+# CASELOAD RELEVANT 
 PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
              'Chandler Mowat Community Centre - House of Friendship': 2,
              'Kingsdale Community Centre - House of Friendship': 3,
@@ -34,6 +42,7 @@ PROVIDERS = {'Emergency Food Hamper Program - House of Friendship': 1,
              'Centreville Chicopee Community Centre': 7,
              'Forest Heights Community Centre': 8}
 
+# CHRISTMAS RELATED MESS
 AGENTS_HOF = ['House of Friendship']
 SERVICE_AGENTS_HOF = "House of Friendship Delivery,Cambridge Delivery,HoF Zone 1,HoF Zone 2,HoF Zone \
 3,HoF Zone 4,HoF Zone 5,HoF Zone 6,HoF Zone 7,HoF Zone 8,HoF Zone 9,Cambridge \
@@ -85,6 +94,7 @@ class Field_Names():
             for col_header in self.file_headers:
                 col_header_index = self.file_headers.index(col_header)
                 self.ID[col_header] = col_header_index
+        #print(self.ID)
 
     def init_index_dict(self):
         '''
@@ -93,8 +103,7 @@ class Field_Names():
         varioius fields are.
         param config_file should be the file
         '''
-        # this is method depreciated
-        pass
+        print('ERROR: Field_Names.init_index_dict() this method is depreciated!')
     
     def return_family_subslice_len(self):
         '''
@@ -153,6 +162,9 @@ class Service_Request():
 
     This localizes the logic for parsing services and providers in the 
     request and simplifies things when providers increase in number
+
+    This is a Christmas Specific issue - differentiated by a different label
+    for 
     '''
     def __init__(self, service_str):
         self.original = service_str
@@ -446,6 +458,27 @@ class Household():
     def __repr__(self):
         return 'Household {} has the following members {}'.format(self.Household_ID, self.Member_Set)
 
+def format_l2f_date(date_str, FORMAT=DATE_FORMAT, L2FORMAT=L2F_CSV_DATE_FORMAT):
+    '''
+    handles the dates that l2f throws out in the csv
+    and ensures that it is consistently passed through
+    for sqlite to handle
+
+    takes '12/1/2020' MM/D/YYYY
+    and returns '2020-12-01' YYYY-MM-DD
+
+    visit date is a crucial piece of information - so if date format or empty
+    visit date fields crash the script that is fine - it should die here
+    because no visit date is not a viable option
+
+    bad date formats are only an issue if the csv is opened in excel and then
+    saved in the wrong csv format :(
+
+    '''
+    
+    return datetime.strptime(date_str.replace('/','-'),\
+                             L2FORMAT).strftime(FORMAT)
+
 class Visit_Line_Object():
     '''
     this is the VLO
@@ -468,7 +501,7 @@ class Visit_Line_Object():
     
     def __init__(self, visit_line, fnamedict, december_flag = False): # line, dict of field name indexes, is Xmas?
         #self.vline = visit_line
-        self.visit_Date = None 
+        self.visit_Date = visit_line[fnamedict['Visit Date']]
         self.main_applicant_ID = visit_line[fnamedict['Client ID']] # Main Applicant ID
         self.main_applicant_Fname = None
         self.main_applicant_Lname = None
@@ -502,7 +535,7 @@ class Visit_Line_Object():
         self.visit_Referral = None # Referrals Provided
         self.quantity = None
         self.foods_provided = None # Normal is food prov. Xmas is foods prov. fml
-        self.items_provided = Service_Request(visit_line[fnamedict['Items Provided']])
+        self.items_provided = visit_line[fnamedict['Items Provided']]
         self.xmas_ID = None
         self.xmas_notes = None
         self.xmas_application_site = None
@@ -520,13 +553,13 @@ class Visit_Line_Object():
         self.delivery_h = False # Designates a delivery hamper
         self.f_sponsor = None # a list
         self.g_sponsor = None # a list
-        if fnamedict.get('Visit Date', False):
-            self.visit_Date = visit_line[fnamedict['Visit Date']]
 
-        if fnamedict.get('Food Provided', False):
-            self.foods_provided = Service_Request(visit_line[fnamedict['Food Provided']])
-        elif fnamedict.get('Foods Provided', False):
+        if fnamedict.get('Food Provided', False): # non Christmas
+            self.foods_provided = visit_line[fnamedict['Food Provided']]
+        elif fnamedict.get('Foods Provided', False): # it's Christmas - we need
+                                                     # to use the Service_Request object
             self.foods_provided = Service_Request(visit_line[fnamedict['Foods Provided']])
+            self.items_provided = Service_Request(visit_line[fnamedict['Items Provided']])
         if fnamedict.get('Dietary Considerations', False):
             self.visit_household_Diet = parse_functions.diet_parser(visit_line[fnamedict['Dietary Considerations']]) # Dietary Conditions in a readable form
         if fnamedict.get('Client Ethnicities', False):
@@ -541,18 +574,17 @@ class Visit_Line_Object():
         if fnamedict.get('Quantity', False):
             self.visit_food_hamper_type = parse_functions.hamper_type_parser(int(fnamedict['Quantity'])) # Quantity of food parsed to be Food or Baby 3 = hamper 1 = baby hamper
             self.quantity = visit_line[fnamedict['Quantity']]
-        #if fnamedict.get('Visit Date', False):
-        #    self.visit_Date = visit_line[fnamedict['Visit Date']] # Visit Date
         if fnamedict.get('Client First Name', False):
             self.main_applicant_Fname = visit_line[fnamedict['Client First Name']] # Main Applicant First Name
         if fnamedict.get('Client Last Name', False):
             self.main_applicant_Lname = visit_line[fnamedict['Client Last Name']] # Main Applicant Last Name
         if fnamedict.get('Client Date of Birth', False):
-            self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main Applicant Date of Birth
+            self.main_applicant_DOB = visit_line[fnamedict['Client Date of Birth']] # Main A DOB
         if fnamedict.get('Client Self-Identifies As', False):
             self.main_applicant_Self_Identity = visit_line[fnamedict['Client Self-Identifies As']] 
         if fnamedict.get('Client First Food Bank Visit-Date', False):
             self.first_visit = visit_line[fnamedict['Client First Food Bank Visit-Date']]
+        
         # ADDRESS RELATED SWITCHES
         if fnamedict.get('Address', False): # used by the L2F Services Export
             self.visit_Address = visit_line[fnamedict['Address']] 
@@ -618,8 +650,15 @@ class Visit_Line_Object():
         head of the file.  If the provider is not present, 
         it will pass on the value that has been extracted from
         the file.
+
+        it is important to strip leading white space from the visit_Agency
+        because at least one of them has one.... thanks Kate.  >:(
+
         '''
-        provider_code = PROVIDERS.get(self.visit_Agency, self.visit_Agency)
+        provider_code = self.visit_Agency
+        if type(self.visit_Agency) == str:
+            provider_code = PROVIDERS.get(self.visit_Agency.strip(), self.visit_Agency)
+        
         return (self.visit_Household_ID, self.visit_Date, 
                 provider_code, self.main_applicant_ID)
 
