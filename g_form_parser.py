@@ -1,3 +1,12 @@
+'''
+This script is used to parse the google form csv that people fill out
+to apply.
+
+It creates a csv file with all the data formatted for easy reading
+and for the intake team to process.
+
+'''
+
 import csv
 from collections import namedtuple
 from datetime import datetime
