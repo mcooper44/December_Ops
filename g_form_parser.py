@@ -171,7 +171,7 @@ class g_summary:
         self.worksheet.write(f'A{self.l_n[18]}', f'Has Kids:')
         self.worksheet.write(f'B{self.l_n[18]}', f'{g.gifts["have kids"]}')
 
-        self.worksheet.write(f'A{self.l_n[19]}', f'Wants gifts:')
+        self.worksheet.write(f'A{self.l_n[19]}', f'Wants TOYS:')
         self.worksheet.write(f'B{self.l_n[19]}', f'{g.gifts["want gifts"]}')
 
         self.worksheet.write(f'A{self.l_n[20]}', f'Food Requests:')
